@@ -376,6 +376,11 @@ function switchMode(mode, animate = true) {
   activeMode = mode;
   window.location.hash = mode;
 
+  // Cleanly close camera streams if navigating away from Plant Vision
+  if (mode !== "vision" && typeof closeCameraModal === "function") {
+    closeCameraModal();
+  }
+
   // Update button active state
   if (mode === "crop") {
     if (btnCrop) btnCrop.classList.add("active");
@@ -1252,6 +1257,12 @@ function triggerCvFileInput(event) {
 }
 
 function handleDropzoneContainerClick(event) {
+  // If the user clicked on camera trigger button, do not trigger file picker
+  if (event && event.target && event.target.closest) {
+    if (event.target.closest("#btnCameraTrigger") || event.target.closest(".btn-camera-trigger") || event.target.closest(".btn-camera-recapture")) {
+      return;
+    }
+  }
   // If an image is already uploaded or active, NEVER trigger file input from container background clicks
   if (selectedVisionFile != null || currentPreviewObjectUrl != null) {
     if (event && typeof event.stopPropagation === "function") event.stopPropagation();
@@ -1264,6 +1275,543 @@ function handleDropzoneContainerClick(event) {
   }
   triggerCvFileInput(event);
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// NATIVE DEVICE CAMERA CAPTURE CONTROLLER (SmartCropVisionCamera)
+// ═════════════════════════════════════════════════════════════════════════════
+const SmartCropVisionCamera = {
+  activeStream: null,
+  activeVideoTrack: null,
+  currentFacingMode: "environment", // Automatically prefer rear camera on mobile
+  availableVideoDevices: [],
+  currentDeviceIndex: 0,
+  isTorchOn: false,
+  hasTorchCapability: false,
+  capturedBlob: null,
+  savedScrollY: 0,
+  isInitializing: false,
+  isCaptured: false,
+  keyHandlerBound: null,
+
+  async open() {
+    const modal = document.getElementById("cameraModal");
+    if (!modal) return;
+
+    this.savedScrollY = window.scrollY || window.pageYOffset || 0;
+    document.body.classList.add("camera-modal-open");
+    modal.style.display = "flex";
+
+    this.resetUI();
+    this.bindKeyboard();
+
+    // Check secure context (camera permissions require HTTPS or localhost)
+    const isLocalhost = Boolean(
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname === "[::1]"
+    );
+    if (!window.isSecureContext && !isLocalhost) {
+      this.showError(
+        "Secure Context Required",
+        "Camera access requires a secure HTTPS connection or localhost for browser security permissions. Please upload an image file instead.",
+        false
+      );
+      return;
+    }
+
+    // Check browser mediaDevices API
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      this.showError(
+        "Camera Not Supported",
+        "Your browser does not support the modern MediaDevices camera API. Please upload an image file instead.",
+        false
+      );
+      return;
+    }
+
+    await this.startStream(this.currentFacingMode);
+  },
+
+  resetUI() {
+    this.isCaptured = false;
+    this.capturedBlob = null;
+    this.isTorchOn = false;
+    this.hasTorchCapability = false;
+
+    const video = document.getElementById("cameraVideo");
+    const canvas = document.getElementById("cameraReviewCanvas");
+    const liveControls = document.getElementById("cameraLiveControls");
+    const reviewControls = document.getElementById("cameraReviewControls");
+    const scanFrame = document.getElementById("cameraScanFrame");
+    const loadingOverlay = document.getElementById("cameraLoadingOverlay");
+    const errorOverlay = document.getElementById("cameraErrorOverlay");
+
+    if (video) {
+      video.style.display = "block";
+      video.classList.remove("mirrored");
+    }
+    if (canvas) canvas.style.display = "none";
+    if (liveControls) liveControls.style.display = "flex";
+    if (reviewControls) reviewControls.style.display = "none";
+    if (scanFrame) scanFrame.style.display = "flex";
+    if (loadingOverlay) loadingOverlay.style.display = "flex";
+    if (errorOverlay) errorOverlay.style.display = "none";
+
+    this.updateStatus("starting", "Camera Starting...");
+    this.updateTorchUI(false, false);
+  },
+
+  updateStatus(state, text) {
+    const pill = document.getElementById("cameraStatusPill");
+    const dot = document.getElementById("cameraStatusDot");
+    const textEl = document.getElementById("cameraStatusText");
+    if (!pill || !dot || !textEl) return;
+
+    dot.className = "camera-status-dot";
+    if (state === "starting") {
+      dot.classList.add("starting");
+    } else if (state === "unavailable") {
+      dot.classList.add("unavailable");
+    }
+    textEl.textContent = text;
+  },
+
+  async startStream(preferredFacing, explicitDeviceId = null) {
+    if (this.isInitializing) return;
+    this.isInitializing = true;
+
+    this.stopAllStreams();
+
+    const loadingOverlay = document.getElementById("cameraLoadingOverlay");
+    const errorOverlay = document.getElementById("cameraErrorOverlay");
+    const loadingMsg = document.getElementById("cameraLoadingMsg");
+    if (loadingOverlay) loadingOverlay.style.display = "flex";
+    if (errorOverlay) errorOverlay.style.display = "none";
+    if (loadingMsg) loadingMsg.textContent = "Accessing device camera...";
+
+    this.updateStatus("starting", "Camera Starting...");
+
+    let constraints = {
+      audio: false,
+      video: explicitDeviceId
+        ? {
+            deviceId: { exact: explicitDeviceId },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
+        : {
+            facingMode: { ideal: preferredFacing || "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          }
+    };
+
+    let stream = null;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (err) {
+      console.warn("Primary camera constraint failed, falling back to basic video:", err);
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      } catch (fallbackErr) {
+        this.isInitializing = false;
+        if (loadingOverlay) loadingOverlay.style.display = "none";
+        this.handleCameraError(fallbackErr);
+        return;
+      }
+    }
+
+    this.activeStream = stream;
+    const tracks = stream.getVideoTracks();
+    if (!tracks || tracks.length === 0) {
+      this.isInitializing = false;
+      this.showError("No Video Track", "The camera stream was opened but no video track was returned.", true);
+      return;
+    }
+
+    this.activeVideoTrack = tracks[0];
+
+    // Handle sudden track disconnection
+    this.activeVideoTrack.onended = () => {
+      console.warn("Camera track disconnected.");
+      this.updateStatus("unavailable", "Camera Disconnected");
+    };
+
+    const video = document.getElementById("cameraVideo");
+    if (video) {
+      video.srcObject = stream;
+      try {
+        await video.play();
+      } catch (playErr) {
+        console.warn("Video play notice:", playErr);
+      }
+    }
+
+    // Determine facing mode and mirroring
+    const trackSettings = typeof this.activeVideoTrack.getSettings === "function" ? this.activeVideoTrack.getSettings() : {};
+    const effectiveFacing = trackSettings.facingMode || preferredFacing || "environment";
+    const isFront = effectiveFacing === "user";
+
+    if (video) {
+      video.classList.toggle("mirrored", isFront);
+    }
+
+    if (loadingOverlay) loadingOverlay.style.display = "none";
+    this.isInitializing = false;
+
+    // Detect device enumeration & torch capabilities
+    await this.inspectCapabilities(isFront);
+
+    const facingLabel = isFront ? "Front Camera" : "Rear Camera";
+    this.updateStatus("ready", `Camera Ready · ${facingLabel}`);
+  },
+
+  async inspectCapabilities(isFront) {
+    // 1. Enumerate video devices
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      this.availableVideoDevices = devices.filter(d => d.kind === "videoinput");
+      const switchBtn = document.getElementById("cameraSwitchBtn");
+      if (switchBtn) {
+        if (this.availableVideoDevices.length > 1) {
+          switchBtn.style.display = "inline-flex";
+          switchBtn.disabled = false;
+          switchBtn.title = `Switch to ${isFront ? "Rear" : "Front"} Camera`;
+        } else {
+          switchBtn.style.display = "none";
+        }
+      }
+    } catch (e) {
+      console.warn("Device enumeration notice:", e);
+    }
+
+    // 2. Detect hardware torch
+    this.hasTorchCapability = false;
+    this.isTorchOn = false;
+    if (this.activeVideoTrack && typeof this.activeVideoTrack.getCapabilities === "function") {
+      try {
+        const caps = this.activeVideoTrack.getCapabilities();
+        if (caps && caps.torch) {
+          this.hasTorchCapability = true;
+        }
+      } catch (e) {
+        console.warn("Torch capability query notice:", e);
+      }
+    }
+
+    this.updateTorchUI(this.hasTorchCapability, false);
+  },
+
+  updateTorchUI(supported, isOn) {
+    const torchBtn = document.getElementById("cameraTorchBtn");
+    const torchLabel = document.getElementById("cameraTorchLabel");
+    if (!torchBtn || !torchLabel) return;
+
+    if (!supported) {
+      torchBtn.disabled = true;
+      torchBtn.classList.remove("active");
+      torchBtn.title = "Flash / torch is unavailable on this device or browser";
+      torchLabel.textContent = "No Flash";
+    } else {
+      torchBtn.disabled = false;
+      torchBtn.classList.toggle("active", isOn);
+      torchBtn.title = isOn ? "Turn Flash Off" : "Turn Flash On";
+      torchLabel.textContent = isOn ? "Flash On" : "Flash Off";
+    }
+  },
+
+  async toggleTorch() {
+    if (!this.hasTorchCapability || !this.activeVideoTrack) return;
+    try {
+      this.isTorchOn = !this.isTorchOn;
+      await this.activeVideoTrack.applyConstraints({
+        advanced: [{ torch: this.isTorchOn }]
+      });
+      this.updateTorchUI(true, this.isTorchOn);
+    } catch (err) {
+      console.warn("Failed to toggle torch:", err);
+      this.isTorchOn = false;
+      this.updateTorchUI(true, false);
+    }
+  },
+
+  async switchCamera() {
+    if (this.isInitializing || this.isCaptured) return;
+    if (this.availableVideoDevices.length <= 1) return;
+
+    this.currentFacingMode = this.currentFacingMode === "environment" ? "user" : "environment";
+    this.currentDeviceIndex = (this.currentDeviceIndex + 1) % this.availableVideoDevices.length;
+    const targetDeviceId = this.availableVideoDevices[this.currentDeviceIndex].deviceId;
+
+    await this.startStream(this.currentFacingMode, targetDeviceId);
+  },
+
+  capture() {
+    if (!this.activeStream || this.isCaptured) return;
+    const video = document.getElementById("cameraVideo");
+    const canvas = document.getElementById("cameraReviewCanvas");
+    const flash = document.getElementById("cameraShutterFlash");
+    if (!video || !canvas) return;
+
+    // Fast shutter flash animation
+    if (flash) {
+      flash.classList.remove("flash-active");
+      void flash.offsetWidth; // Force CSS reflow
+      flash.classList.add("flash-active");
+      setTimeout(() => flash.classList.remove("flash-active"), 200);
+    }
+
+    const vw = video.videoWidth || 1280;
+    const vh = video.videoHeight || 720;
+    canvas.width = vw;
+    canvas.height = vh;
+
+    const ctx = canvas.getContext("2d");
+    const isMirrored = video.classList.contains("mirrored");
+
+    if (isMirrored) {
+      // Preserve visual orientation user saw in preview
+      ctx.save();
+      ctx.translate(vw, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, 0, 0, vw, vh);
+      ctx.restore();
+    } else {
+      ctx.drawImage(video, 0, 0, vw, vh);
+    }
+
+    // Freeze preview by swapping video for review canvas
+    video.style.display = "none";
+    canvas.style.display = "block";
+
+    // Hide scanning guide and display review controls
+    const scanFrame = document.getElementById("cameraScanFrame");
+    if (scanFrame) scanFrame.style.display = "none";
+
+    const liveControls = document.getElementById("cameraLiveControls");
+    const reviewControls = document.getElementById("cameraReviewControls");
+    if (liveControls) liveControls.style.display = "none";
+    if (reviewControls) reviewControls.style.display = "flex";
+
+    // Extinguish torch if it was active
+    if (this.isTorchOn && this.activeVideoTrack) {
+      this.activeVideoTrack.applyConstraints({ advanced: [{ torch: false }] }).catch(() => {});
+      this.isTorchOn = false;
+      this.updateTorchUI(this.hasTorchCapability, false);
+    }
+
+    this.isCaptured = true;
+    this.updateStatus("ready", "Photo Captured · Review");
+
+    canvas.toBlob((blob) => {
+      this.capturedBlob = blob;
+    }, "image/jpeg", 0.95);
+  },
+
+  retake() {
+    if (!this.isCaptured) return;
+    this.isCaptured = false;
+    this.capturedBlob = null;
+
+    const video = document.getElementById("cameraVideo");
+    const canvas = document.getElementById("cameraReviewCanvas");
+    const scanFrame = document.getElementById("cameraScanFrame");
+    const liveControls = document.getElementById("cameraLiveControls");
+    const reviewControls = document.getElementById("cameraReviewControls");
+
+    if (canvas) canvas.style.display = "none";
+    if (video) video.style.display = "block";
+    if (scanFrame) scanFrame.style.display = "flex";
+    if (reviewControls) reviewControls.style.display = "none";
+    if (liveControls) liveControls.style.display = "flex";
+
+    const isFront = video && video.classList.contains("mirrored");
+    this.updateStatus("ready", `Camera Ready · ${isFront ? "Front Camera" : "Rear Camera"}`);
+  },
+
+  async usePhoto() {
+    if (!this.capturedBlob) {
+      showErrorNotification("Unable to process captured frame. Please retake photo.");
+      return;
+    }
+
+    const filename = `leaf_camera_${Date.now()}.jpg`;
+    const capturedFile = new File([this.capturedBlob], filename, {
+      type: "image/jpeg",
+      lastModified: Date.now()
+    });
+
+    this.close();
+
+    showToast("Photo captured from camera. Verifying leaf specimen...", "info", "Specimen Received");
+
+    if (typeof processSelectedImageFile === "function") {
+      await processSelectedImageFile(capturedFile, false);
+    }
+  },
+
+  retry() {
+    this.resetUI();
+    this.startStream(this.currentFacingMode);
+  },
+
+  handleCameraError(err) {
+    console.error("Camera access error:", err);
+    let title = "Camera Unavailable";
+    let desc = "Unable to access your device camera.";
+
+    if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+      title = "Camera Permission Denied";
+      desc = "Camera access was blocked by browser permissions. Please allow camera permissions in your address bar, or upload an image file.";
+    } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+      title = "No Camera Detected";
+      desc = "No camera device was detected on your hardware. Please connect a webcam or upload a photo from your file system.";
+    } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+      title = "Camera In Use";
+      desc = "Your device camera is currently in use by another application or tab. Please close other camera apps and try again.";
+    } else if (err.name === "OverconstrainedError") {
+      title = "Camera Mode Unsupported";
+      desc = "The requested camera resolution or facing mode is unsupported by your hardware.";
+    }
+
+    this.showError(title, desc, true);
+  },
+
+  showError(title, desc, allowRetry = true) {
+    this.updateStatus("unavailable", "Camera Unavailable");
+
+    const loadingOverlay = document.getElementById("cameraLoadingOverlay");
+    const errorOverlay = document.getElementById("cameraErrorOverlay");
+    const titleEl = document.getElementById("cameraErrorTitle");
+    const descEl = document.getElementById("cameraErrorDesc");
+    const retryBtn = errorOverlay?.querySelector(".camera-btn-retry");
+
+    if (loadingOverlay) loadingOverlay.style.display = "none";
+    if (titleEl) titleEl.textContent = title;
+    if (descEl) descEl.textContent = desc;
+    if (retryBtn) retryBtn.style.display = allowRetry ? "inline-block" : "none";
+    if (errorOverlay) errorOverlay.style.display = "flex";
+  },
+
+  bindKeyboard() {
+    this.unbindKeyboard();
+    this.keyHandlerBound = (e) => {
+      const modal = document.getElementById("cameraModal");
+      if (!modal || modal.style.display === "none") return;
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        this.close();
+      } else if (e.key === " " || e.key === "Enter") {
+        if (e.target && (e.target.tagName === "BUTTON" || e.target.getAttribute("role") === "button")) {
+          return;
+        }
+        e.preventDefault();
+        if (this.isCaptured) {
+          this.usePhoto();
+        } else {
+          this.capture();
+        }
+      }
+    };
+    window.addEventListener("keydown", this.keyHandlerBound);
+  },
+
+  unbindKeyboard() {
+    if (this.keyHandlerBound) {
+      window.removeEventListener("keydown", this.keyHandlerBound);
+      this.keyHandlerBound = null;
+    }
+  },
+
+  stopAllStreams() {
+    if (this.activeVideoTrack) {
+      try { this.activeVideoTrack.stop(); } catch (e) {}
+      this.activeVideoTrack = null;
+    }
+    if (this.activeStream) {
+      try {
+        this.activeStream.getTracks().forEach(track => {
+          try { track.stop(); } catch (e) {}
+        });
+      } catch (e) {}
+      this.activeStream = null;
+    }
+    const video = document.getElementById("cameraVideo");
+    if (video) {
+      try { video.srcObject = null; } catch (e) {}
+    }
+    this.isTorchOn = false;
+  },
+
+  close() {
+    this.stopAllStreams();
+    this.unbindKeyboard();
+
+    const modal = document.getElementById("cameraModal");
+    if (modal) {
+      modal.style.display = "none";
+    }
+
+    document.body.classList.remove("camera-modal-open");
+    window.scrollTo(0, this.savedScrollY);
+  }
+};
+
+// Global Camera Action Wrappers
+function openCameraModal(event) {
+  if (event && typeof event.stopPropagation === "function") {
+    event.stopPropagation();
+  }
+  SmartCropVisionCamera.open();
+}
+
+function closeCameraModal() {
+  SmartCropVisionCamera.close();
+}
+
+function handleCameraBackdropClick(event) {
+  if (event && event.target === document.getElementById("cameraModal")) {
+    closeCameraModal();
+  }
+}
+
+function captureCameraFrame() {
+  SmartCropVisionCamera.capture();
+}
+
+function retakeCameraPhoto() {
+  SmartCropVisionCamera.retake();
+}
+
+async function useCapturedPhoto() {
+  await SmartCropVisionCamera.usePhoto();
+}
+
+async function switchCameraFacing() {
+  await SmartCropVisionCamera.switchCamera();
+}
+
+async function toggleCameraTorch() {
+  await SmartCropVisionCamera.toggleTorch();
+}
+
+function retryCameraStream() {
+  SmartCropVisionCamera.retry();
+}
+
+function fallbackToUploadFromCamera() {
+  closeCameraModal();
+  triggerCvFileInput();
+}
+
+// Ensure camera stream is stopped if window is closed or backgrounded
+window.addEventListener("beforeunload", () => {
+  SmartCropVisionCamera.stopAllStreams();
+});
+window.addEventListener("pagehide", () => {
+  SmartCropVisionCamera.stopAllStreams();
+});
 
 function openPreviewInModal(event) {
   if (event && typeof event.stopPropagation === "function") {

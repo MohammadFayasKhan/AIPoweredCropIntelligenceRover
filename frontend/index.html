@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css?v=20260912_layout_skeleton" />
+  <link rel="stylesheet" href="./style.css?v=20260913_camera_capture" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -232,12 +232,23 @@
 
         <!-- Upload Dropzone -->
         <div class="cv-dropzone" id="cvDropzone" onclick="handleDropzoneContainerClick(event)">
-          <div class="dropzone-content" id="dropzonePrompt" onclick="triggerCvFileInput(event)">
-            <div class="dropzone-icon">📷</div>
-            <div class="dropzone-text">
-              <strong>Click to upload</strong> or drag leaf image here
+          <div class="dropzone-content" id="dropzonePrompt">
+            <div class="dropzone-upload-area" onclick="triggerCvFileInput(event)" role="button" tabindex="0" aria-label="Click to browse leaf photo or drag here">
+              <div class="dropzone-icon">📁</div>
+              <div class="dropzone-text">
+                <strong>Click to upload</strong> or drag leaf image here
+              </div>
+              <div class="dropzone-hint">Supports JPEG, PNG, or WebP (up to 15 MB)</div>
             </div>
-            <div class="dropzone-hint">Supports JPEG, PNG, or WebP (up to 15 MB)</div>
+            <div class="dropzone-action-separator">
+              <span class="action-separator-line"></span>
+              <span class="action-separator-text">OR</span>
+              <span class="action-separator-line"></span>
+            </div>
+            <button type="button" class="btn-camera-trigger" id="btnCameraTrigger" onclick="openCameraModal(event)" aria-label="Capture new leaf photo with device camera">
+              <span class="camera-btn-icon">📸</span>
+              <span class="camera-btn-label">Capture with Camera</span>
+            </button>
           </div>
           <div class="dropzone-preview-wrap" id="dropzonePreviewWrap" style="display:none" onclick="event.stopPropagation()">
             <div class="preview-img-container" onclick="openPreviewInModal(event)">
@@ -246,8 +257,9 @@
             </div>
             <div class="preview-meta-row" onclick="event.stopPropagation()">
               <span class="preview-filename" id="cvPreviewFilename" title="Current specimen filename">sample.jpg</span>
-              <div style="display: flex; gap: 8px; align-items: center;">
-                <button type="button" class="change-img-btn btn-choose-other" onclick="triggerCvFileInput(event)" aria-label="Choose Another Image to Analyze">📁 Choose Another Image</button>
+              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="change-img-btn btn-camera-recapture" onclick="openCameraModal(event)" aria-label="Retake with Device Camera">📸 Take New Photo</button>
+                <button type="button" class="change-img-btn btn-choose-other" onclick="triggerCvFileInput(event)" aria-label="Choose Another Image to Analyze">📁 Choose File</button>
                 <button type="button" class="change-img-btn btn-reset-specimen" onclick="resetVisionToNewSpecimen(event)" title="Reset workspace and upload new specimen" aria-label="Reset workspace">✕ Clear</button>
               </div>
             </div>
@@ -563,6 +575,107 @@
     </div>
   </main>
 
+  <!-- ── NATIVE DEVICE CAMERA CAPTURE MODAL ───────────────────────── -->
+  <div class="camera-modal-backdrop" id="cameraModal" role="dialog" aria-modal="true" aria-labelledby="cameraModalTitle" style="display:none" onclick="handleCameraBackdropClick(event)">
+    <div class="camera-modal-dialog" onclick="event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="camera-modal-header">
+        <div class="camera-header-left">
+          <span class="camera-header-icon">📷</span>
+          <div>
+            <h3 class="camera-modal-title" id="cameraModalTitle">Leaf Specimen Camera</h3>
+            <span class="camera-modal-sub" id="cameraModalSub">Align foliar disease symptoms inside frame</span>
+          </div>
+        </div>
+        <div class="camera-header-right">
+          <div class="camera-status-pill" id="cameraStatusPill" aria-live="polite">
+            <span class="camera-status-dot" id="cameraStatusDot"></span>
+            <span id="cameraStatusText">Camera Starting...</span>
+          </div>
+          <button type="button" class="camera-modal-close" id="cameraCloseBtn" onclick="closeCameraModal()" aria-label="Close camera (Escape)" title="Close camera (Esc)">✕</button>
+        </div>
+      </div>
+
+      <!-- Live Viewport Container -->
+      <div class="camera-viewport-container" id="cameraViewportContainer">
+        <!-- Live Video Element -->
+        <video id="cameraVideo" playsinline autoplay muted class="camera-video-element"></video>
+
+        <!-- Frozen Review Canvas (shown after frame capture) -->
+        <canvas id="cameraReviewCanvas" class="camera-review-canvas" style="display:none"></canvas>
+
+        <!-- Subtle Shutter Flash Effect -->
+        <div class="camera-shutter-flash" id="cameraShutterFlash"></div>
+
+        <!-- Scanning Frame Guide Overlay -->
+        <div class="camera-scan-frame" id="cameraScanFrame" aria-hidden="true">
+          <div class="scan-corner top-left"></div>
+          <div class="scan-corner top-right"></div>
+          <div class="scan-corner bottom-left"></div>
+          <div class="scan-corner bottom-right"></div>
+          <div class="scan-guide-text" id="cameraGuideText">Position a clear plant leaf inside the frame</div>
+        </div>
+
+        <!-- Camera Loading Skeleton / Spinner State -->
+        <div class="camera-loading-overlay" id="cameraLoadingOverlay">
+          <div class="loading-spinner"></div>
+          <p id="cameraLoadingMsg">Accessing device camera...</p>
+        </div>
+
+        <!-- Camera Error / Fallback State -->
+        <div class="camera-error-overlay" id="cameraErrorOverlay" style="display:none">
+          <div class="camera-error-icon">⚠️</div>
+          <h4 class="camera-error-title" id="cameraErrorTitle">Camera Unavailable</h4>
+          <p class="camera-error-desc" id="cameraErrorDesc">Unable to access your device camera.</p>
+          <div class="camera-error-actions">
+            <button type="button" class="camera-btn-retry" onclick="retryCameraStream()">🔄 Try Again</button>
+            <button type="button" class="camera-btn-fallback" onclick="fallbackToUploadFromCamera()">📁 Upload Image Instead</button>
+          </div>
+        </div>
+
+        <!-- Subtle Privacy Notice -->
+        <div class="camera-privacy-note">
+          <span>🔒 Privacy: Camera stream stays local. Only your confirmed photo is submitted for analysis.</span>
+        </div>
+      </div>
+
+      <!-- Modal Footer & Controls Strip -->
+      <div class="camera-modal-footer">
+        <!-- Capture Mode Controls (visible during live preview) -->
+        <div class="camera-live-controls" id="cameraLiveControls">
+          <!-- Torch / Flash Toggle -->
+          <button type="button" class="camera-tool-btn" id="cameraTorchBtn" onclick="toggleCameraTorch()" title="Toggle Camera Torch" aria-label="Toggle camera flashlight" disabled>
+            <span class="tool-icon">🔦</span>
+            <span class="tool-label" id="cameraTorchLabel">Flash Off</span>
+          </button>
+
+          <!-- Primary Shutter Button -->
+          <button type="button" class="camera-shutter-btn" id="cameraCaptureBtn" onclick="captureCameraFrame()" aria-label="Capture leaf photo (Space or Enter)">
+            <span class="shutter-inner">
+              <span class="shutter-icon">📸</span>
+            </span>
+          </button>
+
+          <!-- Switch Camera Button (Front / Rear) -->
+          <button type="button" class="camera-tool-btn" id="cameraSwitchBtn" onclick="switchCameraFacing()" title="Switch Camera" aria-label="Switch between front and rear cameras">
+            <span class="tool-icon">🔄</span>
+            <span class="tool-label" id="cameraSwitchLabel">Switch</span>
+          </button>
+        </div>
+
+        <!-- Review Mode Controls (visible after frame capture) -->
+        <div class="camera-review-controls" id="cameraReviewControls" style="display:none">
+          <button type="button" class="camera-action-btn btn-retake" id="cameraRetakeBtn" onclick="retakeCameraPhoto()" aria-label="Retake photo">
+            <span>🔄 Retake</span>
+          </button>
+          <button type="button" class="camera-action-btn btn-use-photo" id="cameraUsePhotoBtn" onclick="useCapturedPhoto()" aria-label="Use this photo for plant health analysis">
+            <span>✅ Use Photo</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── IMAGE FULLSCREEN MODAL ──────────────────────────────── -->
   <div class="image-modal-backdrop" id="imageModal" onclick="closeImageModal()" style="display:none">
     <div class="image-modal-dialog" onclick="event.stopPropagation()">
@@ -589,6 +702,6 @@
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-  <script src="./app.js?v=20260912_layout_skeleton"></script>
+  <script src="./app.js?v=20260913_camera_capture"></script>
 </body>
 </html>

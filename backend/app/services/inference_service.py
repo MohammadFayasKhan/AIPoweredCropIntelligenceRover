@@ -468,11 +468,11 @@ class InferenceEngine:
             # Authoritative production classifier: EfficientNetV2-S only (no silent fallbacks)
             self.model_tier1 = self.model_tier1_server
 
-            # 2. Load Tier 2 YOLO26 Multi-Domain Agricultural Detector (Primary) or PlantDoc fallback
+            # 2. Load Tier 2 YOLO11 PlantDoc Specimen Detector (Primary production detector)
             yolo_candidate_path = (
-                settings.GEN2_TIER2_YOLO26_MODEL_PATH
-                if settings.GEN2_TIER2_YOLO26_MODEL_PATH.exists()
-                else settings.TIER2_PLANTDOC_MODEL_PATH
+                settings.TIER2_PLANTDOC_MODEL_PATH
+                if settings.TIER2_PLANTDOC_MODEL_PATH.exists()
+                else settings.GEN2_TIER2_YOLO26_MODEL_PATH
             )
             is_yolo26_loaded = (yolo_candidate_path == settings.GEN2_TIER2_YOLO26_MODEL_PATH)
 
@@ -485,7 +485,7 @@ class InferenceEngine:
                     self.model_status_map["tier2_plantdoc"] = "ready"
                     self.model_status_map["tier2_yolo26"] = "ready" if is_yolo26_loaded else "fallback_plantdoc"
                     logger.info("Tier 2 %s Object Detector loaded (%.2f MB).",
-                                "YOLO26 Multi-Domain" if is_yolo26_loaded else "YOLO PlantDoc",
+                                "YOLO26 Multi-Domain" if is_yolo26_loaded else "YOLO11 PlantDoc",
                                 yolo_candidate_path.stat().st_size / (1024*1024))
                 except Exception as e:
                     self.model_status_map["tier2_plantdoc"] = f"error: {str(e)[:40]}"
@@ -703,7 +703,7 @@ class InferenceEngine:
                 active_tier = "edge"
                 is_server = False
                 active_detector = self.model_tier2_plantdoc
-                detection_engine_name = "YOLO26 Multi-Domain Agricultural Detector" if is_yolo26 else "YOLO PlantDoc Specimen Canopy"
+                detection_engine_name = "YOLO26 Multi-Domain Agricultural Detector" if is_yolo26 else "YOLO11 PlantDoc Specimen Detector"
                 active_segmenter = self.model_tier3
             else:
                 active_model = self.model_tier1_server
@@ -711,7 +711,7 @@ class InferenceEngine:
                 active_tier = "server"
                 is_server = True
                 active_detector = self.model_tier2_plantdoc
-                detection_engine_name = "YOLO26 Multi-Domain Agricultural Detector" if is_yolo26 else "YOLO PlantDoc Specimen Canopy"
+                detection_engine_name = "YOLO26 Multi-Domain Agricultural Detector" if is_yolo26 else "YOLO11 PlantDoc Specimen Detector"
                 active_segmenter = self.model_tier3
 
             if active_model is None:

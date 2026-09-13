@@ -2833,6 +2833,697 @@ input:checked + .slider-toggle::before {
   opacity      : 0.95;
 }
 
+/* ═════════════════════════════════════════════════════════════════════════════
+   NATIVE DEVICE CAMERA CAPTURE EXPERIENCE & DROPZONE ACTIONS
+   ═════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Dropzone Actions & Separator ─────────────────────────────────────────── */
+.dropzone-upload-area {
+  display        : flex;
+  flex-direction : column;
+  align-items    : center;
+  justify-content: center;
+  width          : 100%;
+  cursor         : pointer;
+  padding        : 6px 0;
+  border-radius  : var(--radius-sm);
+  transition     : transform 0.2s ease, opacity 0.2s ease;
+}
+
+.dropzone-upload-area:hover {
+  transform: scale(1.01);
+  opacity  : 0.95;
+}
+
+.dropzone-upload-area:focus-visible {
+  outline      : 2px solid var(--green-bright);
+  outline-offset: 4px;
+}
+
+.dropzone-action-separator {
+  display        : flex;
+  align-items    : center;
+  width          : 85%;
+  max-width      : 240px;
+  margin         : 8px 0;
+  gap            : 10px;
+  opacity        : 0.75;
+}
+
+.action-separator-line {
+  flex      : 1;
+  height    : 1px;
+  background: rgba(82, 183, 136, 0.25);
+}
+
+.action-separator-text {
+  font-size     : 0.68rem;
+  font-weight   : 700;
+  letter-spacing: 1px;
+  color         : var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* Prominent Camera Trigger Button */
+.btn-camera-trigger {
+  display        : inline-flex;
+  align-items    : center;
+  justify-content: center;
+  gap            : 8px;
+  padding        : 9px 20px;
+  border-radius  : 24px;
+  background     : linear-gradient(135deg, rgba(82, 183, 136, 0.22), rgba(45, 106, 79, 0.45));
+  border         : 1px solid rgba(82, 183, 136, 0.45);
+  color          : #ffffff;
+  font-family    : 'Space Grotesk', -apple-system, sans-serif;
+  font-size      : 0.85rem;
+  font-weight    : 600;
+  cursor         : pointer;
+  box-shadow     : 0 2px 10px rgba(0, 0, 0, 0.25), 0 0 14px rgba(82, 183, 136, 0.16);
+  transition     : all 0.2s ease;
+  margin-top     : 2px;
+}
+
+.btn-camera-trigger:hover {
+  background  : linear-gradient(135deg, rgba(82, 183, 136, 0.35), rgba(45, 106, 79, 0.6));
+  border-color: var(--green-bright);
+  color       : var(--green-bright);
+  transform   : translateY(-1px);
+  box-shadow  : 0 4px 14px rgba(0, 0, 0, 0.35), 0 0 18px rgba(82, 183, 136, 0.3);
+}
+
+.btn-camera-trigger:active {
+  transform : translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.btn-camera-trigger:focus-visible {
+  outline       : 2px solid var(--green-bright);
+  outline-offset: 3px;
+}
+
+.camera-btn-icon {
+  font-size  : 1.1rem;
+  line-height: 1;
+}
+
+.btn-camera-recapture {
+  background  : rgba(82, 183, 136, 0.14) !important;
+  border-color: rgba(82, 183, 136, 0.45) !important;
+  color       : var(--green-bright) !important;
+}
+
+.btn-camera-recapture:hover {
+  background  : rgba(82, 183, 136, 0.25) !important;
+  border-color: var(--green-bright) !important;
+}
+
+/* ── Native Camera Capture Modal ─────────────────────────────────────────── */
+body.camera-modal-open {
+  overflow: hidden !important;
+}
+
+.camera-modal-backdrop {
+  position       : fixed;
+  inset          : 0;
+  z-index        : 9999;
+  background     : rgba(4, 10, 6, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+  padding        : 16px;
+  animation      : cameraFadeIn 0.25s ease-out forwards;
+}
+
+@keyframes cameraFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.camera-modal-dialog {
+  position       : relative;
+  width          : 100%;
+  max-width      : 640px;
+  max-height     : 92vh;
+  background     : var(--bg-card);
+  border         : 1px solid rgba(82, 183, 136, 0.3);
+  border-radius  : var(--radius-lg);
+  box-shadow     : 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 28px rgba(82, 183, 136, 0.16);
+  display        : flex;
+  flex-direction : column;
+  overflow       : hidden;
+  animation      : cameraSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cameraSlideUp {
+  from {
+    transform: translateY(20px) scale(0.97);
+    opacity  : 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity  : 1;
+  }
+}
+
+/* Modal Header */
+.camera-modal-header {
+  display        : flex;
+  align-items    : center;
+  justify-content: space-between;
+  padding        : 12px 18px;
+  background     : rgba(13, 27, 19, 0.95);
+  border-bottom  : 1px solid var(--border);
+  gap            : 12px;
+  flex-shrink    : 0;
+}
+
+.camera-header-left {
+  display    : flex;
+  align-items: center;
+  gap        : 10px;
+}
+
+.camera-header-icon {
+  font-size: 1.3rem;
+}
+
+.camera-modal-title {
+  margin     : 0;
+  font-size  : 0.96rem;
+  font-weight: 700;
+  font-family: 'Space Grotesk', sans-serif;
+  color      : var(--text-primary);
+  line-height: 1.2;
+}
+
+.camera-modal-sub {
+  font-size  : 0.74rem;
+  color      : var(--text-muted);
+  line-height: 1.3;
+}
+
+.camera-header-right {
+  display    : flex;
+  align-items: center;
+  gap        : 10px;
+}
+
+.camera-status-pill {
+  display      : inline-flex;
+  align-items  : center;
+  gap          : 6px;
+  padding      : 4px 10px;
+  border-radius: 12px;
+  background   : rgba(82, 183, 136, 0.08);
+  border       : 1px solid rgba(82, 183, 136, 0.22);
+  font-size    : 0.73rem;
+  font-weight  : 600;
+  color        : var(--green-bright);
+}
+
+.camera-status-dot {
+  width        : 7px;
+  height       : 7px;
+  border-radius: 50%;
+  background   : var(--green-bright);
+  box-shadow   : 0 0 6px var(--green-bright);
+  display      : inline-block;
+  flex-shrink  : 0;
+}
+
+.camera-status-dot.starting {
+  background: #ffd166;
+  box-shadow: 0 0 6px #ffd166;
+}
+
+.camera-status-dot.unavailable {
+  background: #ef233c;
+  box-shadow: 0 0 6px #ef233c;
+}
+
+.camera-modal-close {
+  width          : 30px;
+  height         : 30px;
+  border-radius  : 50%;
+  border         : 1px solid var(--border);
+  background     : rgba(255, 255, 255, 0.06);
+  color          : var(--text-muted);
+  font-size      : 0.95rem;
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+  cursor         : pointer;
+  transition     : all 0.2s ease;
+  line-height    : 1;
+}
+
+.camera-modal-close:hover {
+  background  : rgba(239, 35, 60, 0.2);
+  border-color: rgba(239, 35, 60, 0.4);
+  color       : #ff8a9a;
+}
+
+.camera-modal-close:focus-visible {
+  outline       : 2px solid var(--green-bright);
+  outline-offset: 2px;
+}
+
+/* Viewport Area */
+.camera-viewport-container {
+  position       : relative;
+  width          : 100%;
+  aspect-ratio   : 4 / 3;
+  max-height     : 56vh;
+  min-height     : 280px;
+  background     : #040805;
+  overflow       : hidden;
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+}
+
+.camera-video-element {
+  width     : 100%;
+  height    : 100%;
+  object-fit: cover;
+  background: #000;
+  display   : block;
+}
+
+.camera-video-element.mirrored {
+  transform: scaleX(-1);
+}
+
+.camera-review-canvas {
+  width     : 100%;
+  height    : 100%;
+  object-fit: contain;
+  background: #000;
+  display   : block;
+}
+
+/* Scanning Frame Guide Overlay */
+.camera-scan-frame {
+  position      : absolute;
+  inset         : 0;
+  pointer-events: none;
+  display       : flex;
+  flex-direction: column;
+  align-items   : center;
+  justify-content: flex-end;
+  padding-bottom: 24px;
+}
+
+.scan-corner {
+  position   : absolute;
+  width      : 32px;
+  height     : 32px;
+  border-color: var(--green-bright);
+  border-style: solid;
+  border-width: 0;
+  box-shadow : 0 0 10px rgba(82, 183, 136, 0.45);
+  animation  : scanCornerBreathe 3s ease-in-out infinite alternate;
+}
+
+.scan-corner.top-left {
+  top                  : 14%;
+  left                 : 14%;
+  border-top-width     : 3px;
+  border-left-width    : 3px;
+  border-top-left-radius: 8px;
+}
+
+.scan-corner.top-right {
+  top                   : 14%;
+  right                 : 14%;
+  border-top-width      : 3px;
+  border-right-width    : 3px;
+  border-top-right-radius: 8px;
+}
+
+.scan-corner.bottom-left {
+  bottom                  : 18%;
+  left                    : 14%;
+  border-bottom-width     : 3px;
+  border-left-width       : 3px;
+  border-bottom-left-radius: 8px;
+}
+
+.scan-corner.bottom-right {
+  bottom                   : 18%;
+  right                    : 14%;
+  border-bottom-width      : 3px;
+  border-right-width       : 3px;
+  border-bottom-right-radius: 8px;
+}
+
+@keyframes scanCornerBreathe {
+  0% {
+    border-color: var(--green-bright);
+    box-shadow  : 0 0 8px rgba(82, 183, 136, 0.35);
+  }
+  100% {
+    border-color: #a7f3d0;
+    box-shadow  : 0 0 16px rgba(82, 183, 136, 0.65);
+  }
+}
+
+.scan-guide-text {
+  background   : rgba(13, 27, 19, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border       : 1px solid rgba(82, 183, 136, 0.35);
+  color        : var(--text-primary);
+  font-size    : 0.76rem;
+  font-weight  : 500;
+  padding      : 5px 14px;
+  border-radius: 16px;
+  box-shadow   : 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* Privacy Note */
+.camera-privacy-note {
+  position     : absolute;
+  top          : 8px;
+  left         : 50%;
+  transform    : translateX(-50%);
+  background   : rgba(4, 10, 6, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding      : 3px 10px;
+  border-radius: 12px;
+  font-size    : 0.68rem;
+  color        : var(--text-muted);
+  white-space  : nowrap;
+  pointer-events: none;
+  max-width    : 92%;
+  overflow     : hidden;
+  text-overflow: ellipsis;
+}
+
+/* Shutter Flash Animation */
+.camera-shutter-flash {
+  position      : absolute;
+  inset         : 0;
+  background    : #ffffff;
+  opacity       : 0;
+  pointer-events: none;
+  z-index       : 5;
+}
+
+.camera-shutter-flash.flash-active {
+  animation: shutterFlash 0.18s ease-out forwards;
+}
+
+@keyframes shutterFlash {
+  0%   { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+/* Loading & Error Overlays */
+.camera-loading-overlay,
+.camera-error-overlay {
+  position       : absolute;
+  inset          : 0;
+  background     : rgba(4, 10, 6, 0.94);
+  display        : flex;
+  flex-direction : column;
+  align-items    : center;
+  justify-content: center;
+  padding        : 20px;
+  text-align     : center;
+  z-index        : 10;
+}
+
+.camera-loading-overlay p {
+  margin-top : 12px;
+  font-size  : 0.86rem;
+  color      : var(--green-bright);
+  font-weight: 500;
+}
+
+.camera-error-icon {
+  font-size    : 2.4rem;
+  margin-bottom: 8px;
+}
+
+.camera-error-title {
+  margin     : 0 0 6px 0;
+  font-size  : 1.05rem;
+  font-weight: 700;
+  color      : #ffd166;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.camera-error-desc {
+  margin     : 0 0 16px 0;
+  font-size  : 0.84rem;
+  color      : var(--text-secondary);
+  max-width  : 360px;
+  line-height: 1.5;
+}
+
+.camera-error-actions {
+  display        : flex;
+  gap            : 10px;
+  flex-wrap      : wrap;
+  justify-content: center;
+}
+
+.camera-btn-retry,
+.camera-btn-fallback {
+  padding      : 8px 16px;
+  border-radius: 20px;
+  font-size    : 0.82rem;
+  font-weight  : 600;
+  cursor       : pointer;
+  transition   : all 0.2s ease;
+}
+
+.camera-btn-retry {
+  background  : rgba(82, 183, 136, 0.18);
+  border      : 1px solid rgba(82, 183, 136, 0.4);
+  color       : var(--green-bright);
+}
+
+.camera-btn-retry:hover {
+  background  : rgba(82, 183, 136, 0.3);
+  border-color: var(--green-bright);
+}
+
+.camera-btn-fallback {
+  background  : var(--green-primary);
+  border      : 1px solid var(--green-bright);
+  color       : #ffffff;
+}
+
+.camera-btn-fallback:hover {
+  background  : var(--green-hover);
+  box-shadow  : 0 0 12px rgba(82, 183, 136, 0.3);
+}
+
+/* Modal Footer & Controls */
+.camera-modal-footer {
+  padding       : 14px 20px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  background    : rgba(13, 27, 19, 0.98);
+  border-top    : 1px solid var(--border);
+  flex-shrink   : 0;
+}
+
+.camera-live-controls {
+  display        : flex;
+  align-items    : center;
+  justify-content: space-around;
+  width          : 100%;
+}
+
+.camera-tool-btn {
+  display        : inline-flex;
+  flex-direction : column;
+  align-items    : center;
+  justify-content: center;
+  gap            : 3px;
+  width          : 64px;
+  padding        : 6px 4px;
+  border-radius  : 14px;
+  background     : rgba(82, 183, 136, 0.08);
+  border         : 1px solid rgba(82, 183, 136, 0.22);
+  color          : var(--text-primary);
+  cursor         : pointer;
+  transition     : all 0.2s ease;
+}
+
+.camera-tool-btn:hover:not(:disabled) {
+  background  : rgba(82, 183, 136, 0.18);
+  border-color: var(--green-bright);
+}
+
+.camera-tool-btn:disabled {
+  opacity: 0.38;
+  cursor : not-allowed;
+}
+
+.camera-tool-btn.active {
+  background  : rgba(255, 183, 3, 0.18);
+  border-color: #ffd166;
+  color       : #ffd166;
+}
+
+.camera-tool-btn .tool-icon {
+  font-size  : 1.2rem;
+  line-height: 1;
+}
+
+.camera-tool-btn .tool-label {
+  font-size  : 0.68rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* Primary Shutter Button */
+.camera-shutter-btn {
+  width          : 66px;
+  height         : 66px;
+  border-radius  : 50%;
+  border         : 3px solid var(--green-bright);
+  background     : rgba(82, 183, 136, 0.15);
+  padding        : 4px;
+  cursor         : pointer;
+  box-shadow     : 0 0 16px rgba(82, 183, 136, 0.35);
+  transition     : transform 0.15s ease, box-shadow 0.15s ease;
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+}
+
+.camera-shutter-btn:hover {
+  transform : scale(1.05);
+  box-shadow: 0 0 22px rgba(82, 183, 136, 0.55);
+}
+
+.camera-shutter-btn:focus-visible {
+  outline       : 2px solid #ffffff;
+  outline-offset: 3px;
+}
+
+.shutter-inner {
+  width          : 100%;
+  height         : 100%;
+  border-radius  : 50%;
+  background     : linear-gradient(135deg, #74c69d, var(--green-bright));
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+  color          : #06120a;
+  font-size      : 1.3rem;
+  transition     : transform 0.15s ease;
+}
+
+.camera-shutter-btn:active .shutter-inner {
+  transform: scale(0.88);
+}
+
+/* Review Mode Controls */
+.camera-review-controls {
+  display        : flex;
+  align-items    : center;
+  justify-content: center;
+  gap            : 14px;
+  width          : 100%;
+}
+
+.camera-action-btn {
+  display        : inline-flex;
+  align-items    : center;
+  justify-content: center;
+  gap            : 6px;
+  padding        : 10px 24px;
+  border-radius  : 24px;
+  font-family    : 'Space Grotesk', sans-serif;
+  font-size      : 0.92rem;
+  font-weight    : 600;
+  cursor         : pointer;
+  transition     : all 0.2s ease;
+}
+
+.camera-action-btn.btn-retake {
+  background  : rgba(255, 255, 255, 0.08);
+  border      : 1px solid rgba(255, 255, 255, 0.22);
+  color       : var(--text-primary);
+}
+
+.camera-action-btn.btn-retake:hover {
+  background  : rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.camera-action-btn.btn-use-photo {
+  background  : linear-gradient(135deg, var(--green-primary), var(--green-bright));
+  border      : 1px solid var(--green-bright);
+  color       : #ffffff;
+  box-shadow  : 0 0 16px rgba(82, 183, 136, 0.35);
+}
+
+.camera-action-btn.btn-use-photo:hover {
+  background  : linear-gradient(135deg, var(--green-hover), #74c69d);
+  box-shadow  : 0 0 22px rgba(82, 183, 136, 0.55);
+  transform   : translateY(-1px);
+}
+
+.camera-action-btn:focus-visible {
+  outline       : 2px solid var(--green-bright);
+  outline-offset: 2px;
+}
+
+/* ── Responsive & Accessibility Refinements ──────────────────────────────── */
+@media (max-width: 640px) {
+  .camera-modal-backdrop {
+    padding: 0;
+  }
+
+  .camera-modal-dialog {
+    max-width    : 100%;
+    height       : 100%;
+    max-height   : 100vh;
+    border-radius: 0;
+    border       : none;
+  }
+
+  .camera-viewport-container {
+    flex      : 1;
+    max-height: none;
+    min-height: 0;
+  }
+
+  .scan-corner {
+    width : 26px;
+    height: 26px;
+  }
+
+  .camera-modal-header {
+    padding: 10px 14px;
+  }
+
+  .camera-modal-footer {
+    padding: 14px 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .camera-modal-backdrop,
+  .camera-modal-dialog,
+  .scan-corner,
+  .camera-shutter-flash {
+    animation : none !important;
+    transition: none !important;
+  }
+}
+
 
 
 

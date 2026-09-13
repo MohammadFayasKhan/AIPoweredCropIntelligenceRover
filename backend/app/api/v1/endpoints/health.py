@@ -158,12 +158,12 @@ async def models_status() -> ModelsStatusResponse:
             description="38-class high-speed studio leaf screening (224x224)"
         ),
         ModelInfo(
-            name="YOLO26 Multi-Domain Agricultural Detector" if is_yolo26 else "YOLO PlantDoc Specimen Canopy Detector",
-            tier="Tier 2 Vision (YOLO26)" if is_yolo26 else "Tier 2 Vision (PlantDoc)",
+            name="YOLO26 Multi-Domain Agricultural Detector" if is_yolo26 else "YOLO11 PlantDoc Specimen Detector",
+            tier="Tier 2 Vision (YOLO26)" if is_yolo26 else "Tier 2 Vision (YOLO11 PlantDoc)",
             checkpoint=t2_path.name,
             size_mb=round(t2_size, 2),
             status="ready" if engine.model_tier2_plantdoc is not None else "missing",
-            description="YOLO26 multi-domain agricultural detector for real-time foliar canopy boundary localization (val mAP@50: 0.3415, 640x640)" if is_yolo26 else "29-class field foliage specimen boundary detection on natural background (val mAP@50: 0.3362, mAP@50-95: 0.2361)"
+            description="YOLO26 multi-domain agricultural detector for real-time foliar canopy boundary localization (val mAP@50: 0.3415, 640x640)" if is_yolo26 else "YOLO11 nano trained on PlantDoc benchmark for real-time foliar canopy boundary localization (val mAP@50: 0.3362, 640x640)"
         ),
         ModelInfo(
             name="Mobile-UNet Foliar/Lesion Segmenter",

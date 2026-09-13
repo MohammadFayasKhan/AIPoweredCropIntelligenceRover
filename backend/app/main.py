@@ -422,7 +422,7 @@ async def validate_vision(
 
     try:
         img_bgr, meta = validate_uploaded_image(file_bytes, filename=filename, content_type=content_type)
-        detector_candidate = inference_engine.model_tier2_plantdoc or inference_engine.model_tier2_yolo26
+        detector_candidate = getattr(inference_engine, "model_tier2_plantdoc", None) or getattr(inference_engine, "model_tier2", None)
         val_result = validate_plant_image(img_bgr, detector_model=detector_candidate, filename=filename)
         
         return {
