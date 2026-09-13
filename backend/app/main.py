@@ -158,13 +158,19 @@ class SensorReading(BaseModel):
 
 
 # ── Root UI & Static Endpoints ────────────────────────────────────────────────
+NO_CACHE_HEADERS = {
+    "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+    "Pragma": "no-cache",
+    "Expires": "0"
+}
+
 @app.get("/", summary="Dashboard Index or API Info")
 async def serve_index(request: Request):
     """Serves the dashboard index.html when accessed via browser, or returns API metadata."""
     accept_header = request.headers.get("accept", "")
     index_path = FRONTEND_DIR / "index.html"
     if index_path.exists() and "text/html" in accept_header and "application/json" not in accept_header:
-        return FileResponse(index_path, media_type="text/html")
+        return FileResponse(index_path, media_type="text/html", headers=NO_CACHE_HEADERS)
     return {
         "project": settings.PROJECT_NAME,
         "version": settings.VERSION,
@@ -185,7 +191,7 @@ async def serve_index(request: Request):
 async def serve_css():
     css_path = FRONTEND_DIR / "style.css"
     if css_path.exists():
-        return FileResponse(css_path, media_type="text/css")
+        return FileResponse(css_path, media_type="text/css", headers=NO_CACHE_HEADERS)
     raise HTTPException(status_code=404, detail="style.css not found")
 
 
@@ -193,7 +199,7 @@ async def serve_css():
 async def serve_js():
     js_path = FRONTEND_DIR / "app.js"
     if js_path.exists():
-        return FileResponse(js_path, media_type="application/javascript")
+        return FileResponse(js_path, media_type="application/javascript", headers=NO_CACHE_HEADERS)
     raise HTTPException(status_code=404, detail="app.js not found")
 
 
