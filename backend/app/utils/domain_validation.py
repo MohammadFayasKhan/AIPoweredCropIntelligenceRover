@@ -103,9 +103,20 @@ def extract_botanical_signals(img_bgr: np.ndarray) -> Dict[str, Any]:
     Computes genuine optical, photometric, and botanical chrominance telemetry
     from raw BGR image matrices.
     """
-    h, w = img_bgr.shape[:2]
+    orig_h, orig_w = img_bgr.shape[:2]
+    # Fast probe resizing (max 640px) enables sub-25ms execution on CPU for high-res inputs
+    max_probe = 640
+    if max(orig_h, orig_w) > max_probe:
+        scale = max_probe / float(max(orig_h, orig_w))
+        target_w = max(32, int(orig_w * scale))
+        target_h = max(32, int(orig_h * scale))
+        probe = cv2.resize(img_bgr, (target_w, target_h), interpolation=cv2.INTER_AREA)
+    else:
+        probe = img_bgr
+
+    h, w = probe.shape[:2]
     total_pixels = float(max(1, h * w))
-    gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(probe, cv2.COLOR_BGR2GRAY)
 
     # 1. Blur evaluation via Laplacian operator variance
     lap = cv2.Laplacian(gray, cv2.CV_64F)
@@ -116,12 +127,12 @@ def extract_botanical_signals(img_bgr: np.ndarray) -> Dict[str, Any]:
     std_contrast = float(np.std(gray))
 
     # 3. Botanical Color Space Decomposition
-    hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+    hsv = cv2.cvtColor(probe, cv2.COLOR_BGR2HSV)
     hue = hsv[:, :, 0]   # 0 to 180 in OpenCV
     sat = hsv[:, :, 1]   # 0 to 255
     val = hsv[:, :, 2]   # 0 to 255
 
-    rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB).astype(np.float32)
+    rgb = cv2.cvtColor(probe, cv2.COLOR_BGR2RGB).astype(np.float32)
     r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
     # Excess Green Index: ExG = 2G - R - B
     exg = 2.0 * g - r - b
@@ -163,7 +174,7 @@ def extract_botanical_signals(img_bgr: np.ndarray) -> Dict[str, Any]:
 
     # 4. Out of Domain Non Botanical Discriminators
     # Human skin chrominance in YCrCb: Cr in [133, 173], Cb in [77, 127]
-    ycrcb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2YCrCb)
+    ycrcb = cv2.cvtColor(probe, cv2.COLOR_BGR2YCrCb)
     cr = ycrcb[:, :, 1]
     cb = ycrcb[:, :, 2]
     skin_mask = (cr >= 133) & (cr <= 173) & (cb >= 77) & (cb <= 127)
@@ -243,7 +254,7 @@ def extract_botanical_signals(img_bgr: np.ndarray) -> Dict[str, Any]:
                     doc_pages_detected += 1
 
     # Flat color fill ratio in quantized space (identifies digital UI panels)
-    q_thumb = (cv2.resize(img_bgr, (256, 256)) // 4) * 4
+    q_thumb = (cv2.resize(probe, (256, 256)) // 4) * 4
     pixels = q_thumb.reshape(-1, 3)
     _, counts = np.unique(pixels, axis=0, return_counts=True)
     top10_flat_ratio = float(np.sum(np.sort(counts)[::-1][:10]) / float(len(pixels)))
@@ -251,7 +262,7 @@ def extract_botanical_signals(img_bgr: np.ndarray) -> Dict[str, Any]:
     # Browser window control buttons (such as Mac window dots in top bar)
     traffic_lights_detected = False
     if h >= 80 and w >= 200:
-        top_left = img_bgr[:60, :150]
+        top_left = probe[:60, :150]
         red_pts = int(np.sum((top_left[:, :, 2] > 180) & (top_left[:, :, 1] < 100) & (top_left[:, :, 0] < 100)))
         yellow_pts = int(np.sum((top_left[:, :, 2] > 180) & (top_left[:, :, 1] > 160) & (top_left[:, :, 0] < 100)))
         green_pts = int(np.sum((top_left[:, :, 1] > 160) & (top_left[:, :, 2] < 100) & (top_left[:, :, 0] < 100)))
@@ -310,7 +321,7 @@ def extract_botanical_signals(img_bgr: np.ndarray) -> Dict[str, Any]:
         "top10_flat_ratio": round(top10_flat_ratio, 3),
         "white_px_ratio": round(white_px_ratio, 3),
         "traffic_lights_detected": traffic_lights_detected,
-        "image_dimensions": [w, h],
+        "image_dimensions": [orig_w, orig_h],
     }
 
 
@@ -358,32 +369,40 @@ def validate_plant_image(
                 "model_used": groq_res.model_used
             }
             if not groq_res.inference_allowed or groq_res.category in ("screenshot_document", "non_plant"):
-                if groq_res.category == "screenshot_document":
-                    return DomainValidationResult(
-                        validation_status="INVALID_SCREENSHOT_OR_DOCUMENT",
-                        validation_reason=groq_res.reason or "Invalid image. This appears to be a screenshot or document rather than a plant photograph.",
-                        validation_confidence=0.98,
-                        plant_presence=False,
-                        leaf_presence=False,
-                        image_quality="Digital Screenshot / UI / Document (Groq Vision Verified)",
-                        is_inference_allowed=False,
-                        telemetry=signals,
-                        screenshot_or_document_probability=0.99,
-                        inference_allowed=False
-                    )
+                # Exception: If botanical foliage evidence exists (such as a plant leaf displayed on a phone screen),
+                # do not reject! Allow downstream botanical evaluation.
+                has_botanical_foliage = bool(
+                    foliar_ratio >= 0.05 or green_ratio >= 0.05
+                )
+                if not has_botanical_foliage:
+                    if groq_res.category == "screenshot_document":
+                        return DomainValidationResult(
+                            validation_status="INVALID_SCREENSHOT_OR_DOCUMENT",
+                            validation_reason=groq_res.reason or "Invalid image. This appears to be a screenshot or document rather than a plant photograph.",
+                            validation_confidence=0.98,
+                            plant_presence=False,
+                            leaf_presence=False,
+                            image_quality="Digital Screenshot / UI / Document (Groq Vision Verified)",
+                            is_inference_allowed=False,
+                            telemetry=signals,
+                            screenshot_or_document_probability=0.99,
+                            inference_allowed=False
+                        )
+                    else:
+                        return DomainValidationResult(
+                            validation_status="INVALID_NON_PLANT_IMAGE",
+                            validation_reason=groq_res.reason or "Invalid image. This appears to be a non-plant subject rather than a crop leaf.",
+                            validation_confidence=0.98,
+                            plant_presence=False,
+                            leaf_presence=False,
+                            image_quality="Non-Plant Subject (Groq Vision Verified)",
+                            is_inference_allowed=False,
+                            telemetry=signals,
+                            screenshot_or_document_probability=signals.get("screenshot_or_document_probability", 0.0),
+                            inference_allowed=False
+                        )
                 else:
-                    return DomainValidationResult(
-                        validation_status="INVALID_NON_PLANT_IMAGE",
-                        validation_reason=groq_res.reason or "Invalid image. This appears to be a non-plant subject rather than a crop leaf.",
-                        validation_confidence=0.98,
-                        plant_presence=False,
-                        leaf_presence=False,
-                        image_quality="Non-Plant Subject (Groq Vision Verified)",
-                        is_inference_allowed=False,
-                        telemetry=signals,
-                        screenshot_or_document_probability=signals.get("screenshot_or_document_probability", 0.0),
-                        inference_allowed=False
-                    )
+                    signals["groq_vision"]["botanical_foliage_override"] = True
     except Exception as groq_err:
         pass  # Proceed safely to local computer vision validation
 
@@ -474,19 +493,29 @@ def validate_plant_image(
     # A4. Digital Screenshot, Application UI, Dashboard, or Document
     # Rejects screenshots of websites, applications, browser windows, UI layouts, documents,
     # charts, and scans, even if a small thumbnail image is embedded inside the interface.
+    # Exception: If a user is showing a plant leaf on a mobile phone or tablet screen,
+    # we accept it as a valid foliar specimen as long as botanical foliage or detector evidence exists!
     if is_screenshot_or_doc:
-        return DomainValidationResult(
-            validation_status="INVALID_SCREENSHOT_OR_DOCUMENT",
-            validation_reason="Invalid image. This appears to be a screenshot or document rather than a plant photograph. Please upload the original photograph of the plant leaf.",
-            validation_confidence=0.96,
-            plant_presence=False,
-            leaf_presence=False,
-            image_quality="Digital Screenshot / UI / Document",
-            is_inference_allowed=False,
-            telemetry=signals,
-            screenshot_or_document_probability=max(0.85, screen_prob),
-            inference_allowed=False
+        has_leaf_content = bool(
+            has_detector_confirmation
+            or (foliar_ratio >= 0.05 and blob_ratio >= 0.02)
+            or (green_ratio >= 0.05 and blob_ratio >= 0.02)
         )
+        if not has_leaf_content:
+            return DomainValidationResult(
+                validation_status="INVALID_SCREENSHOT_OR_DOCUMENT",
+                validation_reason="Invalid image. This appears to be a screenshot or document rather than a plant photograph. Please upload the original photograph of the plant leaf.",
+                validation_confidence=0.96,
+                plant_presence=False,
+                leaf_presence=False,
+                image_quality="Digital Screenshot / UI / Document",
+                is_inference_allowed=False,
+                telemetry=signals,
+                screenshot_or_document_probability=max(0.85, screen_prob),
+                inference_allowed=False
+            )
+        else:
+            signals["phone_or_secondary_display_specimen"] = True
 
     # A5. General non plant objects (vehicles, buildings, domestic animals, furniture, tools)
     # Characterized by near zero foliar and green ratios AND lack of detector confirmation

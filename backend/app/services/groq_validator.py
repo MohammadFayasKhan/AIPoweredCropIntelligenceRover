@@ -61,7 +61,7 @@ class GroqVisionValidator:
         self.api_key = api_key or settings.GROQ_API_KEY
         self.model = model or settings.GROQ_VISION_MODEL
         self.enabled = enabled if enabled is not None else settings.GROQ_VISION_ENABLED
-        self.timeout = timeout or settings.GROQ_VISION_TIMEOUT
+        self.timeout = min(float(timeout or settings.GROQ_VISION_TIMEOUT), 3.5)
 
     def validate_image(
         self,
@@ -111,15 +111,14 @@ class GroqVisionValidator:
             )
 
             user_prompt = (
-                "Determine whether this uploaded image is an original photograph of a real plant or crop leaf "
-                "suitable for crop disease diagnosis. "
-                "Strict rules:\n"
-                "1. Reject screenshots, UI dashboards, websites, computer screens, documents, PDFs, presentations, "
-                "and digital graphic user interfaces. Even if a small plant thumbnail or leaf icon appears inside a UI "
-                "or browser window, classify the whole image as screenshot_document.\n"
-                "2. Reject non-plant photographs: human portraits, faces, animals, pets, vehicles, metallic objects, "
-                "machinery, buildings, furniture, and indoor rooms.\n"
-                "3. Only accept genuine, direct photographs of real agricultural crop leaves or plants.\n"
+                "Determine whether this uploaded image contains a plant or crop leaf suitable for crop disease diagnosis. "
+                "Rules:\n"
+                "1. If this is a photo of a mobile phone, smartphone, tablet, or display screen showing a plant or crop leaf: "
+                "ACCEPT IT as category: plant_leaf, plant_present: true, leaf_present: true, suitable_for_crop_analysis: true, "
+                "inference_allowed: true, valid: true. This allows farmers and testers to inspect leaf symptoms from mobile screens.\n"
+                "2. If this is a direct photograph of a real plant or crop leaf: ACCEPT IT as category: plant_leaf, inference_allowed: true, valid: true.\n"
+                "3. Reject pure software screenshots without leaves (dashboards, code, text documents, PDFs, blank websites).\n"
+                "4. Reject non-plant photographs: human faces, portraits, pets, animals, vehicles, metallic tools, buildings.\n"
                 "Return JSON with exact keys: valid (boolean), category (string: plant_leaf, screenshot_document, "
                 "non_plant, or uncertain), plant_present (boolean), leaf_present (boolean), "
                 "suitable_for_crop_analysis (boolean), reason (string), inference_allowed (boolean)."

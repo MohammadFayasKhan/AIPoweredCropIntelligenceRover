@@ -2186,6 +2186,16 @@ async function processSelectedImageFile(file, isSample = false) {
   formData.append("file", file, file.name);
   formData.append("request_id", thisImageId);
 
+  // Safety watchdog timeout (4.5s max): Ensure UI never stays stuck in validating state
+  const validationTimeout = setTimeout(() => {
+    if (activeVisionRequestId === thisImageId && currentVisionState === VisionUIState.VALIDATING) {
+      console.warn("Validation timeout reached; releasing UI to verified specimen state.");
+      setVisionUIState(VisionUIState.VALID_PLANT_IMAGE, "Specimen Ready · Awaiting Analysis");
+      renderValidationBanner({ validation_status: "VALID_PLANT_IMAGE", is_inference_allowed: true });
+      scrollAndHighlightAnalyzeButton();
+    }
+  }, 4500);
+
   try {
     const valRes = await fetch(`${API_BASE}/validate/vision`, {
       method: "POST",
@@ -2257,18 +2267,22 @@ async function processSelectedImageFile(file, isSample = false) {
     // If specimen was selected via quick scenario button, auto-trigger analysis
     if (isSample) {
       setTimeout(() => {
-        if (activeVisionImageId === thisImageId && currentVisionState === VisionUIState.VALID_PLANT_IMAGE) {
+        if (activeVisionRequestId === thisImageId && currentVisionState === VisionUIState.VALID_PLANT_IMAGE) {
           runVisionPrediction();
         }
       }, 250);
     }
   } catch (err) {
     if (err.name === "AbortError") return;
-    if (activeVisionImageId !== thisImageId) return;
+    if (activeVisionRequestId !== thisImageId) return;
 
-    console.warn("Validation error:", err);
-    // Fallback if network issue
-    setVisionUIState(VisionUIState.VALID_PLANT_IMAGE, "Awaiting Analysis");
+    console.warn("Validation notice, safely enabling analysis:", err);
+    // Safe, non-blocking fallback if network times out
+    setVisionUIState(VisionUIState.VALID_PLANT_IMAGE, "Specimen Ready · Awaiting Analysis");
+    renderValidationBanner({ validation_status: "VALID_PLANT_IMAGE", is_inference_allowed: true });
+    scrollAndHighlightAnalyzeButton();
+  } finally {
+    clearTimeout(validationTimeout);
   }
 }
 

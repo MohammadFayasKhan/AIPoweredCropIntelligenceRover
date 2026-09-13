@@ -63,7 +63,7 @@ class Settings:
     GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY", None)
     GROQ_VISION_MODEL: str = os.getenv("GROQ_VISION_MODEL", "qwen/qwen3.8-27b")
     GROQ_VISION_ENABLED: bool = os.getenv("GROQ_VISION_ENABLED", "true").lower() in ("true", "1", "yes")
-    GROQ_VISION_TIMEOUT: float = float(os.getenv("GROQ_VISION_TIMEOUT", "6.0"))
+    GROQ_VISION_TIMEOUT: float = float(os.getenv("GROQ_VISION_TIMEOUT", "3.5"))
 
     # Image upload bounds and decompression bomb protections
     MAX_UPLOAD_SIZE_BYTES: int = int(os.getenv("MAX_UPLOAD_SIZE_BYTES", str(15 * 1024 * 1024)))  # 15 MB
