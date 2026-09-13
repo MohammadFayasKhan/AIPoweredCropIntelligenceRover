@@ -519,7 +519,7 @@ def validate_plant_image(
 
     # A5. General non plant objects (vehicles, buildings, domestic animals, furniture, tools)
     # Characterized by near zero foliar and green ratios AND lack of detector confirmation
-    if foliar_ratio < 0.04 and not has_detector_confirmation:
+    if foliar_ratio < 0.02 and green_ratio < 0.02 and not has_detector_confirmation:
         return DomainValidationResult(
             validation_status="INVALID_NON_PLANT_IMAGE",
             validation_reason="Invalid image. Please upload a clear image of a plant leaf for crop health analysis.",
@@ -536,14 +536,18 @@ def validate_plant_image(
     # ══════════════════════════════════════════════════════════════════════════
     # PHASE B: LOW QUALITY OR UNCERTAIN PLANT SPECIMENS
     # ══════════════════════════════════════════════════════════════════════════
+    # Botanical foliage presence indicator (direct field leaf or mobile screen leaf presentation)
+    has_foliar_presence = bool(
+        has_detector_confirmation or foliar_ratio >= 0.02 or green_ratio >= 0.02
+    )
 
-    # B1. Severe underexposure (too dark to identify foliar lesions)
-    if bright < CONFIGURABLE_THRESHOLDS["min_brightness_mean"]:
+    # B1. Severe underexposure (only if image is virtually pitch black and has zero foliage)
+    if bright < 12.0 and not has_foliar_presence:
         return DomainValidationResult(
             validation_status="LOW_QUALITY_IMAGE",
-            validation_reason="Image quality is insufficient for crop diagnosis. Please upload a clear, focused photograph under good lighting.",
-            validation_confidence=0.75,
-            plant_presence=foliar_ratio > 0.05,
+            validation_reason="Image quality is insufficient for crop diagnosis. The photograph is too dark to resolve foliar pathology.",
+            validation_confidence=0.85,
+            plant_presence=False,
             leaf_presence=False,
             image_quality="Critically Underexposed",
             is_inference_allowed=False,
@@ -552,13 +556,13 @@ def validate_plant_image(
             inference_allowed=False
         )
 
-    # B2. Severe overexposure (washed out specular glare)
-    if bright > CONFIGURABLE_THRESHOLDS["max_brightness_mean"]:
+    # B2. Severe overexposure (washed out solid white glare canvas)
+    if bright > 248.0 and not has_foliar_presence and contrast < 12.0:
         return DomainValidationResult(
             validation_status="LOW_QUALITY_IMAGE",
-            validation_reason="Image quality is insufficient for crop diagnosis. Please upload a clear, focused photograph under good lighting.",
-            validation_confidence=0.72,
-            plant_presence=foliar_ratio > 0.05,
+            validation_reason="Image quality is insufficient for crop diagnosis. The photograph is washed out by glare.",
+            validation_confidence=0.85,
+            plant_presence=False,
             leaf_presence=False,
             image_quality="Critically Overexposed",
             is_inference_allowed=False,
@@ -567,14 +571,14 @@ def validate_plant_image(
             inference_allowed=False
         )
 
-    # B3. Severe motion or focal blur
-    if blur < CONFIGURABLE_THRESHOLDS["min_blur_laplacian_variance"]:
+    # B3. Severe motion or focal blur (only if completely unresolvable and no foliage)
+    if blur < 6.0 and not has_foliar_presence:
         return DomainValidationResult(
             validation_status="LOW_QUALITY_IMAGE",
-            validation_reason="Image quality is insufficient for crop diagnosis. Please upload a clear, focused photograph under good lighting.",
-            validation_confidence=0.78,
-            plant_presence=foliar_ratio > 0.05,
-            leaf_presence=has_detector_confirmation or (blob_ratio > 0.05),
+            validation_reason="Image quality is insufficient for crop diagnosis. Please upload a focused photograph.",
+            validation_confidence=0.80,
+            plant_presence=False,
+            leaf_presence=False,
             image_quality="Severely Blurred",
             is_inference_allowed=False,
             telemetry=signals,
@@ -583,13 +587,12 @@ def validate_plant_image(
         )
 
     # B4. Insufficient foliar coverage without detector leaf support
-    # (e.g. wide landscape or distant outdoor shot with tiny speck of green)
-    if foliar_ratio < CONFIGURABLE_THRESHOLDS["min_foliar_ratio_baseline"] and not has_detector_confirmation:
+    if foliar_ratio < 0.015 and not has_detector_confirmation:
         return DomainValidationResult(
             validation_status="VALIDATION_UNCERTAIN",
             validation_reason="Plant presence could not be confirmed with certainty. Please upload a closer, clearer photograph of the plant leaf.",
             validation_confidence=0.68,
-            plant_presence=True,
+            plant_presence=False,
             leaf_presence=False,
             image_quality="Sparse Foliar Coverage",
             is_inference_allowed=False,

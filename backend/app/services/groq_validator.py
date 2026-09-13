@@ -184,8 +184,29 @@ class GroqVisionValidator:
             allowed = bool(parsed.get("inference_allowed", False))
             reason = str(parsed.get("reason", "Validation processed by Groq Vision."))
 
-            # Enforce conservative contract: only genuine plant leaves are permitted to enter inference
-            if cat in ("screenshot_document", "screenshot", "document", "ui", "dashboard"):
+            reason_lower = (reason + " " + raw_text).lower()
+            # If the reason or model response notes a plant, leaf, crop, or leaf on a smartphone/display screen:
+            # We explicitly accept it for diagnosis!
+            mentions_leaf_or_plant = any(
+                term in reason_lower for term in (
+                    "leaf", "leaves", "plant", "crop", "foliage", "corn", "rust", "blight", "specimen"
+                )
+            )
+            is_screen_or_device = any(
+                term in reason_lower for term in (
+                    "smartphone", "mobile", "phone", "screen", "display", "monitor", "device bezel", "camera cutout"
+                )
+            )
+
+            if mentions_leaf_or_plant:
+                cat = "plant_leaf"
+                plant_pres = True
+                leaf_pres = True
+                suitable = True
+                allowed = True
+                valid = True
+                reason = "Plant leaf specimen verified (including mobile screen presentation)."
+            elif cat in ("screenshot_document", "screenshot", "document", "ui", "dashboard"):
                 cat = "screenshot_document"
                 allowed = False
                 valid = False
