@@ -438,7 +438,7 @@ def validate_plant_image(
             # (category == "uncertain")
 
     except Exception as groq_err:
-        logger.debug(f"Groq preflight unavailable: {groq_err}. Falling back to local CV.")
+        pass  # Groq unavailable — fall back to local CV
 
     # 1. Hardware Object Detection Signal (YOLO PlantDoc genuine positive evidence)
     detector_leaf_boxes = 0
