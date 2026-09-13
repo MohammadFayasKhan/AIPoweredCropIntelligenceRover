@@ -471,7 +471,8 @@ async def predict_vision(
     file: UploadFile = File(...),
     model_tier: Optional[str] = Form("server"),
     include_explainability: Optional[bool] = Form(False),
-    request_id: Optional[str] = Form(None)
+    request_id: Optional[str] = Form(None),
+    force_inference: Optional[bool] = Form(False)
 ):
     """
     Executes the 3-Tier Computer Vision Cascade on uploaded leaf photography:
@@ -504,7 +505,8 @@ async def predict_vision(
             content_type=content_type,
             model_tier=model_tier or "server",
             include_explainability=bool(include_explainability),
-            request_id=req_id
+            request_id=req_id,
+            force_inference=bool(force_inference)
         )
 
         if resp.status == "rejected":

@@ -106,19 +106,22 @@ class GroqVisionValidator:
             # 3. Formulate structured semantic validation payload
             system_prompt = (
                 "/no_thinking\n"
-                "You are a strict botanical preflight image validator for agricultural computer vision. "
-                "Output strictly raw JSON without any markdown code fences, thought process, or reasoning."
+                "You are an agricultural plant image validator. "
+                "The user is testing crop leaf disease diagnosis using direct foliage photos OR digital leaf images displayed on smartphones, tablets, laptop screens, computer monitors, or in hands. "
+                "CRITICAL INSTRUCTION: If any plant leaf, foliage, or crop disease image is present (even if displayed on a phone screen, computer monitor, or digital display, or held in a hand, with bezels/reflections), you MUST classify it as: "
+                'category: "plant_leaf", inference_allowed: true, valid: true, plant_present: true, leaf_present: true, suitable_for_crop_analysis: true so it can be diagnosed! '
+                "DO NOT disqualify device bezels, camera cutouts, hands, or screen reflections. "
+                "ONLY reject images that have NO plant or leaf at all (e.g. pure human faces without plants, cars, pets, empty spreadsheets, blank documents). "
+                "Output strictly raw JSON without markdown fences."
             )
 
             user_prompt = (
-                "Determine whether this uploaded image contains a plant or crop leaf suitable for crop disease diagnosis. "
+                "Determine whether this image contains or displays a plant or crop leaf suitable for crop disease diagnosis. "
                 "Rules:\n"
-                "1. If this is a photo of a mobile phone, smartphone, tablet, or display screen showing a plant or crop leaf: "
-                "ACCEPT IT as category: plant_leaf, plant_present: true, leaf_present: true, suitable_for_crop_analysis: true, "
-                "inference_allowed: true, valid: true. This allows farmers and testers to inspect leaf symptoms from mobile screens.\n"
-                "2. If this is a direct photograph of a real plant or crop leaf: ACCEPT IT as category: plant_leaf, inference_allowed: true, valid: true.\n"
-                "3. Reject pure software screenshots without leaves (dashboards, code, text documents, PDFs, blank websites).\n"
-                "4. Reject non-plant photographs: human faces, portraits, pets, animals, vehicles, metallic tools, buildings.\n"
+                "1. If this image shows a plant or crop leaf (whether a direct photo, or displayed on a mobile phone, tablet, laptop, or monitor screen, or held in a hand): "
+                "ACCEPT IT as category: plant_leaf, plant_present: true, leaf_present: true, suitable_for_crop_analysis: true, inference_allowed: true, valid: true.\n"
+                "2. DO NOT reject because of smartphone borders, laptop bezels, screen reflections, or hands.\n"
+                "3. Only reject images with ZERO plant foliage (e.g. pure face selfies, vehicles, empty text documents).\n"
                 "Return JSON with exact keys: valid (boolean), category (string: plant_leaf, screenshot_document, "
                 "non_plant, or uncertain), plant_present (boolean), leaf_present (boolean), "
                 "suitable_for_crop_analysis (boolean), reason (string), inference_allowed (boolean)."
@@ -129,34 +132,57 @@ class GroqVisionValidator:
                 "Content-Type": "application/json"
             }
 
-            payload = {
-                "model": self.model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": user_prompt},
-                            {"type": "image_url", "image_url": {"url": data_url}}
-                        ]
-                    }
-                ],
-                "max_tokens": 300,
-                "temperature": 0.0
-            }
+            candidate_models = [self.model]
+            if "3.6" not in self.model:
+                candidate_models.append("qwen/qwen3.6-27b")
+            if "3.8" not in self.model:
+                candidate_models.append("qwen/qwen3.8-27b")
 
-            resp = requests.post(
-                self.GROQ_ENDPOINT,
-                headers=headers,
-                json=payload,
-                timeout=self.timeout
-            )
+            resp = None
+            used_model = self.model
+            for candidate in candidate_models:
+                payload = {
+                    "model": candidate,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": user_prompt},
+                                {"type": "image_url", "image_url": {"url": data_url}}
+                            ]
+                        }
+                    ],
+                    "max_tokens": 300,
+                    "temperature": 0.0
+                }
+
+                try:
+                    resp = requests.post(
+                        self.GROQ_ENDPOINT,
+                        headers=headers,
+                        json=payload,
+                        timeout=self.timeout
+                    )
+                    if resp.status_code == 200:
+                        used_model = candidate
+                        break
+                    elif resp.status_code in (429, 500, 502, 503, 504):
+                        logger.warning(
+                            f"Groq model {candidate} returned HTTP {resp.status_code}. Trying backup model..."
+                        )
+                        continue
+                    else:
+                        break
+                except requests.exceptions.RequestException:
+                    continue
 
             latency_ms = (time.time() - start_time) * 1000.0
 
-            if resp.status_code != 200:
+            if resp is None or resp.status_code != 200:
+                err_snippet = resp.text[:150] if resp is not None else "Timeout/connection error"
                 logger.warning(
-                    f"Groq vision returned HTTP {resp.status_code} ({resp.text[:150]}). "
+                    f"Groq vision returned error ({err_snippet}). "
                     "Falling back to local computer vision validation."
                 )
                 return None
@@ -189,23 +215,23 @@ class GroqVisionValidator:
             # We explicitly accept it for diagnosis!
             mentions_leaf_or_plant = any(
                 term in reason_lower for term in (
-                    "leaf", "leaves", "plant", "crop", "foliage", "corn", "rust", "blight", "specimen"
-                )
-            )
-            is_screen_or_device = any(
-                term in reason_lower for term in (
-                    "smartphone", "mobile", "phone", "screen", "display", "monitor", "device bezel", "camera cutout"
+                    "leaf", "leaves", "plant", "crop", "foliage", "corn", "rust", "blight", "specimen",
+                    "maize", "tomato", "potato", "apple", "grape", "rice", "wheat", "cotton", "soybean",
+                    "vegetation", "chlorosis", "necrosis", "mildew", "scab", "botanical", "fungal", "agriculture",
+                    "greenery", "foliar", "displaying a picture of a leaf", "image of a leaf", "showing a leaf",
+                    "leaf displayed", "screen showing", "screen displays", "picture of a plant", "image on a phone",
+                    "leaf on a phone", "leaf on a screen", "leaf on a laptop", "leaf on a monitor", "screen with a leaf"
                 )
             )
 
-            if mentions_leaf_or_plant:
+            if mentions_leaf_or_plant or cat == "plant_leaf" or plant_pres or leaf_pres or suitable or allowed:
                 cat = "plant_leaf"
                 plant_pres = True
                 leaf_pres = True
                 suitable = True
                 allowed = True
                 valid = True
-                reason = "Plant leaf specimen verified (including mobile screen presentation)."
+                reason = "Plant leaf specimen verified (including digital/mobile screen presentation)."
             elif cat in ("screenshot_document", "screenshot", "document", "ui", "dashboard"):
                 cat = "screenshot_document"
                 allowed = False
@@ -227,7 +253,7 @@ class GroqVisionValidator:
                 reason=reason,
                 inference_allowed=allowed,
                 latency_ms=round(latency_ms, 2),
-                model_used=self.model,
+                model_used=used_model,
                 raw_response=parsed
             )
 

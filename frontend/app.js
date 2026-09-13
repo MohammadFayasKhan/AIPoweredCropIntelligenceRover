@@ -142,25 +142,30 @@ function setVisionUIState(newState, detailText = "") {
       analyzeBtn.classList.add("btn-loading");
       analyzeBtn.innerHTML = '<span class="btn-icon">🛡️</span><span>Validating Specimen Domain...</span>';
     } else if (isRejectedState) {
-      analyzeBtn.disabled = true;
+      analyzeBtn.disabled = false;
       analyzeBtn.classList.remove("btn-loading");
-      analyzeBtn.innerHTML = '<span class="btn-icon">🚫</span><span>Specimen Rejected · Upload Plant Leaf</span>';
+      analyzeBtn.innerHTML = '<span class="btn-icon">🔬</span><span>Analyze Specimen Anyway</span>';
+      analyzeBtn.onclick = () => runVisionPrediction(true);
     } else if (newState === VisionUIState.VALID_PLANT_IMAGE) {
       analyzeBtn.disabled = false;
       analyzeBtn.classList.remove("btn-loading");
       analyzeBtn.innerHTML = '<span class="btn-icon">⚡</span><span>Analyze Plant Health</span>';
+      analyzeBtn.onclick = () => runVisionPrediction(false);
     } else if (newState === VisionUIState.RESULTS_READY) {
       analyzeBtn.disabled = false;
       analyzeBtn.classList.remove("btn-loading");
       analyzeBtn.innerHTML = '<span class="btn-icon">🔄</span><span>Re-Analyze Specimen</span>';
+      analyzeBtn.onclick = () => runVisionPrediction(false);
     } else if (newState === VisionUIState.ERROR) {
       analyzeBtn.disabled = false;
       analyzeBtn.classList.remove("btn-loading");
       analyzeBtn.innerHTML = '<span class="btn-icon">⚡</span><span>Retry Analysis</span>';
+      analyzeBtn.onclick = () => runVisionPrediction(true);
     } else {
       analyzeBtn.disabled = true;
       analyzeBtn.classList.remove("btn-loading");
       analyzeBtn.innerHTML = '<span class="btn-icon">⚡</span><span>Analyze Plant Health</span>';
+      analyzeBtn.onclick = () => runVisionPrediction(false);
     }
   }
 
@@ -2103,9 +2108,12 @@ function renderInvalidImagePanel(validation, isScreenshot = false, isNonPlant = 
         <div style="font-weight: 600; margin-bottom: 4px; color: var(--text-muted);">Validation Signals:</div>
         <div>Blur Variance: <strong>${validation.telemetry?.blur_variance ?? '--'}</strong> · Foliar Coverage: <strong>${validation.telemetry?.foliar_presence_ratio != null ? (validation.telemetry.foliar_presence_ratio * 100).toFixed(1) + '%' : '--'}</strong> · Plant Presence: <strong>${validation.plant_presence ? 'Yes' : 'No'}</strong> · Leaf Detected: <strong>${validation.leaf_presence ? 'Yes' : 'No'}</strong></div>
       </div>
-      <div style="margin-top: 18px; display: flex; gap: 12px; align-items: center;">
+      <div style="margin-top: 18px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
         <button type="button" class="change-img-btn btn-reset-specimen" onclick="triggerCvFileInput(event)" style="background: var(--green-primary); color: #000; font-weight: 600; border: none; padding: 8px 18px; border-radius: 6px; cursor: pointer;">
           📁 Choose Another Image
+        </button>
+        <button type="button" class="btn-override-analyze" onclick="runVisionPrediction(true)" style="background: rgba(46, 196, 182, 0.22); color: #2ec4b6; border: 1px solid #2ec4b6; font-weight: 600; padding: 8px 18px; border-radius: 6px; cursor: pointer; transition: all 0.2s ease;">
+          🔬 Analyze Specimen Anyway
         </button>
       </div>
     </div>
@@ -2411,25 +2419,22 @@ function renderVisionSkeletonLoading() {
   }
 }
 
-async function runVisionPrediction(includeExplainability = true) {
+async function runVisionPrediction(overrideForce = false, includeExplainability = true) {
   if (!selectedVisionFile) {
     showErrorNotification("Please select or upload a leaf photograph first.");
     return;
   }
 
   // Mandatory blocking gate: prevent analysis if current state is not verified
-  const isBlocked = [
-    VisionUIState.INVALID_SCREENSHOT_OR_DOCUMENT,
-    VisionUIState.INVALID_NON_PLANT_IMAGE,
-    VisionUIState.LOW_QUALITY_IMAGE,
-    VisionUIState.VALIDATION_UNCERTAIN,
+  // When overrideForce is true, bypass the reject blocking gate completely!
+  const isBlocked = !overrideForce && [
     VisionUIState.VALIDATING,
     VisionUIState.EMPTY,
     VisionUIState.IMAGE_SELECTED
   ].includes(currentVisionState);
 
   if (isBlocked) {
-    showToast("Uploaded image does not appear suitable for crop health analysis. Please upload a genuine plant leaf photograph.", "warning", "Specimen Rejected");
+    showToast("Preflight validation is still running. Click 'Analyze Specimen Anyway' to proceed immediately.", "warning", "Validation In Progress");
     return;
   }
 
@@ -2506,6 +2511,9 @@ async function runVisionPrediction(includeExplainability = true) {
   formData.append("model_tier", currentVisionModelTier || "server");
   formData.append("include_explainability", includeExplainability ? "true" : "false");
   formData.append("request_id", requestId);
+  if (overrideForce) {
+    formData.append("force_inference", "true");
+  }
 
   try {
     const res = await fetch(`${API_BASE}/predict/vision`, {

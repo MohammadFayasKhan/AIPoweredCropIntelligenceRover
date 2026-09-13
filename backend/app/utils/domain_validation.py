@@ -356,6 +356,7 @@ def validate_plant_image(
     # 0. Groq Multimodal Vision Semantic Preflight Validator
     # Provides upstream semantic rejection of software screenshots, dashboards, documents, vehicles, portraits.
     # Seamlessly falls back to local CV algorithms if Groq is disabled, timed out, or rate-limited.
+    groq_confirmed_plant = False  # Set True if Groq positively identifies a plant/leaf
     try:
         from backend.app.services.groq_validator import groq_vision_validator
         groq_res = groq_vision_validator.validate_image(img_bgr, filename=filename)
@@ -368,13 +369,27 @@ def validate_plant_image(
                 "latency_ms": groq_res.latency_ms,
                 "model_used": groq_res.model_used
             }
-            if not groq_res.inference_allowed or groq_res.category in ("screenshot_document", "non_plant"):
-                # Exception: If botanical foliage evidence exists (such as a plant leaf displayed on a phone screen),
-                # do not reject! Allow downstream botanical evaluation.
-                has_botanical_foliage = bool(
-                    foliar_ratio >= 0.05 or green_ratio >= 0.05
-                )
-                if not has_botanical_foliage:
+            reason_lower = str(groq_res.reason).lower()
+            # Check if Groq sees ANY plant/leaf content in the image
+            has_botanical_foliage = bool(
+                groq_res.inference_allowed
+                or groq_res.category == "plant_leaf"
+                or groq_res.plant_present
+                or groq_res.leaf_present
+                or foliar_ratio >= 0.008
+                or green_ratio >= 0.008
+                or any(k in reason_lower for k in (
+                    "leaf", "leaves", "plant", "crop", "foliage", "corn", "rust", "blight",
+                    "maize", "tomato", "potato", "specimen", "vegetation", "foliar", "greenery"
+                ))
+            )
+            if has_botanical_foliage:
+                # Groq confirmed plant — set override flag and short-circuit ALL local rejection gates
+                groq_confirmed_plant = True
+                signals["groq_vision"]["botanical_foliage_override"] = True
+            elif groq_res.category in ("screenshot_document", "non_plant"):
+                # Groq definitively rejected — only reject if local signals also agree (no green foliage at all)
+                if foliar_ratio < 0.003 and green_ratio < 0.003:
                     if groq_res.category == "screenshot_document":
                         return DomainValidationResult(
                             validation_status="INVALID_SCREENSHOT_OR_DOCUMENT",
@@ -401,8 +416,6 @@ def validate_plant_image(
                             screenshot_or_document_probability=signals.get("screenshot_or_document_probability", 0.0),
                             inference_allowed=False
                         )
-                else:
-                    signals["groq_vision"]["botanical_foliage_override"] = True
     except Exception as groq_err:
         pass  # Proceed safely to local computer vision validation
 
@@ -461,10 +474,12 @@ def validate_plant_image(
         )
 
     # A2. Human photograph / portrait / selfie
-    if skin_ratio > CONFIGURABLE_THRESHOLDS["max_skin_chrominance_ratio"] and (foliar_ratio < 0.12 or green_ratio < 0.10):
+    # Only reject pure human portraits if there is virtually zero botanical foliage!
+    # If a farmer or tester holds a leaf or phone in their hand, it is accepted!
+    if skin_ratio > 0.45 and (foliar_ratio < 0.008 and green_ratio < 0.008) and not has_detector_confirmation:
         return DomainValidationResult(
             validation_status="INVALID_NON_PLANT_IMAGE",
-            validation_reason="Invalid image. A person or skin surface was detected. Please upload a clear image of a plant leaf for crop health analysis.",
+            validation_reason="Invalid image. A person or skin surface was detected without any plant foliage. Please upload a clear image of a plant leaf for crop health analysis.",
             validation_confidence=0.92,
             plant_presence=False,
             leaf_presence=False,
@@ -491,20 +506,29 @@ def validate_plant_image(
         )
 
     # A4. Digital Screenshot, Application UI, Dashboard, or Document
-    # Rejects screenshots of websites, applications, browser windows, UI layouts, documents,
-    # charts, and scans, even if a small thumbnail image is embedded inside the interface.
-    # Exception: If a user is showing a plant leaf on a mobile phone or tablet screen,
-    # we accept it as a valid foliar specimen as long as botanical foliage or detector evidence exists!
-    if is_screenshot_or_doc:
+    # Rejects pure software screenshots of blank UI layouts, documents, charts,
+    # BUT explicitly permits plant leaves displayed on mobile phones, laptop screens, or monitors!
+    if is_screenshot_or_doc and not groq_confirmed_plant:
+        groq_vision_sig = signals.get("groq_vision", {})
+        groq_reason_text = str(groq_vision_sig.get("reason", "")).lower()
+        groq_override = bool(
+            groq_vision_sig.get("botanical_foliage_override", False)
+            or groq_vision_sig.get("category") == "plant_leaf"
+            or any(k in groq_reason_text for k in (
+                "leaf", "leaves", "plant", "crop", "corn", "rust", "blight",
+                "vegetation", "foliage", "foliar", "specimen"
+            ))
+        )
         has_leaf_content = bool(
-            has_detector_confirmation
-            or (foliar_ratio >= 0.05 and blob_ratio >= 0.02)
-            or (green_ratio >= 0.05 and blob_ratio >= 0.02)
+            groq_override
+            or has_detector_confirmation
+            or foliar_ratio >= 0.005
+            or green_ratio >= 0.005
         )
         if not has_leaf_content:
             return DomainValidationResult(
                 validation_status="INVALID_SCREENSHOT_OR_DOCUMENT",
-                validation_reason="Invalid image. This appears to be a screenshot or document rather than a plant photograph. Please upload the original photograph of the plant leaf.",
+                validation_reason="Invalid image. This appears to be a digital document or software interface without any crop leaf.",
                 validation_confidence=0.96,
                 plant_presence=False,
                 leaf_presence=False,
@@ -519,7 +543,8 @@ def validate_plant_image(
 
     # A5. General non plant objects (vehicles, buildings, domestic animals, furniture, tools)
     # Characterized by near zero foliar and green ratios AND lack of detector confirmation
-    if foliar_ratio < 0.02 and green_ratio < 0.02 and not has_detector_confirmation:
+    # Skip if Groq already confirmed the image is a plant leaf (handles small leaves on large screens)
+    if foliar_ratio < 0.005 and green_ratio < 0.005 and not has_detector_confirmation and not groq_confirmed_plant:
         return DomainValidationResult(
             validation_status="INVALID_NON_PLANT_IMAGE",
             validation_reason="Invalid image. Please upload a clear image of a plant leaf for crop health analysis.",
@@ -538,7 +563,11 @@ def validate_plant_image(
     # ══════════════════════════════════════════════════════════════════════════
     # Botanical foliage presence indicator (direct field leaf or mobile screen leaf presentation)
     has_foliar_presence = bool(
-        has_detector_confirmation or foliar_ratio >= 0.02 or green_ratio >= 0.02
+        groq_confirmed_plant
+        or has_detector_confirmation
+        or foliar_ratio >= 0.005
+        or green_ratio >= 0.005
+        or blob_ratio >= 0.005
     )
 
     # B1. Severe underexposure (only if image is virtually pitch black and has zero foliage)
@@ -587,7 +616,9 @@ def validate_plant_image(
         )
 
     # B4. Insufficient foliar coverage without detector leaf support
-    if foliar_ratio < 0.015 and not has_detector_confirmation:
+    # Threshold lowered to 0.005 to handle tiny leaves on large bright screens.
+    # Skip entirely if Groq confirmed a plant/leaf.
+    if foliar_ratio < 0.005 and green_ratio < 0.005 and blob_ratio < 0.005 and not has_detector_confirmation and not groq_confirmed_plant:
         return DomainValidationResult(
             validation_status="VALIDATION_UNCERTAIN",
             validation_reason="Plant presence could not be confirmed with certainty. Please upload a closer, clearer photograph of the plant leaf.",

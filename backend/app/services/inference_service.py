@@ -468,11 +468,11 @@ class InferenceEngine:
             # Authoritative production classifier: EfficientNetV2-S only (no silent fallbacks)
             self.model_tier1 = self.model_tier1_server
 
-            # 2. Load Tier 2 YOLO11 PlantDoc Specimen Detector (Primary production detector)
+            # 2. Load Tier 2 YOLO26 Multi-Domain Agricultural Detector (Primary production detector)
             yolo_candidate_path = (
-                settings.TIER2_PLANTDOC_MODEL_PATH
-                if settings.TIER2_PLANTDOC_MODEL_PATH.exists()
-                else settings.GEN2_TIER2_YOLO26_MODEL_PATH
+                settings.GEN2_TIER2_YOLO26_MODEL_PATH
+                if settings.GEN2_TIER2_YOLO26_MODEL_PATH.exists()
+                else settings.TIER2_PLANTDOC_MODEL_PATH
             )
             is_yolo26_loaded = (yolo_candidate_path == settings.GEN2_TIER2_YOLO26_MODEL_PATH)
 
@@ -601,7 +601,8 @@ class InferenceEngine:
         model_tier: str = "server",
         include_explainability: bool = False,
         request_id: Optional[str] = None,
-        multimodal_context: Optional[Dict[str, Any]] = None
+        multimodal_context: Optional[Dict[str, Any]] = None,
+        force_inference: bool = False
     ) -> DiagnosisResponse:
         """
         Executes authoritative multi-tier agricultural vision inference on an uploaded leaf image:
@@ -631,7 +632,7 @@ class InferenceEngine:
         detector_candidate = self.model_tier2_plantdoc
         val_result = validate_plant_image(img_bgr, detector_model=detector_candidate, filename=filename)
 
-        if not val_result.is_inference_allowed:
+        if not val_result.is_inference_allowed and not force_inference:
             # HALT: Do not execute disease classification, detection, segmentation, or Grad-CAM.
             # Return authoritative rejection response with ZERO fabricated diagnostic metrics.
             rejection_total_ms = (time.time() - total_pipeline_start) * 1000.0
