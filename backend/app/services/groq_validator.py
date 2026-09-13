@@ -104,27 +104,48 @@ class GroqVisionValidator:
             data_url = f"data:image/jpeg;base64,{b64_str}"
 
             # 3. Formulate structured semantic validation payload
+            # The prompt is strict: Groq must accurately classify the image.
+            # It accepts real plant/leaf photos AND plant leaves displayed on screens,
+            # but REJECTS app screenshots, documents, notebooks, and non-plant objects.
             system_prompt = (
                 "/no_thinking\n"
-                "You are an agricultural plant image validator. "
-                "The user is testing crop leaf disease diagnosis using direct foliage photos OR digital leaf images displayed on smartphones, tablets, laptop screens, computer monitors, or in hands. "
-                "CRITICAL INSTRUCTION: If any plant leaf, foliage, or crop disease image is present (even if displayed on a phone screen, computer monitor, or digital display, or held in a hand, with bezels/reflections), you MUST classify it as: "
-                'category: "plant_leaf", inference_allowed: true, valid: true, plant_present: true, leaf_present: true, suitable_for_crop_analysis: true so it can be diagnosed! '
-                "DO NOT disqualify device bezels, camera cutouts, hands, or screen reflections. "
-                "ONLY reject images that have NO plant or leaf at all (e.g. pure human faces without plants, cars, pets, empty spreadsheets, blank documents). "
+                "You are a strict agricultural image classifier for a crop disease diagnosis system. "
+                "Your job is to determine if the image contains an ACTUAL plant leaf or crop foliage "
+                "that can be analyzed for disease.\n\n"
+                "ACCEPT (category: plant_leaf) if:\n"
+                "- A real plant leaf or crop foliage is the primary subject\n"
+                "- A plant leaf is displayed on a phone/tablet/laptop/monitor screen "
+                "(the CONTENT on the screen is a plant leaf photo)\n"
+                "- A person is holding a real plant leaf\n\n"
+                "REJECT as screenshot_document if:\n"
+                "- Software UI, app interface, dashboard, web application (even if it has green colors or plant icons/logos)\n"
+                "- Documents, PDFs, spreadsheets, text pages\n"
+                "- A screenshot of a website or application\n"
+                "- A photo of a notebook, book cover, diary, or printed material\n\n"
+                "REJECT as non_plant if:\n"
+                "- Animals, vehicles, buildings, furniture, electronics, household objects\n"
+                "- Human selfies or portraits without any plant leaf\n"
+                "- Random objects on a desk or table that are NOT plant leaves\n"
+                "- A laptop/computer device itself (not showing a leaf on its screen)\n\n"
+                "IMPORTANT: Green color alone does NOT make something a plant. "
+                "A green-themed app UI is still a screenshot_document. "
+                "A green notebook cover is still non_plant.\n"
                 "Output strictly raw JSON without markdown fences."
             )
 
             user_prompt = (
-                "Determine whether this image contains or displays a plant or crop leaf suitable for crop disease diagnosis. "
-                "Rules:\n"
-                "1. If this image shows a plant or crop leaf (whether a direct photo, or displayed on a mobile phone, tablet, laptop, or monitor screen, or held in a hand): "
-                "ACCEPT IT as category: plant_leaf, plant_present: true, leaf_present: true, suitable_for_crop_analysis: true, inference_allowed: true, valid: true.\n"
-                "2. DO NOT reject because of smartphone borders, laptop bezels, screen reflections, or hands.\n"
-                "3. Only reject images with ZERO plant foliage (e.g. pure face selfies, vehicles, empty text documents).\n"
-                "Return JSON with exact keys: valid (boolean), category (string: plant_leaf, screenshot_document, "
-                "non_plant, or uncertain), plant_present (boolean), leaf_present (boolean), "
-                "suitable_for_crop_analysis (boolean), reason (string), inference_allowed (boolean)."
+                "Classify this image into exactly one category. "
+                "Return JSON with these exact keys:\n"
+                "- valid (boolean): true only if a real plant leaf is present\n"
+                "- category (string): exactly one of: plant_leaf, screenshot_document, non_plant, uncertain\n"
+                "- plant_present (boolean): true only if an actual plant/crop is visible\n"
+                "- leaf_present (boolean): true only if an actual leaf is visible\n"
+                "- suitable_for_crop_analysis (boolean): true only if the leaf can be analyzed for disease\n"
+                "- reason (string): brief explanation of what you see\n"
+                "- inference_allowed (boolean): true only if category is plant_leaf\n\n"
+                "Remember: app screenshots with green UI themes are screenshot_document, NOT plant_leaf. "
+                "Photos of notebooks, book covers, or printed materials are non_plant. "
+                "Only classify as plant_leaf if you can see an ACTUAL plant leaf (real or displayed on a screen)."
             )
 
             headers = {
@@ -202,6 +223,7 @@ class GroqVisionValidator:
 
             parsed = json.loads(cleaned_text)
 
+            # Trust Groq's response directly — no aggressive keyword overrides
             cat = str(parsed.get("category", "uncertain")).lower().strip()
             valid = bool(parsed.get("valid", False))
             plant_pres = bool(parsed.get("plant_present", False))
@@ -210,39 +232,28 @@ class GroqVisionValidator:
             allowed = bool(parsed.get("inference_allowed", False))
             reason = str(parsed.get("reason", "Validation processed by Groq Vision."))
 
-            reason_lower = (reason + " " + raw_text).lower()
-            # If the reason or model response notes a plant, leaf, crop, or leaf on a smartphone/display screen:
-            # We explicitly accept it for diagnosis!
-            mentions_leaf_or_plant = any(
-                term in reason_lower for term in (
-                    "leaf", "leaves", "plant", "crop", "foliage", "corn", "rust", "blight", "specimen",
-                    "maize", "tomato", "potato", "apple", "grape", "rice", "wheat", "cotton", "soybean",
-                    "vegetation", "chlorosis", "necrosis", "mildew", "scab", "botanical", "fungal", "agriculture",
-                    "greenery", "foliar", "displaying a picture of a leaf", "image of a leaf", "showing a leaf",
-                    "leaf displayed", "screen showing", "screen displays", "picture of a plant", "image on a phone",
-                    "leaf on a phone", "leaf on a screen", "leaf on a laptop", "leaf on a monitor", "screen with a leaf"
-                )
-            )
-
-            if mentions_leaf_or_plant or cat == "plant_leaf" or plant_pres or leaf_pres or suitable or allowed:
-                cat = "plant_leaf"
-                plant_pres = True
-                leaf_pres = True
-                suitable = True
-                allowed = True
-                valid = True
-                reason = "Plant leaf specimen verified (including digital/mobile screen presentation)."
-            elif cat in ("screenshot_document", "screenshot", "document", "ui", "dashboard"):
+            # Normalize category names (Groq may return slight variations)
+            if cat in ("screenshot", "document", "ui", "dashboard", "screenshot_document"):
                 cat = "screenshot_document"
                 allowed = False
                 valid = False
+                plant_pres = False
+                leaf_pres = False
+                suitable = False
             elif cat in ("non_plant", "person", "animal", "vehicle", "object"):
                 cat = "non_plant"
                 allowed = False
                 valid = False
-            elif cat == "plant_leaf" and (not plant_pres or not leaf_pres or not suitable):
-                allowed = False
-                valid = False
+                plant_pres = False
+                leaf_pres = False
+                suitable = False
+            elif cat == "plant_leaf":
+                # Groq explicitly said plant_leaf — trust it
+                allowed = True
+                valid = True
+                plant_pres = True
+                leaf_pres = True
+                suitable = True
 
             return GroqValidationResult(
                 valid=valid,
