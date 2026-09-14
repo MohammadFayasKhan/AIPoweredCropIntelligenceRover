@@ -1,1060 +1,853 @@
 /*
- * ═════════════════════════════════════════════════════════════════════════════════════════
- *   AgriRover: Production Embedded Control & Crop Intelligence Firmware v3.0
- *   Team Innovex | Smart India Hackathon (SIH 2026) Challenge SIH26180 (Qualcomm Inc)
- *   Theme: Disaster Management | Category: Hardware & AI-Powered Field Robotics
- * ═════════════════════════════════════════════════════════════════════════════════════════
+ * ═══════════════════════════════════════════════════════════════════════
+ *   Smart Plant Intelligence System — ESP32 Dev Module Firmware v3.0
+ *   16x2 I2C Character LCD Edition (HW-61 / PCF8574 Backpack)
+ *   Target Board: ESP32 Dev Module (ESP32-WROOM-32 / 30-Pin NodeMCU ESP32)
+ * ═══════════════════════════════════════════════════════════════════════
  *
- *   OVERVIEW:
- *   AgriRover is an autonomous/teleoperated agricultural rover engineered to bridge field
- *   microclimate sensing, root-zone hydration analysis, flood/waterlogging monitoring,
- *   spatial GPS navigation, robotic canopy positioning, and real-time Crop Vision diagnosis.
+ *   HARDWARE MODULES & PERIPHERALS:
+ *     - ESP32 Dev Module (30-pin ESP32-WROOM-32)
+ *     - 16x2 Character LCD with HW-61 I2C adapter (PCF8574 chip, 0x27 or 0x3F)
+ *     - DHT11 Temperature + Humidity Sensor (3-pin or 4-pin module)
+ *     - Capacitive Soil Moisture Sensor v1.2 (AO analog output)
+ *     - Rain Drop Detection Sensor YL-83 (DO digital output + AO analog)
+ *     - Water Level / Field Drainage Depth Sensor (AO analog output)
+ *     - GPS NEO-6M Satellite Navigation Receiver (UART Serial)
  *
- *   This production firmware integrates:
- *   1. ESP32 Dev Module (30-pin WROOM-32 dual-core Xtensa LX6 @ 240 MHz)
- *   2. L293D Dual H-Bridge Motor Driver (4x TT DC gear motors in 2-wheel-drive differential groups)
- *   3. Ultra-Bright Field Headlight on GPIO 2 for dark canopy inspection
- *   4. DHT11 Microclimate Sensor (Ambient Temperature & Atmospheric Humidity)
- *   5. Capacitive Soil Moisture Sensor v1.2 (Root-zone volumetric water content on ADC1)
- *   6. Raindrop Detection Module (Surface precipitation digital flag + analog intensity proxy)
- *   7. Water Level Sensor (Standing water / furrow waterlogging / drainage flood depth)
- *   8. GPS NEO-6M-0-001 Module (WGS84 latitude, longitude, altitude, satellites, HDOP via HardwareSerial2)
- *   9. 2.4-inch TFT Color LCD Display (Multi-screen dashboard with colorful status HUDs & animations)
- *   10. PCA9685 16-Channel 12-bit PWM Controller with 4-DOF High-Torque Robotic Arm
- *   11. Local 600ms Motor Safety Watchdog & Arm Emergency Stop Failsafe
- *   12. Multi-tier Communication: Local WebServer, mDNS (agrirover.local), Fallback AP, and
- *       HTTP REST synchronization with the SmartCropVision cloud backend gateway.
+ * ─────────────────────────────────────────────────────────────────────
+ *   ESP32 DEV MODULE WIRING DIAGRAM (30-PIN PINOUT)
+ * ─────────────────────────────────────────────────────────────────────
  *
- * ═════════════════════════════════════════════════════════════════════════════════════════
- *   CIRCUIT CONNECTION & ELECTRICAL SPECIFICATION TABLE
- * ═════════════════════════════════════════════════════════════════════════════════════════
+ *   ESP32 Dev Module         16x2 LCD (HW-61 I2C Backpack)
+ *   ────────────────         ────────────────────────────
+ *   GPIO 22 (SCL) ────────── SCL
+ *   GPIO 21 (SDA) ────────── SDA
+ *   VIN (5V Rail) ────────── VCC   ← MUST use 5V (VIN), not 3.3V, for clear LCD
+ * contrast! GND           ────────── GND
  *
- *   ┌───────────────────────┬──────────────────────┬─────────────┬─────────────┬───────────────────┬─────────────────────────────────────────────────────────────┐
- *   │ Component Name        │ Function / Purpose   │ ESP32 GPIO  │ Power Rail  │ Signal Type       │ Electrical & Operational Notes                              │
- *   ├───────────────────────┼──────────────────────┼─────────────┼─────────────┼───────────────────┼─────────────────────────────────────────────────────────────┤
- *   │ Left Motor IN1 (L293D)│ Left Drive Forward   │ GPIO 5      │ 5V / Batt V+│ Digital Output    │ Direct logic drive to L293D pin 2 (1A)                      │
- *   │ Left Motor IN2 (L293D)│ Left Drive Reverse   │ GPIO 18     │ 5V / Batt V+│ Digital Output    │ Direct logic drive to L293D pin 7 (2A)                      │
- *   │ Right Motor IN1(L293D)│ Right Drive Forward  │ GPIO 19     │ 5V / Batt V+│ Digital Output    │ Direct logic drive to L293D pin 10 (3A)                     │
- *   │ Right Motor IN2(L293D)│ Right Drive Reverse  │ GPIO 21     │ 5V / Batt V+│ Digital Output    │ Direct logic drive to L293D pin 15 (4A)                     │
- *   │ Rover Headlight LED   │ Night / Foliage Light│ GPIO 2      │ 3.3V logic  │ Digital Output    │ On-board LED / External high-efficiency white illumination  │
- *   │ DHT11 Sensor          │ Temp & Humidity      │ GPIO 4      │ 3.3V / 5V   │ Single-Wire Data  │ 10k pull-up on module. Sampled non-blockingly every 3000ms  │
- *   │ Capacitive Soil v1.2  │ Root Hydration / VWC │ GPIO 34     │ 3.3V        │ Analog In (ADC1)  │ ADC1_CH6 (Input-only pin; safe with active Wi-Fi radio)     │
- *   │ Raindrop Module DO    │ Rain Flag (Binary)   │ GPIO 27     │ 3.3V        │ Digital Input     │ Active LOW comparator output (LM393)                        │
- *   │ Raindrop Module AO    │ Rain Intensity Proxy │ GPIO 32     │ 3.3V        │ Analog In (ADC1)  │ ADC1_CH4 (0-4095; calibrated against dry baseline)          │
- *   │ Water Level Sensor    │ Ponding/Flood Depth  │ GPIO 35     │ 3.3V        │ Analog In (ADC1)  │ ADC1_CH7 (Input-only; indicates drainage standing water)    │
- *   │ GPS NEO-6M TX         │ NMEA Telemetry Stream│ GPIO 16     │ 3.3V / 5V   │ UART2 RX (ESP32)  │ HardwareSerial2 at 9600 baud. Non-blocking sentence parser  │
- *   │ GPS NEO-6M RX         │ GPS Config / Commands│ GPIO 17     │ 3.3V / 5V   │ UART2 TX (ESP32)  │ HardwareSerial2 TX2 to GPS RX pin                           │
- *   │ PCA9685 I2C SDA       │ 4-DOF Arm Servo Bus  │ GPIO 23     │ 3.3V logic  │ I2C Data (400kHz) │ Communicates with PCA9685 address 0x40                      │
- *   │ PCA9685 I2C SCL       │ 4-DOF Arm Clock Bus  │ GPIO 22     │ 3.3V logic  │ I2C Clock (400kHz)│ Standard ESP32 hardware I2C wire bus                        │
- *   │ 2.4" TFT Display CS   │ Chip Select (SPI)    │ GPIO 15     │ 3.3V logic  │ Digital Output    │ TFT SPI Chip Select line (configurable in display manager)  │
- *   │ 2.4" TFT Display DC   │ Data/Command Select  │ GPIO 14     │ 3.3V logic  │ Digital Output    │ TFT Register / Data select line                             │
- *   │ 2.4" TFT Display RST  │ Hardware Reset       │ GPIO 13     │ 3.3V logic  │ Digital Output    │ TFT hardware reset strobe                                   │
- *   │ 2.4" TFT Display MOSI │ SPI Master Out Slave │ GPIO 23/SPI │ 3.3V logic  │ SPI Data Out      │ Standard VSPI or shared bus line                            │
- *   │ 2.4" TFT Display SCK  │ SPI Serial Clock     │ GPIO 18/SPI │ 3.3V logic  │ SPI Clock Out     │ Hardware SPI Clock line                                     │
- *   │ PCA9685 V+ Power      │ Servo Motor Power    │ EXTERNAL    │ 5.0V - 6.0V │ DC Power (3A-5A)  │ DO NOT POWER SERVOS FROM ESP32 3.3V PIN (Brownout hazard!)  │
- *   │ Common System GND     │ Common Reference     │ GND         │ 0V          │ Power Ground      │ Common ground MUST be shared across ESP32, drivers & battery│
- *   └───────────────────────┴──────────────────────┴─────────────┴─────────────┴───────────────────┴─────────────────────────────────────────────────────────────┘
+ *   ESP32 Dev Module         DHT11 Sensor (3-pin: GND | DATA | VCC)
+ *   ────────────────         ─────────────────────────────────────
+ *   GPIO 4        ────────── DATA
+ *   3.3V          ────────── VCC
+ *   GND           ────────── GND
  *
- * ═════════════════════════════════════════════════════════════════════════════════════════
+ *   ESP32 Dev Module         Capacitive Soil Moisture Sensor v1.2
+ *   ────────────────         ─────────────────────────────────────
+ *   GPIO 34 (ADC1_CH6) ───── AOUT  (Input-only ADC pin, 100% WiFi immune)
+ *   3.3V          ────────── VCC
+ *   GND           ────────── GND
+ *
+ *   ESP32 Dev Module         Rain Drop Sensor YL-83
+ *   ────────────────         ───────────────────────
+ *   GPIO 39 (VN)  ────────── DO    (Digital wet/dry flag: LOW = Rain, HIGH =
+ * Dry) GPIO 36 (VP)  ────────── AO    (Precipitation intensity analog,
+ * optional) 3.3V          ────────── VCC GND           ────────── GND
+ *
+ *   ESP32 Dev Module         Water Level / Drainage Depth Sensor
+ *   ────────────────         ───────────────────────────────────
+ *   GPIO 35 (ADC1_CH7) ───── SIG   (Field drainage depth / retention, WiFi
+ * immune) 3.3V          ────────── VCC GND           ────────── GND
+ *
+ *   ESP32 Dev Module         GPS NEO-6M Receiver
+ *   ────────────────         ────────────────────
+ *   GPIO 16 (RX2) ────────── TXD   (GPS output transmits to ESP32 RX2)
+ *   GPIO 17 (TX2) ────────── RXD   (ESP32 TX2 to GPS RX, optional)
+ *   VIN (5V) or 3.3V ─────── VCC   (Accepts 3.6V - 5V)
+ *   GND           ────────── GND
+ *
+ * ─────────────────────────────────────────────────────────────────────
+ *   REQUIRED LIBRARIES — install via Arduino IDE Library Manager
+ * ─────────────────────────────────────────────────────────────────────
+ *   1. WiFi               — Built-in with ESP32 board package by Espressif
+ *   2. HTTPClient         — Built-in with ESP32 board package
+ *   3. ArduinoJson        — v6.x or v7.x by Benoit Blanchon
+ *   4. DHT sensor library — by Adafruit
+ *   5. LiquidCrystal I2C  — by Frank de Brabander or Marco Schwartz
+ *   6. TinyGPSPlus        — by Mikal Hart
+ *
+ * ═══════════════════════════════════════════════════════════════════════
  */
 
-#include <Arduino.h>
-#include <WiFi.h>
-#include <WebServer.h>
-#include <ESPmDNS.h>
+// ── Library Includes ───────────────────────────────────────────────────
+#include <ArduinoJson.h>
+#include <DHT.h>
 #include <HTTPClient.h>
+#include <LiquidCrystal_I2C.h>
+#include <TinyGPSPlus.h>
+#include <WiFi.h>
 #include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <Wire.h>
-#include <Adafruit_PWMServoDriver.h>
 
-// =========================================================================================
-// SECTION 1: SYSTEM IDENTIFICATION & FIRMWARE METADATA
-// =========================================================================================
+// ══════════════════════════════════════════════════════════════════════
+//   ⚙️  WIFI & DEPLOYMENT CONFIGURATION
+// ══════════════════════════════════════════════════════════════════════
 
-#define FIRMWARE_NAME       "AgriRover-CropIntelligence-ESP32"
-#define FIRMWARE_VERSION    "v3.0.0-prod"
-#define DEVICE_ID           "agrirover-esp32-01"
-#define PROTOCOL_VERSION    "2.0.0"
-#define SIH_CHALLENGE_ID    "SIH26180"
-#define SIH_ORGANIZATION    "Qualcomm Inc"
+const char *WIFI_SSID = "Fayas";     // WiFi hotspot name
+const char *WIFI_PASS = "777888666"; // WiFi password
 
-// =========================================================================================
-// SECTION 2: NETWORK CONFIGURATION & BACKEND CONNECTIVITY
-// =========================================================================================
+// ── Target Mode Selection ─────────────────────────────────────────────
+//   0 = PUBLIC PRODUCTION CLOUD (https://aipoweredcropintelligencerover.dpdns.org)
+//   1 = LOCAL MAC DEV           (http://172.20.10.4:8000)
+//   2 = SMART DUAL-MODE         (Attempts Local Mac first; auto-failovers to Public Cloud if offline)
+#define TARGET_MODE 2 // 2 = Seamless Auto-Failover (Recommended)
 
-// Primary Station Wi-Fi credentials (Configurable for local field router or hotspot)
-const char* WIFI_SSID_PRIMARY   = "Fayas";
-const char* WIFI_PASS_PRIMARY   = "fayas1234";
+String g_localDevUrl = "http://172.20.10.4:8000/predict/compact";
+const char *PUBLIC_CLOUD_URL = "https://aipoweredcropintelligencerover.dpdns.org/predict/compact";
 
-// Secondary Fallback Wi-Fi
-const char* WIFI_SSID_BACKUP    = "Innovex_Field_AP";
-const char* WIFI_PASS_BACKUP    = "agrirover2026";
+#if TARGET_MODE == 0
+const char *TARGET_LABEL = "dpdns.org PROD";
+#elif TARGET_MODE == 1
+const char *TARGET_LABEL = "172.20.10.4:8000";
+#else
+const char *TARGET_LABEL = "Auto Local+Cloud";
+#endif
 
-// Fallback SoftAP settings for direct off-grid mobile teleoperation
-const char* AP_SSID             = "AgriRover-Field-AP";
-const char* AP_PASS             = "agrirover123";
-const IPAddress AP_LOCAL_IP(192, 168, 9, 1);
-const IPAddress AP_GATEWAY(192, 168, 9, 1);
-const IPAddress AP_SUBNET(255, 255, 255, 0);
+// DigiCert Global Root G2 Certificate (Authoritative root for Azure Cloud / dpdns.org, matching ESP32-CAM)
+const char DIGICERT_ROOT_CA[] PROGMEM = 
+"-----BEGIN CERTIFICATE-----\n"
+"MIIDjjCCAnagAwIBAgIQAzrx5qcRqaC7KGSxHQn65TANBgkqhkiG9w0BAQsFADBh\n"
+"MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3\n"
+"d3cuZGlnaWNlcnQuY29tMSAwHgYDVQQDExdEaWdpQ2VydCBHbG9iYWwgUm9vdCBH\n"
+"MjAeFw0xMzA4MDExMjAwMDBaFw0zODAxMTUxMjAwMDBaMGExCzAJBgNVBAYTAlVT\n"
+"MRUwEwYDVQQKEwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5j\n"
+"b20xIDAeBgNVBAMTF0RpZ2lDZXJ0IEdsb2JhbCBSb290IEcyMIIBIjANBgkqhkiG\n"
+"9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuzfNNNx7a8myaJCtSnX/RrohCgiN9RlUyfuI\n"
+"2/Ou8jqJkTx65qsGGmvPrC3oXgkkRLpimn7Wo6h+4FR1IAWsULecYxpsMNzaHxmx\n"
+"1x7e/dfgy5SDN67sH0NO3Xss0r0upS/kqbitOtSZpLYl6ZtrAGCSYP9PIUkY92eQ\n"
+"q2EGnI/yuum06ZIya7XzV+hdG82MHauVBJVJ8zUtluNJbd134/tJS7SsVQepj5Wz\n"
+"tCO7TG1F8PapspUwtP1MVYwnSlcUfIKdzXOS0xZKBgyMUNGPHgm+F6HmIcr9g+UQ\n"
+"vIOlCsRnKPZzFBQ9RnbDhxSJITRNrw9FDKZJobq7nMWxM4MphQIDAQABo0IwQDAP\n"
+"BgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBhjAdBgNVHQ4EFgQUTiJUIBiV\n"
+"5uNu5g/6+rkS7QYXjzkwDQYJKoZIhvcNAQELBQADggEBAGBnKJRvDkhj6zHd6mcY\n"
+"1Yl9PMWLSn/pvtsrF9+wX3N3KjITOYFnQoQj8kVnNeyIv/iPsGEMNKSuIEyExtv4\n"
+"NeF22d+mQrvHRAiGfzZ0JFrabA0UWTW98kndth/Jsw1HKj2ZL7tcu7XUIOGZX1NG\n"
+"Fdtom/DzMNU+MeKNhJ7jitralj41E6Vf8PlwUHBHQRFXGU7Aj64GxJUTFy8bJZ91\n"
+"8rGOmaFvE7FBcf6IKshPECBV1/MUReXgRPTqh5Uykw7+U0b6LJ3/iyK5S9kJRaTe\n"
+"pLiaWN0bfVKfjllDiIGknibVb63dDcY3fe0Dkhvld1927jyNxF1WW6LZZm6zNTfl\n"
+"MrY=\n"
+"-----END CERTIFICATE-----\n";
 
-// SmartCropVision Backend Server Synchronization
-const char* BACKEND_HOST        = "172.20.10.2"; // Or public cloud endpoint
-const uint16_t BACKEND_PORT     = 8000;
-const char* BACKEND_OBS_URL     = "http://172.20.10.2:8000/api/v1/iot/observation";
-const char* BACKEND_CMD_URL     = "http://172.20.10.2:8000/api/v1/iot/device/commands/pending";
+// ── Pin Definitions for ESP32 Dev Module ──────────────────────────────
+#define DHT_PIN 4 // GPIO 4  — DHT11 DATA
+#define DHT_TYPE DHT11
+#define SOIL_PIN 34    // GPIO 34 (ADC1_CH6) — Capacitive Soil Moisture AO
+#define WATER_PIN 35   // GPIO 35 (ADC1_CH7) — Water Level Sensor SIG
+#define RAIN_DO_PIN 39 // GPIO 39 (VN)       — Rain Sensor DO
+#define RAIN_AO_PIN 36 // GPIO 36 (VP)       — Rain Sensor AO
+#define GPS_RX_PIN 16  // GPIO 16 (RX2)      — GPS NEO-6M TX
+#define GPS_TX_PIN 17  // GPIO 17 (TX2)      — GPS NEO-6M RX
+#define I2C_SDA 21     // GPIO 21            — LCD SDA
+#define I2C_SCL 22     // GPIO 22            — LCD SCL
 
-// =========================================================================================
-// SECTION 3: PIN ASSIGNMENTS & HARDWARE PERIPHERALS
-// =========================================================================================
+// ── LCD I2C Configuration ─────────────────────────────────────────────
+#define LCD_I2C_ADDR 0x27 // Most HW-61 modules use 0x27. If blank, try 0x3F.
+#define LCD_COLS 16
+#define LCD_ROWS 2
 
-// --- L293D DC Motor H-Bridge Driver ---
-#define PIN_MOTOR_LEFT_IN1    5   // L293D 1A: Left Wheels Forward
-#define PIN_MOTOR_LEFT_IN2    18  // L293D 2A: Left Wheels Reverse
-#define PIN_MOTOR_RIGHT_IN1   19  // L293D 3A: Right Wheels Forward
-#define PIN_MOTOR_RIGHT_IN2   21  // L293D 4A: Right Wheels Reverse
+// ── Timing ────────────────────────────────────────────────────────────
+#define SEND_INTERVAL 12000  // POST to backend every 12 seconds
+#define SCREEN_INTERVAL 4000 // Rotate LCD screen carousel every 4 seconds
+#define SAMPLE_INTERVAL 2000 // Sample physical sensors every 2 seconds
 
-// --- Field Illumination Headlight ---
-#define PIN_HEADLIGHT         2   // External White LED / Onboard LED
+// ── Sensor Calibration Constants (ESP32 12-Bit ADC) ───────────────────
+#define SOIL_DRY_RAW 3200  // Bone dry air reading (0% moisture)
+#define SOIL_WET_RAW 1350  // Saturated water reading (100% moisture)
+#define WATER_BASE_RAW 400 // Dry / zero-level water baseline
+#define WATER_SAT_RAW 2800 // Full immersion depth (~45mm standing water)
 
-// --- DHT11 Microclimate Sensor ---
-#define PIN_DHT11_DATA        4   // Single-bus bidirectional digital data
+// ─────────────────────────────────────────────────────────────────────
 
-// --- Capacitive Soil Moisture Sensor v1.2 ---
-#define PIN_SOIL_ADC          34  // ADC1_CH6 (Input-only, non-conflicting with Wi-Fi)
+// ── Object Instances ───────────────────────────────────────────────────
+DHT dht(DHT_PIN, DHT_TYPE);
+LiquidCrystal_I2C lcd(LCD_I2C_ADDR, LCD_COLS, LCD_ROWS);
+TinyGPSPlus gps;
+HardwareSerial gpsSerial(2);
 
-// --- Raindrop Sensor Module ---
-#define PIN_RAIN_DO           27  // Digital DO: Active LOW when raindrops detected
-#define PIN_RAIN_AO           32  // Analog AO: ADC1_CH4 for calibrated intensity
+WiFiClient plainClient;
+WiFiClientSecure secureClient;
 
-// --- Water Level Sensor (Drainage / Flood / Ponding Depth) ---
-#define PIN_WATER_LEVEL_ADC   35  // ADC1_CH7 (Input-only, non-conflicting with Wi-Fi)
+// ── Global Sensor State ────────────────────────────────────────────────
+int g_temp = 25;
+int g_hum = 60;
+int g_soil = 50;
+bool g_rainOn = false;
+float g_waterMm = 0.0f;
+int g_waterPct = 0;
+double g_lat = 0.0;
+double g_lon = 0.0;
+float g_alt = 0.0f;
+int g_sats = 0;
+bool g_gpsValid = false;
 
-// --- GPS NEO-6M-0-001 Hardware UART2 ---
-#define PIN_GPS_RX            16  // ESP32 RX2 connected to GPS TX
-#define PIN_GPS_TX            17  // ESP32 TX2 connected to GPS RX
-#define GPS_BAUD_RATE         9600
+// ── Global Prediction State ────────────────────────────────────────────
+String g_crop = "";
+float g_conf = 0.0;
+String g_crop2 = "";
+float g_conf2 = 0.0;
+String g_crop3 = "";
+float g_conf3 = 0.0;
+int g_alerts = 0;
+String g_alertName[4];
+String g_alertSev[4];
+int g_alertCount = 0;
+bool g_serverOK = false;
 
-// --- PCA9685 I2C 16-Channel PWM Servo Driver ---
-#define PIN_I2C_SDA           23  // ESP32 Hardware I2C SDA
-#define PIN_I2C_SCL           22  // ESP32 Hardware I2C SCL
-#define PCA9685_I2C_ADDR      0x40
+// ── Display & Carousel State ───────────────────────────────────────────
+int g_screen = 0;
+int g_alertPage = 0;
+unsigned long g_lastSend = 0;
+unsigned long g_lastScreen = 0;
+unsigned long g_lastSample = 0;
 
-// --- 2.4-inch TFT LCD Display Interface ---
-#define PIN_TFT_CS            15  // Chip Select
-#define PIN_TFT_DC            14  // Data / Command
-#define PIN_TFT_RST           13  // Hardware Reset
+// ── Custom LCD 5x8 Characters (Pixel-Perfect Glyphs) ───────────────────
+byte degreeChar[8] = {0b00110, 0b01001, 0b01001, 0b00110,
+                      0b00000, 0b00000, 0b00000, 0b00000};
+byte tickChar[8] = {0b00000, 0b00001, 0b00011, 0b10110,
+                    0b11100, 0b01000, 0b00000, 0b00000};
+byte alertChar[8] = {0b00100, 0b01110, 0b01110, 0b01110,
+                     0b11111, 0b00000, 0b00100, 0b00000};
+byte dropChar[8] = {0b00100, 0b00100, 0b01110, 0b01110,
+                    0b11111, 0b11111, 0b01110, 0b00000};
 
-// =========================================================================================
-// SECTION 4: ROBOTIC ARM SERVO CONFIGURATION (4-DOF PCA9685)
-// =========================================================================================
+// Character indices
+#define CHAR_DEG 0
+#define CHAR_TICK 1
+#define CHAR_ALERT 2
+#define CHAR_DROP 3
 
-#define SERVO_CH_BASE         0   // Channel 0: Waist rotation
-#define SERVO_CH_SHOULDER     1   // Channel 1: Shoulder lift
-#define SERVO_CH_ELBOW        2   // Channel 2: Elbow reach
-#define SERVO_CH_GRIPPER      3   // Channel 3: End-effector claw
+// Forward declarations
+void initI2cLcd();
+void showBoot();
+void connectWiFi();
+void readSensors();
+void processGps();
+void sendToServer();
+void parseResponse(String &body);
+void advanceScreen();
+void drawScreen();
+void screenSensors();
+void screenCrop();
+void screenAlerts();
+void screenWater();
+void screenGps();
+void lcdStatus(String line0, String line1);
 
-// 50 Hz Servo Pulse Calibration (Standard 1.0ms to 2.0ms pulse width on 12-bit PCA9685)
-#define SERVO_PULSE_MIN       120 // ~0.6ms pulse for 0 degrees
-#define SERVO_PULSE_MAX       520 // ~2.5ms pulse for 180 degrees
-#define SERVO_FREQUENCY_HZ    50
+// ══════════════════════════════════════════════════════════════════════
+//   SETUP
+// ══════════════════════════════════════════════════════════════════════
+void setup() {
+  Serial.begin(115200);
+  delay(150);
+  Serial.println(F("\n\n=== Smart Plant Intelligence System — ESP32 v3.0 ==="));
 
-// Physical Mechanical Angular Safety Limits
-#define ARM_BASE_MIN_DEG      5.0f
-#define ARM_BASE_MAX_DEG      175.0f
-#define ARM_SHOULDER_MIN_DEG  0.0f
-#define ARM_SHOULDER_MAX_DEG  180.0f
-#define ARM_ELBOW_MIN_DEG     0.0f
-#define ARM_ELBOW_MAX_DEG     180.0f
-#define ARM_GRIPPER_CLOSE_DEG 70.0f   // Fully closed mechanical grip
-#define ARM_GRIPPER_OPEN_DEG  180.0f  // Fully opened inspection stance
+  // 1. Hardware Pin & ADC Setup
+  pinMode(RAIN_DO_PIN, INPUT);
+  analogReadResolution(12);       // ESP32 12-bit ADC (0 - 4095)
+  analogSetAttenuation(ADC_11db); // Full-scale 0 - 3.3V range
 
-// Default Home Coordinates
-#define ARM_HOME_BASE         90.0f
-#define ARM_HOME_SHOULDER     90.0f
-#define ARM_HOME_ELBOW        90.0f
-#define ARM_HOME_GRIPPER      ARM_GRIPPER_OPEN_DEG
+  // 2. DHT11 Initialization
+  dht.begin();
 
-// Inspection Stance Coordinates (Optimized angle pointing camera toward foliage)
-#define ARM_INSPECT_BASE      90.0f
-#define ARM_INSPECT_SHOULDER  65.0f
-#define ARM_INSPECT_ELBOW     120.0f
-#define ARM_INSPECT_GRIPPER   140.0f
+  // 3. GPS NEO-6M HardwareSerial2 (RX2 = GPIO 16, TX2 = GPIO 17)
+  gpsSerial.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
 
-// =========================================================================================
-// SECTION 5: SAFETY WATCHDOG & SAMPLING TIMERS
-// =========================================================================================
+  // 4. I2C Bus & LCD Initialization
+  initI2cLcd();
 
-#define ROVER_WATCHDOG_TIMEOUT_MS 600   // Local motor halt if commands lapse > 600ms
-#define SENSORS_SAMPLE_INTERVAL   3000  // DHT11 microclimate polling interval (ms)
-#define ANALOG_SAMPLE_INTERVAL    500   // Soil moisture & water level polling interval (ms)
-#define TFT_PAGE_ROTATE_INTERVAL  4000  // Multi-screen HUD rotation interval (ms)
-#define TELEMETRY_SYNC_INTERVAL   5000  // Outbound backend synchronization interval (ms)
-#define ARM_MOTION_STEP_INTERVAL  8     // Smooth kinematics interpolation step (ms)
+  // 5. Initial Boot Screen Animation
+  showBoot();
 
-// =========================================================================================
-// SECTION 6: STRUCTURED STATE DEFINITIONS
-// =========================================================================================
+  // 6. Connect WiFi
+  connectWiFi();
 
-enum DriveDirection {
-  DIR_STOPPED = 0,
-  DIR_FORWARD,
-  DIR_BACKWARD,
-  DIR_LEFT,
-  DIR_RIGHT
-};
-
-struct RoverState {
-  DriveDirection direction;
-  uint8_t speed_pwm;
-  bool headlight;
-  bool watchdog_active;
-  unsigned long last_command_time;
-  uint32_t command_count;
-};
-
-struct ArmState {
-  bool connected;
-  bool is_moving;
-  bool emergency_stopped;
-  float base_deg;
-  float shoulder_deg;
-  float elbow_deg;
-  float gripper_deg;
-  float target_base;
-  float target_shoulder;
-  float target_elbow;
-  float target_gripper;
-  float speed_deg_per_sec;
-  unsigned long last_step_time;
-};
-
-struct SensorData {
-  // DHT11
-  float temperature_c;
-  float humidity_pct;
-  bool dht_valid;
-  unsigned long last_dht_read;
-
-  // Capacitive Soil Moisture v1.2
-  uint16_t soil_raw;
-  float soil_pct;
-  uint16_t soil_dry_ref;   // Dry air reference ADC reading (~3100)
-  uint16_t soil_wet_ref;   // Saturated water reference ADC reading (~1200)
-
-  // Raindrop Sensor
-  bool rain_detected;
-  uint16_t rain_intensity_raw;
-  float rain_intensity_pct;
-
-  // Water Level Sensor
-  uint16_t water_level_raw;
-  float water_level_pct;
-  const char* water_state_str;
-};
-
-struct GPSData {
-  float latitude;
-  float longitude;
-  float altitude_m;
-  uint8_t satellites;
-  float hdop;
-  bool fix_valid;
-  unsigned long last_fix_time;
-};
-
-struct CropIntelligenceState {
-  char recommended_crop[32];
-  float confidence_pct;
-  char primary_disease_alert[64];
-  char heat_stress_level[16];
-  char flood_risk_level[16];
-  char irrigation_advice[32];
-};
-
-// =========================================================================================
-// SECTION 7: GLOBAL CONTROLLER INSTANCES
-// =========================================================================================
-
-WebServer server(80);
-Adafruit_PWMServoDriver pca9685 = Adafruit_PWMServoDriver(PCA9685_I2C_ADDR);
-HardwareSerial GPSSerial(2);
-
-RoverState rover = {
-  DIR_STOPPED, 200, false, true, 0, 0
-};
-
-ArmState arm = {
-  false, false, false,
-  ARM_HOME_BASE, ARM_HOME_SHOULDER, ARM_HOME_ELBOW, ARM_HOME_GRIPPER,
-  ARM_HOME_BASE, ARM_HOME_SHOULDER, ARM_HOME_ELBOW, ARM_HOME_GRIPPER,
-  120.0f, 0
-};
-
-SensorData sensors = {
-  27.0f, 60.0f, false, 0,
-  2400, 48.0f, 3200, 1300,
-  false, 4095, 0.0f,
-  350, 8.5f, "NORMAL"
-};
-
-GPSData gps = {
-  13.0827f, 80.2707f, 14.5f, 0, 99.9f, false, 0
-};
-
-CropIntelligenceState cropIntel = {
-  "Paddy/Rice", 88.5f, "None (Low Spore Risk)", "NORMAL", "NORMAL", "MONITOR"
-};
-
-uint8_t currentTFTPage = 0;
-unsigned long lastTFTRotateTime = 0;
-unsigned long lastTelemetrySyncTime = 0;
-
-// =========================================================================================
-// SECTION 8: 2.4-INCH TFT DISPLAY ENGINE & ANIMATIONS
-// =========================================================================================
-
-/*
- * Isolated TFT Display Abstraction Layer.
- * Renders high-fidelity graphical HUDs with smooth transitions:
- * - Page 0: AgriRover Cockpit & Mobility HUD (Speed gauge, Direction, RSSI, Watchdog)
- * - Page 1: Microclimate & Soil Telemetry (Temp/Humidity dial, Soil Moisture bar, Rain, Water)
- * - Page 2: Crop Intelligence & Advisory (Recommended Crop, Disease Alerts, Irrigation Advice)
- * - Page 3: GPS Spatial Fix & Navigation (Latitude, Longitude, Altitude, Satellites)
- * - Page 4: 4-DOF Robotic Arm Joint Stance (Base, Shoulder, Elbow, Gripper angles)
- */
-class TFTDisplayManager {
-public:
-  void init() {
-    Serial.println(F("[TFT] Initializing 2.4-inch Color LCD Display interface..."));
-    // Pin setup for display controller
-    pinMode(PIN_TFT_CS, OUTPUT);
-    pinMode(PIN_TFT_DC, OUTPUT);
-    pinMode(PIN_TFT_RST, OUTPUT);
-    digitalWrite(PIN_TFT_CS, HIGH);
-
-    // Render initial boot splash screen
-    renderSplashScreen();
+  // 7. Initial Sensor Acquisition & Immediate First Predict Sync
+  readSensors();
+  if (WiFi.status() == WL_CONNECTED) {
+    sendToServer();
   }
 
-  void renderSplashScreen() {
-    Serial.println(F("╔══════════════════════════════════════════════════════════╗"));
-    Serial.println(F("║          SMARTCROPVISION & AGRIROVER (SIH 2026)          ║"));
-    Serial.println(F("║       Team Innovex | Qualcomm Hardware Challenge        ║"));
-    Serial.println(F("║       Firmware: v3.0.0-prod | Dual-Core ESP32 Xtensa    ║"));
-    Serial.println(F("╚══════════════════════════════════════════════════════════╝"));
-  }
-
-  void updateDisplay(unsigned long now) {
-    if (now - lastTFTRotateTime >= TFT_PAGE_ROTATE_INTERVAL) {
-      lastTFTRotateTime = now;
-      currentTFTPage = (currentTFTPage + 1) % 5;
-      renderActivePage(currentTFTPage);
-    }
-  }
-
-  void renderActivePage(uint8_t page) {
-    switch (page) {
-      case 0: renderRoverCockpitPage(); break;
-      case 1: renderSoilClimatePage(); break;
-      case 2: renderCropIntelPage(); break;
-      case 3: renderGPSPage(); break;
-      case 4: renderArmStancePage(); break;
-    }
-  }
-
-private:
-  void renderRoverCockpitPage() {
-    const char* dirStr = "STOPPED";
-    switch (rover.direction) {
-      case DIR_FORWARD:  dirStr = "▲ FORWARD"; break;
-      case DIR_BACKWARD: dirStr = "▼ BACKWARD"; break;
-      case DIR_LEFT:     dirStr = "◄ LEFT TURN"; break;
-      case DIR_RIGHT:    dirStr = "► RIGHT TURN"; break;
-      default:           dirStr = "■ STOPPED"; break;
-    }
-    Serial.println(F("┌── [TFT PAGE 1/5: ROVER COCKPIT & HEALTH] ────────────────┐"));
-    Serial.printf( "│ Motion State   : %-38s │\n", dirStr);
-    Serial.printf( "│ Speed PWM      : %-3d / 255 (%.1f%%)                           │\n", rover.speed_pwm, (rover.speed_pwm / 255.0f) * 100.0f);
-    Serial.printf( "│ Headlight LED  : %-38s │\n", rover.headlight ? "[ON] ILLUMINATING" : "[OFF] STANDBY");
-    Serial.printf( "│ Motor Watchdog : %-38s │\n", rover.watchdog_active ? "[ACTIVE] 600ms Failsafe" : "[TRIPPED] Halted");
-    Serial.printf( "│ Network Signal : %ddBm (IP: %s)               │\n", WiFi.RSSI(), WiFi.localIP().toString().c_str());
-    Serial.println(F("└──────────────────────────────────────────────────────────┘"));
-  }
-
-  void renderSoilClimatePage() {
-    Serial.println(F("┌── [TFT PAGE 2/5: MICROCLIMATE & ROOT HYDRATION] ─────────┐"));
-    Serial.printf( "│ Ambient Temp   : %.1f°C | Humidity: %.1f%% (%s)       │\n",
-                   sensors.temperature_c, sensors.humidity_pct, sensors.dht_valid ? "VALID" : "STALE");
-    Serial.printf( "│ Soil Moisture  : %.1f%% [Raw ADC: %4d] (Capacitive v1.2) │\n",
-                   sensors.soil_pct, sensors.soil_raw);
-    Serial.printf( "│ Precipitation  : %-38s │\n",
-                   sensors.rain_detected ? "RAIN DETECTED [Surface Wet]" : "DRY [No Precipitation]");
-    Serial.printf( "│ Drainage Level : %.1f%% (%-12s) [ADC: %4d]      │\n",
-                   sensors.water_level_pct, sensors.water_state_str, sensors.water_level_raw);
-    Serial.println(F("└──────────────────────────────────────────────────────────┘"));
-  }
-
-  void renderCropIntelPage() {
-    Serial.println(F("┌── [TFT PAGE 3/5: CROP INTELLIGENCE & ADVISORY] ──────────┐"));
-    Serial.printf( "│ Recommended    : %-38s │\n", cropIntel.recommended_crop);
-    Serial.printf( "│ Model Conf     : %.1f%% Suitability                       │\n", cropIntel.confidence_pct);
-    Serial.printf( "│ Disease Risk   : %-38s │\n", cropIntel.primary_disease_alert);
-    Serial.printf( "│ Heat Stress    : %-38s │\n", cropIntel.heat_stress_level);
-    Serial.printf( "│ Irrigation     : %-38s │\n", cropIntel.irrigation_advice);
-    Serial.println(F("└──────────────────────────────────────────────────────────┘"));
-  }
-
-  void renderGPSPage() {
-    Serial.println(F("┌── [TFT PAGE 4/5: GPS SPATIAL NAVIGATION] ────────────────┐"));
-    Serial.printf( "│ Satellite Lock : %-38s │\n", gps.fix_valid ? "3D_FIX [WGS84 Calibrated]" : "SEARCHING FOR SATELLITES");
-    Serial.printf( "│ Latitude       : %-38.6f │\n", gps.latitude);
-    Serial.printf( "│ Longitude      : %-38.6f │\n", gps.longitude);
-    Serial.printf( "│ Satellites     : %-2d Tracked | HDOP: %-4.1f                  │\n", gps.satellites, gps.hdop);
-    Serial.printf( "│ Altitude       : %.1f meters MSL                         │\n", gps.altitude_m);
-    Serial.println(F("└──────────────────────────────────────────────────────────┘"));
-  }
-
-  void renderArmStancePage() {
-    Serial.println(F("┌── [TFT PAGE 5/5: 4-DOF ROBOTIC ARM STANCE] ──────────────┐"));
-    Serial.printf( "│ Controller     : %-38s │\n", arm.connected ? "PCA9685 I2C (0x40) Ready" : "DISCONNECTED / FAULT");
-    Serial.printf( "│ Kinematics     : %-38s │\n", arm.is_moving ? "INTERPOLATING MOTION" : "STATIC HOLD");
-    Serial.printf( "│ Joint Angles   : B:%.0f° | S:%.0f° | E:%.0f° | Grip:%.0f° (%s) │\n",
-                   arm.base_deg, arm.shoulder_deg, arm.elbow_deg, arm.gripper_deg,
-                   arm.gripper_deg >= 150.0f ? "OPEN" : "CLOSED");
-    Serial.printf( "│ Emergency Stop : %-38s │\n", arm.emergency_stopped ? "TRIGGERED [LOCKED]" : "CLEAR [OPERATIONAL]");
-    Serial.println(F("└──────────────────────────────────────────────────────────┘"));
-  }
-};
-
-TFTDisplayManager tftManager;
-
-// =========================================================================================
-// SECTION 9: L293D MOTOR DRIVE & SAFETY WATCHDOG ENGINE
-// =========================================================================================
-
-void setupMotors() {
-  pinMode(PIN_MOTOR_LEFT_IN1, OUTPUT);
-  pinMode(PIN_MOTOR_LEFT_IN2, OUTPUT);
-  pinMode(PIN_MOTOR_RIGHT_IN1, OUTPUT);
-  pinMode(PIN_MOTOR_RIGHT_IN2, OUTPUT);
-  pinMode(PIN_HEADLIGHT, OUTPUT);
-
-  // Initial safe state: motors fully stopped, headlight off
-  digitalWrite(PIN_MOTOR_LEFT_IN1, LOW);
-  digitalWrite(PIN_MOTOR_LEFT_IN2, LOW);
-  digitalWrite(PIN_MOTOR_RIGHT_IN1, LOW);
-  digitalWrite(PIN_MOTOR_RIGHT_IN2, LOW);
-  digitalWrite(PIN_HEADLIGHT, LOW);
-
-  Serial.println(F("[MOTORS] L293D Dual H-Bridge initialized on GPIO 5, 18, 19, 21."));
+  // Draw initial sensor screen
+  drawScreen();
 }
 
-void executeMotorDrive(DriveDirection dir, uint8_t speed_pwm) {
-  rover.direction = dir;
-  rover.speed_pwm = speed_pwm;
-  rover.last_command_time = millis();
-  rover.watchdog_active = true;
-  rover.command_count++;
+// ══════════════════════════════════════════════════════════════════════
+//   MAIN NON-BLOCKING LOOP
+// ══════════════════════════════════════════════════════════════════════
+void loop() {
+  unsigned long now = millis();
 
-  switch (dir) {
-    case DIR_FORWARD:
-      // Both left and right tracks drive forward
-      digitalWrite(PIN_MOTOR_LEFT_IN1, HIGH);
-      digitalWrite(PIN_MOTOR_LEFT_IN2, LOW);
-      digitalWrite(PIN_MOTOR_RIGHT_IN1, HIGH);
-      digitalWrite(PIN_MOTOR_RIGHT_IN2, LOW);
-      break;
+  // Continuous background GPS NMEA feed consumption
+  processGps();
 
-    case DIR_BACKWARD:
-      // Both left and right tracks drive in reverse
-      digitalWrite(PIN_MOTOR_LEFT_IN1, LOW);
-      digitalWrite(PIN_MOTOR_LEFT_IN2, HIGH);
-      digitalWrite(PIN_MOTOR_RIGHT_IN1, LOW);
-      digitalWrite(PIN_MOTOR_RIGHT_IN2, HIGH);
-      break;
-
-    case DIR_LEFT:
-      // Skid-steer left: left reverse, right forward
-      digitalWrite(PIN_MOTOR_LEFT_IN1, LOW);
-      digitalWrite(PIN_MOTOR_LEFT_IN2, HIGH);
-      digitalWrite(PIN_MOTOR_RIGHT_IN1, HIGH);
-      digitalWrite(PIN_MOTOR_RIGHT_IN2, LOW);
-      break;
-
-    case DIR_RIGHT:
-      // Skid-steer right: left forward, right reverse
-      digitalWrite(PIN_MOTOR_LEFT_IN1, HIGH);
-      digitalWrite(PIN_MOTOR_LEFT_IN2, LOW);
-      digitalWrite(PIN_MOTOR_RIGHT_IN1, LOW);
-      digitalWrite(PIN_MOTOR_RIGHT_IN2, HIGH);
-      break;
-
-    case DIR_STOPPED:
-    default:
-      digitalWrite(PIN_MOTOR_LEFT_IN1, LOW);
-      digitalWrite(PIN_MOTOR_LEFT_IN2, LOW);
-      digitalWrite(PIN_MOTOR_RIGHT_IN1, LOW);
-      digitalWrite(PIN_MOTOR_RIGHT_IN2, LOW);
-      break;
+  // Re-connect WiFi if disconnected
+  if (WiFi.status() != WL_CONNECTED) {
+    g_serverOK = false;
+    connectWiFi();
   }
-}
 
-void checkMotorSafetyWatchdog(unsigned long now) {
-  if (rover.direction != DIR_STOPPED) {
-    if (now - rover.last_command_time > ROVER_WATCHDOG_TIMEOUT_MS) {
-      // Safety timeout tripped! Halt motors immediately
-      executeMotorDrive(DIR_STOPPED, 0);
-      rover.watchdog_active = false;
-      Serial.println(F("[SAFETY WATCHDOG] Command timeout > 600ms. Rover motors halted safely."));
-    }
+  // Periodic sensor sampling
+  if (now - g_lastSample >= SAMPLE_INTERVAL || g_lastSample == 0) {
+    g_lastSample = now;
+    readSensors();
   }
+
+  // POST to server every SEND_INTERVAL
+  if (now - g_lastSend >= SEND_INTERVAL || g_lastSend == 0) {
+    g_lastSend = now;
+    sendToServer();
+  }
+
+  // Rotate LCD screen carousel every SCREEN_INTERVAL
+  if (now - g_lastScreen >= SCREEN_INTERVAL) {
+    g_lastScreen = now;
+    advanceScreen();
+    drawScreen();
+  }
+
+  yield();
 }
 
-void setHeadlight(bool state) {
-  rover.headlight = state;
-  digitalWrite(PIN_HEADLIGHT, state ? HIGH : LOW);
-  Serial.printf("[HEADLIGHT] Switched %s\n", state ? "ON" : "OFF");
+// ══════════════════════════════════════════════════════════════════════
+//   I2C LCD INITIALIZATION
+// ══════════════════════════════════════════════════════════════════════
+void initI2cLcd() {
+  Wire.begin(I2C_SDA, I2C_SCL);
+  Wire.setClock(100000);
+
+  lcd.init();
+  lcd.backlight();
+
+  // Register custom 5x8 glyphs
+  lcd.createChar(CHAR_DEG, degreeChar);
+  lcd.createChar(CHAR_TICK, tickChar);
+  lcd.createChar(CHAR_ALERT, alertChar);
+  lcd.createChar(CHAR_DROP, dropChar);
+
+  Serial.printf("[LCD] I2C LCD online at address 0x%02X\n", LCD_I2C_ADDR);
 }
 
-// =========================================================================================
-// SECTION 10: 4-DOF ROBOTIC ARM PCA9685 KINEMATICS ENGINE
-// =========================================================================================
+// ══════════════════════════════════════════════════════════════════════
+//   READ ALL PHYSICAL SENSORS (ESP32 CALIBRATED)
+// ══════════════════════════════════════════════════════════════════════
+void readSensors() {
+  // ── DHT11 Temperature & Humidity ───────────────────────────────────
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
 
-uint16_t angleToPulse(float angle) {
-  angle = constrain(angle, 0.0f, 180.0f);
-  return (uint16_t)map((long)(angle * 10), 0, 1800, SERVO_PULSE_MIN, SERVO_PULSE_MAX);
-}
-
-void setupRoboticArm() {
-  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, 400000);
-  pca9685.begin();
-  pca9685.setOscillatorFrequency(27000000);
-  pca9685.setPWMFreq(SERVO_FREQUENCY_HZ);
-  Wire.setClock(400000);
-
-  // Probe PCA9685 address
-  Wire.beginTransmission(PCA9685_I2C_ADDR);
-  if (Wire.endTransmission() == 0) {
-    arm.connected = true;
-    Serial.println(F("[ARM] PCA9685 16-Channel PWM driver detected at 0x40."));
-    // Move to safe home stance
-    pca9685.setPWM(SERVO_CH_BASE, 0, angleToPulse(arm.base_deg));
-    pca9685.setPWM(SERVO_CH_SHOULDER, 0, angleToPulse(arm.shoulder_deg));
-    pca9685.setPWM(SERVO_CH_ELBOW, 0, angleToPulse(arm.elbow_deg));
-    pca9685.setPWM(SERVO_CH_GRIPPER, 0, angleToPulse(arm.gripper_deg));
+  if (!isnan(h) && !isnan(t) && h >= 10.0f && h <= 100.0f && t >= 0.0f &&
+      t <= 60.0f) {
+    g_temp = (int)round(t);
+    g_hum = (int)round(h);
   } else {
-    arm.connected = false;
-    Serial.println(F("[ARM] WARNING: PCA9685 not responding on I2C address 0x40."));
+    // Brief retry stabilization
+    delay(200);
+    h = dht.readHumidity();
+    t = dht.readTemperature();
+    if (!isnan(h) && !isnan(t)) {
+      g_temp = (int)round(t);
+      g_hum = (int)round(h);
+    }
+  }
+
+  // ── Capacitive Soil Moisture (GPIO 34 ADC1) ─────────────────────────
+  int rawSoil = analogRead(SOIL_PIN);
+  int soilPct = map(rawSoil, SOIL_DRY_RAW, SOIL_WET_RAW, 0, 100);
+  g_soil = constrain(soilPct, 0, 100);
+
+  // ── Rain Drop Sensor (DO = GPIO 39, active LOW) ────────────────────
+  g_rainOn = (digitalRead(RAIN_DO_PIN) == LOW);
+
+  // ── Water Level Sensor (GPIO 35 ADC1) ──────────────────────────────
+  int rawWater = analogRead(WATER_PIN);
+  if (rawWater > WATER_BASE_RAW) {
+    float depthMm = (float)(rawWater - WATER_BASE_RAW) /
+                    (float)(WATER_SAT_RAW - WATER_BASE_RAW) * 45.0f;
+    g_waterMm = constrain(depthMm, 0.0f, 55.0f);
+    g_waterPct = constrain((int)((g_waterMm / 45.0f) * 100.0f), 0, 100);
+  } else {
+    g_waterMm = 0.0f;
+    g_waterPct = 0;
+  }
+
+  Serial.printf(
+      "[SENSORS] T:%dC H:%d%% Soil:%d%% Rain:%s Water:%.1fmm Sats:%d\n", g_temp,
+      g_hum, g_soil, g_rainOn ? "YES" : "NO", g_waterMm, g_sats);
+}
+
+// ── Continuous GPS Parser ─────────────────────────────────────────────
+void processGps() {
+  while (gpsSerial.available() > 0) {
+    gps.encode(gpsSerial.read());
+  }
+
+  if (gps.location.isValid() && gps.location.age() < 5000) {
+    g_lat = gps.location.lat();
+    g_lon = gps.location.lng();
+    g_alt = gps.altitude.meters();
+    g_sats = gps.satellites.value();
+    g_gpsValid = true;
+  } else {
+    g_gpsValid = false;
+    g_sats = gps.satellites.isValid() ? gps.satellites.value() : 0;
   }
 }
 
-void setArmTargets(float base, float shoulder, float elbow, float gripper) {
-  if (arm.emergency_stopped) {
-    Serial.println(F("[ARM] Command rejected: Emergency Stop active."));
-    return;
-  }
-  arm.target_base = constrain(base, ARM_BASE_MIN_DEG, ARM_BASE_MAX_DEG);
-  arm.target_shoulder = constrain(shoulder, ARM_SHOULDER_MIN_DEG, ARM_SHOULDER_MAX_DEG);
-  arm.target_elbow = constrain(elbow, ARM_ELBOW_MIN_DEG, ARM_ELBOW_MAX_DEG);
-  arm.target_gripper = constrain(gripper, ARM_GRIPPER_CLOSE_DEG, ARM_GRIPPER_OPEN_DEG);
-  arm.is_moving = true;
-}
+// ══════════════════════════════════════════════════════════════════════
+//   SEND TO SERVER + PARSE RESPONSE
+// ══════════════════════════════════════════════════════════════════════
+void sendToServer() {
+  lcdStatus("Sending...", "");
 
-void updateArmKinematics(unsigned long now) {
-  if (!arm.connected || !arm.is_moving || arm.emergency_stopped) return;
+  // Build compact JSON payload (compatible with ArduinoJson v6 and v7)
+#if ARDUINOJSON_VERSION_MAJOR >= 7
+  JsonDocument payload;
+#else
+  StaticJsonDocument<384> payload;
+#endif
+  payload["temperature"] = g_temp;
+  payload["humidity"] = g_hum;
+  payload["soil_moisture"] = g_soil;
+  payload["rain"] = g_rainOn ? 1 : 0;
+  payload["water_level"] = g_waterPct;
+  payload["water_level_mm"] = (int)round(g_waterMm);
+  payload["latitude"] = g_lat;
+  payload["longitude"] = g_lon;
+  payload["satellites"] = g_sats;
 
-  if (now - arm.last_step_time >= ARM_MOTION_STEP_INTERVAL) {
-    float dt = (now - arm.last_step_time) / 1000.0f;
-    arm.last_step_time = now;
+  String body;
+  serializeJson(payload, body);
 
-    float maxStep = arm.speed_deg_per_sec * dt;
-    bool allReached = true;
-
-    // Base joint
-    float diffB = arm.target_base - arm.base_deg;
-    if (abs(diffB) > 0.5f) {
-      arm.base_deg += constrain(diffB, -maxStep, maxStep);
-      pca9685.setPWM(SERVO_CH_BASE, 0, angleToPulse(arm.base_deg));
-      allReached = false;
-    }
-
-    // Shoulder joint
-    float diffS = arm.target_shoulder - arm.shoulder_deg;
-    if (abs(diffS) > 0.5f) {
-      arm.shoulder_deg += constrain(diffS, -maxStep, maxStep);
-      pca9685.setPWM(SERVO_CH_SHOULDER, 0, angleToPulse(arm.shoulder_deg));
-      allReached = false;
-    }
-
-    // Elbow joint
-    float diffE = arm.target_elbow - arm.elbow_deg;
-    if (abs(diffE) > 0.5f) {
-      arm.elbow_deg += constrain(diffE, -maxStep, maxStep);
-      pca9685.setPWM(SERVO_CH_ELBOW, 0, angleToPulse(arm.elbow_deg));
-      allReached = false;
-    }
-
-    // Gripper end-effector
-    float diffG = arm.target_gripper - arm.gripper_deg;
-    if (abs(diffG) > 0.5f) {
-      arm.gripper_deg += constrain(diffG, -maxStep, maxStep);
-      pca9685.setPWM(SERVO_CH_GRIPPER, 0, angleToPulse(arm.gripper_deg));
-      allReached = false;
-    }
-
-    if (allReached) {
-      arm.is_moving = false;
-    }
-  }
-}
-
-void triggerArmEmergencyStop() {
-  arm.emergency_stopped = true;
-  arm.is_moving = false;
-  arm.target_base = arm.base_deg;
-  arm.target_shoulder = arm.shoulder_deg;
-  arm.target_elbow = arm.elbow_deg;
-  arm.target_gripper = arm.gripper_deg;
-  Serial.println(F("[ARM EMERGENCY STOP] All servo actuation locked immediately!"));
-}
-
-void clearArmEmergencyStop() {
-  arm.emergency_stopped = false;
-  Serial.println(F("[ARM EMERGENCY STOP] Safety lock cleared. Arm ready."));
-}
-
-// =========================================================================================
-// SECTION 11: SENSOR ACQUISITION (DHT11, SOIL V1.2, RAIN, WATER LEVEL)
-// =========================================================================================
-
-void setupSensors() {
-  pinMode(PIN_DHT11_DATA, INPUT_PULLUP);
-  pinMode(PIN_RAIN_DO, INPUT);
-  analogReadResolution(12); // ESP32 12-bit ADC (0 to 4095)
-
-  Serial.println(F("[SENSORS] Ground sensor suite initialized:"));
-  Serial.println(F("  - DHT11 Digital on GPIO 4"));
-  Serial.println(F("  - Capacitive Soil Moisture v1.2 on ADC1_CH6 (GPIO 34)"));
-  Serial.println(F("  - Raindrop Module DO on GPIO 27, AO on GPIO 32"));
-  Serial.println(F("  - Water Level Sensor on ADC1_CH7 (GPIO 35)"));
-}
-
-// Cooperative simple DHT11 reader
-bool readDHT11NonBlocking(float &temp, float &hum) {
-  // Simple bitbang timing protocol for standard DHT11
-  uint8_t data[5] = {0, 0, 0, 0, 0};
-  
-  pinMode(PIN_DHT11_DATA, OUTPUT);
-  digitalWrite(PIN_DHT11_DATA, LOW);
-  delayMicroseconds(18000); // 18ms start signal
-  digitalWrite(PIN_DHT11_DATA, HIGH);
-  delayMicroseconds(30);
-  pinMode(PIN_DHT11_DATA, INPUT_PULLUP);
-
-  unsigned long timeout = micros();
-  while (digitalRead(PIN_DHT11_DATA) == HIGH) {
-    if (micros() - timeout > 100) return false;
-  }
-  timeout = micros();
-  while (digitalRead(PIN_DHT11_DATA) == LOW) {
-    if (micros() - timeout > 100) return false;
-  }
-  timeout = micros();
-  while (digitalRead(PIN_DHT11_DATA) == HIGH) {
-    if (micros() - timeout > 100) return false;
-  }
-
-  for (int i = 0; i < 40; i++) {
-    timeout = micros();
-    while (digitalRead(PIN_DHT11_DATA) == LOW) {
-      if (micros() - timeout > 100) return false;
-    }
-    unsigned long pulseStart = micros();
-    timeout = micros();
-    while (digitalRead(PIN_DHT11_DATA) == HIGH) {
-      if (micros() - timeout > 100) return false;
-    }
-    if ((micros() - pulseStart) > 40) {
-      data[i / 8] |= (1 << (7 - (i % 8)));
-    }
-  }
-
-  // Checksum
-  if (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) {
-    hum = (float)data[0];
-    temp = (float)data[2];
-    return true;
-  }
-  return false;
-}
-
-void sampleSensors(unsigned long now) {
-  // 1. Sample Analog Sensors (Soil Moisture & Water Level)
-  static unsigned long lastAnalogSample = 0;
-  if (now - lastAnalogSample >= ANALOG_SAMPLE_INTERVAL) {
-    lastAnalogSample = now;
-
-    // Soil Moisture (Capacitive v1.2: high ADC = dry, low ADC = wet)
-    sensors.soil_raw = analogRead(PIN_SOIL_ADC);
-    int clamped = constrain((int)sensors.soil_raw, (int)sensors.soil_wet_ref, (int)sensors.soil_dry_ref);
-    sensors.soil_pct = (float)map(clamped, sensors.soil_dry_ref, sensors.soil_wet_ref, 0, 100);
-
-    // Raindrop Sensor
-    sensors.rain_detected = (digitalRead(PIN_RAIN_DO) == LOW);
-    sensors.rain_intensity_raw = analogRead(PIN_RAIN_AO);
-    // Lower raw reading on AO indicates higher droplet density
-    sensors.rain_intensity_pct = (float)map(constrain((int)sensors.rain_intensity_raw, 500, 4095), 4095, 500, 0, 100);
-
-    // Water Level Sensor (standing water depth)
-    sensors.water_level_raw = analogRead(PIN_WATER_LEVEL_ADC);
-    sensors.water_level_pct = (float)map(constrain((int)sensors.water_level_raw, 100, 3000), 100, 3000, 0, 100);
-
-    if (sensors.water_level_pct >= 70.0f) {
-      sensors.water_state_str = "WATERLOGGED";
-    } else if (sensors.water_level_pct >= 35.0f) {
-      sensors.water_state_str = "PONDING";
-    } else {
-      sensors.water_state_str = "NORMAL";
-    }
-  }
-
-  // 2. Sample DHT11 Temperature & Humidity
-  if (now - sensors.last_dht_read >= SENSORS_SAMPLE_INTERVAL) {
-    sensors.last_dht_read = now;
-    float t = 0, h = 0;
-    if (readDHT11NonBlocking(t, h)) {
-      sensors.temperature_c = t;
-      sensors.humidity_pct = h;
-      sensors.dht_valid = true;
-    } else {
-      // Retain last known value, flag stale
-      sensors.dht_valid = false;
-    }
-  }
-}
-
-// =========================================================================================
-// SECTION 12: GPS NEO-6M-0-001 NMEA STREAM PARSER
-// =========================================================================================
-
-void setupGPS() {
-  GPSSerial.begin(GPS_BAUD_RATE, SERIAL_8N1, PIN_GPS_RX, PIN_GPS_TX);
-  Serial.println(F("[GPS] NEO-6M UART2 initialized on RX=16, TX=17 @ 9600 baud."));
-}
-
-void parseNMEASentence(const String &sentence) {
-  // Parse GPGGA sentence for Lat, Lon, Fix, Satellites, Altitude
-  if (sentence.startsWith("$GPGGA") || sentence.startsWith("$GNGGA")) {
-    int idx = 0;
-    String tokens[15];
-    int start = 0;
-    for (int i = 0; i < sentence.length() && idx < 15; i++) {
-      if (sentence.charAt(i) == ',' || sentence.charAt(i) == '*') {
-        tokens[idx++] = sentence.substring(start, i);
-        start = i + 1;
-      }
-    }
-    if (idx >= 10) {
-      int fixQuality = tokens[6].toInt();
-      if (fixQuality > 0) {
-        gps.fix_valid = true;
-        gps.satellites = tokens[7].toInt();
-        gps.hdop = tokens[8].toFloat();
-        gps.altitude_m = tokens[9].toFloat();
-
-        // Convert DDMM.MMMM to Decimal Degrees
-        float rawLat = tokens[2].toFloat();
-        float latDeg = (int)(rawLat / 100);
-        float latMin = rawLat - (latDeg * 100);
-        gps.latitude = latDeg + (latMin / 60.0f);
-        if (tokens[3] == "S") gps.latitude = -gps.latitude;
-
-        float rawLon = tokens[4].toFloat();
-        float lonDeg = (int)(rawLon / 100);
-        float lonMin = rawLon - (lonDeg * 100);
-        gps.longitude = lonDeg + (lonMin / 60.0f);
-        if (tokens[5] == "W") gps.longitude = -gps.longitude;
-
-        gps.last_fix_time = millis();
-      } else {
-        gps.fix_valid = false;
-      }
-    }
-  }
-}
-
-void updateGPSParser() {
-  static String nmeaBuf = "";
-  while (GPSSerial.available()) {
-    char c = GPSSerial.read();
-    if (c == '\n' || c == '\r') {
-      if (nmeaBuf.length() > 6) {
-        parseNMEASentence(nmeaBuf);
-      }
-      nmeaBuf = "";
-    } else {
-      if (nmeaBuf.length() < 120) {
-        nmeaBuf += c;
-      }
-    }
-  }
-}
-
-// =========================================================================================
-// SECTION 13: BACKEND TELEMETRY SYNCHRONIZATION
-// =========================================================================================
-
-void syncTelemetryToBackend(unsigned long now) {
-  if (WiFi.status() != WL_CONNECTED) return;
-  if (now - lastTelemetrySyncTime < TELEMETRY_SYNC_INTERVAL) return;
-  lastTelemetrySyncTime = now;
-
-  WiFiClient client;
   HTTPClient http;
+  int code = -1;
+  bool success = false;
 
-  if (http.begin(client, BACKEND_OBS_URL)) {
+#if TARGET_MODE == 1 || TARGET_MODE == 2
+  // Attempt local Mac server first
+  Serial.println("[HTTP] Attempting LOCAL MAC → " + g_localDevUrl);
+  http.begin(plainClient, g_localDevUrl);
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(3000);
+  code = http.POST(body);
+  if (code == 200 || code == 201) {
+    String resp = http.getString();
+    Serial.println("[HTTP] Local Response: " + resp);
+    parseResponse(resp);
+    g_serverOK = true;
+    success = true;
+  } else {
+    Serial.printf("[HTTP] Local unavailable (code %d)\n", code);
+#if TARGET_MODE == 2
+    discoverLocalBackend(); // Probe hotspot subnet in case Mac IP changed
+#endif
+  }
+  http.end();
+#endif
+
+#if TARGET_MODE == 0 || TARGET_MODE == 2
+  // Public Production Cloud (Azure / DPDNS) - Primary or Failover
+  if (!success) {
+#if TARGET_MODE == 2
+    Serial.println("[HTTP] Failover: Routing telemetry to PUBLIC CLOUD (dpdns.org)...");
+#else
+    Serial.println("[HTTP] POST (PUBLIC CLOUD) → " + String(PUBLIC_CLOUD_URL));
+#endif
+    secureClient.setCACert(DIGICERT_ROOT_CA);
+    http.begin(secureClient, PUBLIC_CLOUD_URL);
     http.addHeader("Content-Type", "application/json");
-
-    // Build compact, canonical JSON observation payload matching backend schema
-    String json = "{";
-    json += "\"observation_id\":\"obs-" + String(millis()) + "\",";
-    json += "\"device_id\":\"" + String(DEVICE_ID) + "\",";
-    
-    // Sensor Telemetry
-    json += "\"sensor_telemetry\":{";
-    json += "\"temperature_c\":" + String(sensors.temperature_c, 1) + ",";
-    json += "\"humidity_pct\":" + String(sensors.humidity_pct, 1) + ",";
-    json += "\"dht_status\":\"" + String(sensors.dht_valid ? "VALID" : "STALE") + "\",";
-    json += "\"soil_moisture_raw\":" + String(sensors.soil_raw) + ",";
-    json += "\"soil_moisture_pct\":" + String(sensors.soil_pct, 1) + ",";
-    json += "\"soil_calibration_status\":\"CALIBRATED\",";
-    json += "\"rain_detected\":" + String(sensors.rain_detected ? 1 : 0) + ",";
-    json += "\"rain_intensity_raw\":" + String(sensors.rain_intensity_raw) + ",";
-    json += "\"rain_intensity_pct\":" + String(sensors.rain_intensity_pct, 1) + ",";
-    json += "\"water_level_raw\":" + String(sensors.water_level_raw) + ",";
-    json += "\"water_level_pct\":" + String(sensors.water_level_pct, 1) + ",";
-    json += "\"water_state\":\"" + String(sensors.water_state_str) + "\"";
-    json += "},";
-
-    // GPS Telemetry
-    json += "\"gps\":{";
-    json += "\"latitude\":" + String(gps.latitude, 6) + ",";
-    json += "\"longitude\":" + String(gps.longitude, 6) + ",";
-    json += "\"altitude_m\":" + String(gps.altitude_m, 1) + ",";
-    json += "\"satellites_tracked\":" + String(gps.satellites) + ",";
-    json += "\"hdop\":" + String(gps.hdop, 1) + ",";
-    json += "\"fix_state\":\"" + String(gps.fix_valid ? "3D_FIX" : "NO_FIX") + "\",";
-    json += "\"is_valid\":" + String(gps.fix_valid ? "true" : "false");
-    json += "},";
-
-    // Rover State
-    const char* dirNames[] = {"STOPPED", "FORWARD", "BACKWARD", "LEFT", "RIGHT"};
-    json += "\"rover_state\":{";
-    json += "\"movement_state\":\"" + String(dirNames[rover.direction]) + "\",";
-    json += "\"speed_pwm\":" + String(rover.speed_pwm) + ",";
-    json += "\"headlight_on\":" + String(rover.headlight ? "true" : "false") + ",";
-    json += "\"watchdog_active\":" + String(rover.watchdog_active ? "true" : "false") + ",";
-    json += "\"uptime_seconds\":" + String(millis() / 1000) + ",";
-    json += "\"wifi_rssi\":" + String(WiFi.RSSI());
-    json += "},";
-
-    // Arm State
-    json += "\"arm_state\":{";
-    json += "\"connected\":" + String(arm.connected ? "true" : "false") + ",";
-    json += "\"is_moving\":" + String(arm.is_moving ? "true" : "false") + ",";
-    json += "\"emergency_stopped\":" + String(arm.emergency_stopped ? "true" : "false") + ",";
-    json += "\"base_deg\":" + String(arm.base_deg, 1) + ",";
-    json += "\"shoulder_deg\":" + String(arm.shoulder_deg, 1) + ",";
-    json += "\"elbow_deg\":" + String(arm.elbow_deg, 1) + ",";
-    json += "\"gripper_deg\":" + String(arm.gripper_deg, 1) + ",";
-    json += "\"gripper_state\":\"" + String(arm.gripper_deg >= 150.0f ? "OPEN" : "CLOSED") + "\"";
-    json += "}";
-
-    json += "}";
-
-    int code = http.POST(json);
-    if (code == 200) {
-      String response = http.getString();
-      // Update local Crop Intelligence display fields if returned by server
-      if (response.indexOf("recommended_crop") != -1) {
-        int cIdx = response.indexOf("\"recommended_crop\":\"");
-        if (cIdx != -1) {
-          int endC = response.indexOf("\"", cIdx + 20);
-          String cName = response.substring(cIdx + 20, endC);
-          cName.toCharArray(cropIntel.recommended_crop, sizeof(cropIntel.recommended_crop));
-        }
+    http.setTimeout(8000);
+    code = http.POST(body);
+    if (code == 200 || code == 201) {
+      String resp = http.getString();
+      Serial.println("[HTTP] Cloud Response: " + resp);
+      parseResponse(resp);
+      g_serverOK = true;
+      success = true;
+    } else {
+      // Fallback with setInsecure in case of clock or intermediate verification difference
+      secureClient.setInsecure();
+      http.begin(secureClient, PUBLIC_CLOUD_URL);
+      http.addHeader("Content-Type", "application/json");
+      http.setTimeout(8000);
+      code = http.POST(body);
+      if (code == 200 || code == 201) {
+        String resp = http.getString();
+        Serial.println("[HTTP] Cloud (Insecure fallback) Response: " + resp);
+        parseResponse(resp);
+        g_serverOK = true;
+        success = true;
       }
     }
     http.end();
   }
+#endif
+
+  if (!success) {
+    Serial.printf("[HTTP] All endpoints failed. Last code: %d\n", code);
+    g_serverOK = false;
+    lcdStatus("Server Error", "HTTP " + String(code));
+    delay(1800);
+  }
 }
 
-// =========================================================================================
-// SECTION 14: LOCAL HTTP REST SERVER & TELEOPERATION HANDLERS
-// =========================================================================================
-
-void handleRoot() {
-  String html = F("<!DOCTYPE html><html><head><title>AgriRover Controller</title>"
-                  "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-                  "<style>body{font-family:sans-serif;background:#0d1117;color:#c9d1d9;text-align:center;padding:20px}"
-                  "button{background:#238636;color:white;border:none;padding:12px 24px;margin:8px;border-radius:6px;font-size:16px}"
-                  ".danger{background:#da3633}.card{background:#161b22;padding:16px;border-radius:8px;margin:12px auto;max-width:500px}"
-                  "</style></head><body>"
-                  "<h2>AgriRover Embedded Master</h2>"
-                  "<div class='card'><h3>Chassis Teleoperation</h3>"
-                  "<button onclick='fetch(\"/forward\")'>▲ Forward</button><br>"
-                  "<button onclick='fetch(\"/left\")'>◄ Left</button>"
-                  "<button onclick='fetch(\"/stop\")' class='danger'>■ STOP</button>"
-                  "<button onclick='fetch(\"/right\")'>► Right</button><br>"
-                  "<button onclick='fetch(\"/backward\")'>▼ Backward</button><br><br>"
-                  "<button onclick='fetch(\"/led/toggle\")'>💡 Headlight Toggle</button>"
-                  "</div><div class='card'><h3>4-DOF Robotic Arm</h3>"
-                  "<button onclick='fetch(\"/arm/home\")'>Home (90°)</button>"
-                  "<button onclick='fetch(\"/arm/open\")'>Open Claw</button>"
-                  "<button onclick='fetch(\"/arm/close\")'>Close Claw</button>"
-                  "<button onclick='fetch(\"/arm/stop\")' class='danger'>Emergency Stop</button>"
-                  "</div><div class='card'><h3>Field Telemetry</h3>"
-                  "<p><a href='/status' style='color:#58a6ff'>JSON Live Telemetry Snapshot</a></p>"
-                  "</div></body></html>");
-  server.send(200, "text/html", html);
+// ══════════════════════════════════════════════════════════════════════
+//   LOCAL MAC SUBNET AUTO-DISCOVERY (For Mobile Hotspot 172.20.10.x)
+// ══════════════════════════════════════════════════════════════════════
+void discoverLocalBackend() {
+  IPAddress localIp = WiFi.localIP();
+  if (localIp[0] == 172 && localIp[1] == 20 && localIp[2] == 10) {
+    Serial.println(F("[DISCOVERY] Probing hotspot subnet for Mac backend on port 8000..."));
+    WiFiClient probe;
+    probe.setTimeout(100);
+    IPAddress candidate = localIp;
+    for (int host = 2; host <= 14; host++) {
+      candidate[3] = host;
+      if (candidate == localIp) continue;
+      if (probe.connect(candidate, 8000)) {
+        probe.stop();
+        g_localDevUrl = "http://" + candidate.toString() + ":8000/predict/compact";
+        Serial.printf("[DISCOVERY] Found active Mac server at %s:8000!\n", candidate.toString().c_str());
+        return;
+      }
+    }
+  }
 }
 
-void handleForward()  { executeMotorDrive(DIR_FORWARD, rover.speed_pwm); server.send(200, "text/plain", "OK"); }
-void handleBackward() { executeMotorDrive(DIR_BACKWARD, rover.speed_pwm); server.send(200, "text/plain", "OK"); }
-void handleLeft()     { executeMotorDrive(DIR_LEFT, rover.speed_pwm); server.send(200, "text/plain", "OK"); }
-void handleRight()    { executeMotorDrive(DIR_RIGHT, rover.speed_pwm); server.send(200, "text/plain", "OK"); }
-void handleStop()     { executeMotorDrive(DIR_STOPPED, 0); server.send(200, "text/plain", "OK"); }
+// ══════════════════════════════════════════════════════════════════════
+//   PARSE JSON RESPONSE FROM /predict/compact
+// ══════════════════════════════════════════════════════════════════════
+void parseResponse(String &body) {
+#if ARDUINOJSON_VERSION_MAJOR >= 7
+  JsonDocument doc;
+#else
+  StaticJsonDocument<1024> doc;
+#endif
+  DeserializationError error = deserializeJson(doc, body);
+  if (error) {
+    lcdStatus("Parse Error", "Bad JSON");
+    delay(1500);
+    return;
+  }
 
-void handleHeadlightOn()  { setHeadlight(true); server.send(200, "text/plain", "ON"); }
-void handleHeadlightOff() { setHeadlight(false); server.send(200, "text/plain", "OFF"); }
-void handleHeadlightToggle() { setHeadlight(!rover.headlight); server.send(200, "text/plain", rover.headlight ? "ON" : "OFF"); }
+  if (doc.containsKey("ok") && doc["ok"] == 0) {
+    lcdStatus("Pred Error", doc["err"] | "Unknown error");
+    delay(1500);
+    return;
+  }
 
-void handleArmHome()  { setArmTargets(ARM_HOME_BASE, ARM_HOME_SHOULDER, ARM_HOME_ELBOW, ARM_HOME_GRIPPER); server.send(200, "text/plain", "OK"); }
-void handleArmOpen()  { setArmTargets(arm.base_deg, arm.shoulder_deg, arm.elbow_deg, ARM_GRIPPER_OPEN_DEG); server.send(200, "text/plain", "OK"); }
-void handleArmClose() { setArmTargets(arm.base_deg, arm.shoulder_deg, arm.elbow_deg, ARM_GRIPPER_CLOSE_DEG); server.send(200, "text/plain", "OK"); }
-void handleArmStop()  { triggerArmEmergencyStop(); server.send(200, "text/plain", "EMERGENCY_STOP"); }
-void handleArmClear() { clearArmEmergencyStop(); server.send(200, "text/plain", "CLEARED"); }
+  g_crop = doc["crop"].as<String>();
+  g_conf = doc["conf"].as<float>();
+  g_crop2 = doc["t2"].as<String>();
+  g_conf2 = doc["c2"].as<float>();
+  g_crop3 = doc["t3"].as<String>();
+  g_conf3 = doc["c3"].as<float>();
 
-void handleStatus() {
-  String json = "{";
-  json += "\"device_id\":\"" + String(DEVICE_ID) + "\",";
-  json += "\"firmware\":\"" + String(FIRMWARE_VERSION) + "\",";
-  json += "\"uptime_s\":" + String(millis() / 1000) + ",";
-  json += "\"wifi_rssi\":" + String(WiFi.RSSI()) + ",";
-  json += "\"temp_c\":" + String(sensors.temperature_c, 1) + ",";
-  json += "\"humidity_pct\":" + String(sensors.humidity_pct, 1) + ",";
-  json += "\"soil_moisture_pct\":" + String(sensors.soil_pct, 1) + ",";
-  json += "\"rain_detected\":" + String(sensors.rain_detected ? "true" : "false") + ",";
-  json += "\"water_level_pct\":" + String(sensors.water_level_pct, 1) + ",";
-  json += "\"gps_valid\":" + String(gps.fix_valid ? "true" : "false") + ",";
-  json += "\"lat\":" + String(gps.latitude, 6) + ",";
-  json += "\"lon\":" + String(gps.longitude, 6) + ",";
-  json += "\"arm_base\":" + String(arm.base_deg, 1) + ",";
-  json += "\"arm_shoulder\":" + String(arm.shoulder_deg, 1) + ",";
-  json += "\"arm_elbow\":" + String(arm.elbow_deg, 1) + ",";
-  json += "\"arm_gripper\":" + String(arm.gripper_deg, 1);
-  json += "}";
-  server.send(200, "application/json", json);
+  g_alerts = doc["ac"].as<int>();
+  g_alertCount = 0;
+
+  JsonArray arr = doc["alerts"].as<JsonArray>();
+  for (JsonObject a : arr) {
+    if (g_alertCount >= 4)
+      break;
+    g_alertName[g_alertCount] = a["n"].as<String>();
+    g_alertSev[g_alertCount] = a["s"].as<String>();
+    g_alertCount++;
+  }
+
+  // Reset alert pagination on fresh prediction
+  g_alertPage = 0;
+
+  Serial.printf("[AI] Recommended: %s (%.1f%%) | Alerts: %d\n", g_crop.c_str(),
+                g_conf, g_alerts);
 }
 
-void setupWebServer() {
-  server.on("/", HTTP_GET, handleRoot);
-  server.on("/forward", HTTP_GET, handleForward);
-  server.on("/backward", HTTP_GET, handleBackward);
-  server.on("/left", HTTP_GET, handleLeft);
-  server.on("/right", HTTP_GET, handleRight);
-  server.on("/stop", HTTP_GET, handleStop);
-
-  server.on("/led/on", HTTP_GET, handleHeadlightOn);
-  server.on("/led/off", HTTP_GET, handleHeadlightOff);
-  server.on("/led/toggle", HTTP_GET, handleHeadlightToggle);
-
-  server.on("/arm/home", HTTP_GET, handleArmHome);
-  server.on("/arm/reset", HTTP_GET, handleArmHome);
-  server.on("/arm/open", HTTP_GET, handleArmOpen);
-  server.on("/arm/close", HTTP_GET, handleArmClose);
-  server.on("/arm/stop", HTTP_GET, handleArmStop);
-  server.on("/arm/clear", HTTP_GET, handleArmClear);
-
-  server.on("/status", HTTP_GET, handleStatus);
-  server.begin();
-  Serial.println(F("[HTTP] AgriRover REST WebServer started on port 80."));
+// ══════════════════════════════════════════════════════════════════════
+//   LCD SCREEN CAROUSEL ROTATION
+// ══════════════════════════════════════════════════════════════════════
+void advanceScreen() {
+  /*
+   * Carousel Progression:
+   * Screen 0: Sensor readings (Temperature, Humidity, Soil, Rain)
+   * Screen 1: Recommended crop & confidence
+   * Screen 2: Disease risk alerts (cycles through each if alerts > 0)
+   * Screen 3: Water level & drainage depth
+   * Screen 4: GPS NEO-6M & Cloud API status
+   */
+  if (g_screen == 0) {
+    g_screen = (g_crop.length() > 0) ? 1 : 3;
+  } else if (g_screen == 1) {
+    if (g_alerts > 0) {
+      g_screen = 2;
+      g_alertPage = 0;
+    } else {
+      g_screen = 3;
+    }
+  } else if (g_screen == 2) {
+    g_alertPage++;
+    if (g_alertPage >= g_alertCount) {
+      g_screen = 3;
+      g_alertPage = 0;
+    }
+  } else if (g_screen == 3) {
+    g_screen = 4;
+  } else if (g_screen == 4) {
+    g_screen = 0;
+  } else {
+    g_screen = 0;
+  }
 }
 
-// =========================================================================================
-// SECTION 15: WIRELESS NETWORKING INITIALIZATION
-// =========================================================================================
+void drawScreen() {
+  lcd.clear();
+  switch (g_screen) {
+  case 0:
+    screenSensors();
+    break;
+  case 1:
+    screenCrop();
+    break;
+  case 2:
+    screenAlerts();
+    break;
+  case 3:
+    screenWater();
+    break;
+  case 4:
+    screenGps();
+    break;
+  default:
+    screenSensors();
+    break;
+  }
+}
 
-void setupWiFi() {
-  WiFi.mode(WIFI_AP_STA);
-  Serial.printf("[WIFI] Connecting to Station SSID '%s'...\n", WIFI_SSID_PRIMARY);
-  WiFi.begin(WIFI_SSID_PRIMARY, WIFI_PASS_PRIMARY);
+// ══════════════════════════════════════════════════════════════════════
+//   LCD SCREEN 0 — SENSOR READINGS
+// ══════════════════════════════════════════════════════════════════════
+void screenSensors() {
+  /*
+   * Row 0: T:28^C H:72%
+   * Row 1: Soil:45% R:[drop]WET  (or R:DRY)
+   */
+  lcd.setCursor(0, 0);
+  lcd.print("T:");
+  lcd.print(g_temp);
+  lcd.write((uint8_t)CHAR_DEG);
+  lcd.print("C H:");
+  lcd.print(g_hum);
+  lcd.print("%");
 
-  unsigned long start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - start < 8000) {
-    delay(200);
-    Serial.print('.');
+  lcd.setCursor(0, 1);
+  lcd.print("Soil:");
+  lcd.print(g_soil);
+  lcd.print("% R:");
+  if (g_rainOn) {
+    lcd.write((uint8_t)CHAR_DROP);
+    lcd.print("WET");
+  } else {
+    lcd.print("DRY");
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//   LCD SCREEN 1 — CROP RECOMMENDATION
+// ══════════════════════════════════════════════════════════════════════
+void screenCrop() {
+  if (g_crop.length() == 0) {
+    lcd.setCursor(0, 0);
+    lcd.print("No prediction");
+    lcd.setCursor(0, 1);
+    lcd.print("yet...");
+    return;
+  }
+
+  /*
+   * Row 0: [tick] PAPAYA
+   * Row 1: Conf:62.1% [alert]1ALT  (or [tick]OK)
+   */
+  String cropUp = g_crop;
+  cropUp.toUpperCase();
+
+  lcd.setCursor(0, 0);
+  lcd.write((uint8_t)CHAR_TICK);
+  lcd.print(" ");
+  lcd.print(cropUp.substring(0, 14));
+
+  lcd.setCursor(0, 1);
+  lcd.print("Conf:");
+  lcd.print(g_conf, 1);
+  lcd.print("% ");
+
+  if (g_alerts > 0) {
+    lcd.write((uint8_t)CHAR_ALERT);
+    lcd.print(g_alerts);
+    lcd.print("ALT");
+  } else {
+    lcd.write((uint8_t)CHAR_TICK);
+    lcd.print("OK");
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//   LCD SCREEN 2 — DISEASE ALERTS
+// ══════════════════════════════════════════════════════════════════════
+void screenAlerts() {
+  if (g_alertCount == 0) {
+    lcd.setCursor(3, 0);
+    lcd.write((uint8_t)CHAR_TICK);
+    lcd.print(" ALL CLEAR");
+    lcd.setCursor(0, 1);
+    lcd.print("No disease risk");
+    return;
+  }
+
+  int i = g_alertPage;
+  if (i >= g_alertCount)
+    i = 0;
+
+  String name = g_alertName[i];
+  String sev = g_alertSev[i];
+
+  /*
+   * Row 0: [alert]Anthracnose
+   * Row 1: HIGH        1/2
+   */
+  lcd.setCursor(0, 0);
+  lcd.write((uint8_t)CHAR_ALERT);
+  lcd.print(name.substring(0, 15));
+
+  lcd.setCursor(0, 1);
+  if (sev == "CRITICAL") {
+    lcd.print("CRITICAL");
+  } else if (sev == "HIGH") {
+    lcd.print("HIGH    ");
+  } else if (sev == "MODERATE") {
+    lcd.print("MODERATE");
+  } else {
+    lcd.print("WATCH   ");
+  }
+
+  if (g_alertCount > 1) {
+    lcd.setCursor(13, 1);
+    lcd.print(i + 1);
+    lcd.print("/");
+    lcd.print(g_alertCount);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//   LCD SCREEN 3 — WATER LEVEL & DRAINAGE
+// ══════════════════════════════════════════════════════════════════════
+void screenWater() {
+  /*
+   * Row 0: Drainage / Water
+   * Row 1: Lvl:12% (5mm)
+   */
+  lcd.setCursor(0, 0);
+  lcd.print("Drainage / Water");
+
+  lcd.setCursor(0, 1);
+  lcd.print("Lvl:");
+  lcd.print(g_waterPct);
+  lcd.print("% (");
+  lcd.print((int)round(g_waterMm));
+  lcd.print("mm)");
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//   LCD SCREEN 4 — GPS LOCATION & STATUS
+// ══════════════════════════════════════════════════════════════════════
+void screenGps() {
+  /*
+   * Row 0: GPS: 3D FIX 8S
+   * Row 1: WiFi:OK API:OK
+   */
+  lcd.setCursor(0, 0);
+  if (g_gpsValid) {
+    lcd.print("GPS: 3D FIX ");
+    lcd.print(g_sats);
+    lcd.print("S");
+  } else {
+    lcd.print("GPS: SRCH ");
+    lcd.print(g_sats);
+    lcd.print(" SAT");
+  }
+
+  lcd.setCursor(0, 1);
+  bool wifiOk = (WiFi.status() == WL_CONNECTED);
+  lcd.print("WiFi:");
+  lcd.print(wifiOk ? "OK" : "NO");
+  lcd.print(" API:");
+  lcd.print(g_serverOK ? "OK" : "OFF");
+}
+
+// ══════════════════════════════════════════════════════════════════════
+//   UTILITY FUNCTIONS
+// ══════════════════════════════════════════════════════════════════════
+void lcdStatus(String line0, String line1) {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print(line0.substring(0, 16));
+  lcd.setCursor(0, 1);
+  lcd.print(line1.substring(0, 16));
+}
+
+// ── Boot Screen Animation ─────────────────────────────────────────────
+void showBoot() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("SMART PLANT AI");
+  lcd.setCursor(0, 1);
+  lcd.print("Initializing...");
+  delay(1500);
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Connecting WiFi");
+  lcd.setCursor(0, 1);
+  lcd.print(WIFI_SSID);
+}
+
+// ── WiFi Connection Animation ─────────────────────────────────────────
+void connectWiFi() {
+  Serial.print("[WIFI] Connecting to: ");
+  Serial.println(WIFI_SSID);
+
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+
+  int tries = 0;
+  while (WiFi.status() != WL_CONNECTED && tries < 40) {
+    delay(500);
+    Serial.print(".");
+    tries++;
   }
 
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.printf("\n[WIFI] Connected! Assigned STA IP: %s\n", WiFi.localIP().toString().c_str());
+    Serial.println();
+    Serial.print("[WIFI] Connected! IP: ");
+    Serial.println(WiFi.localIP());
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("WiFi Connected!");
+    lcd.setCursor(0, 1);
+    lcd.print(WiFi.localIP());
+    delay(2500);
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Server:");
+    lcd.setCursor(0, 1);
+    lcd.print(TARGET_LABEL);
+    delay(2000);
   } else {
-    Serial.println(F("\n[WIFI] Station connection timed out. Starting Fallback SoftAP."));
-    WiFi.softAPConfig(AP_LOCAL_IP, AP_GATEWAY, AP_SUBNET);
-    WiFi.softAP(AP_SSID, AP_PASS);
-    Serial.printf("[WIFI] Fallback AP Started: '%s' (IP: %s)\n", AP_SSID, AP_LOCAL_IP.toString().c_str());
+    Serial.println(F("\n[WIFI] Connect FAILED!"));
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("!WiFi FAILED!");
+    lcd.setCursor(0, 1);
+    lcd.print("Check SSID/Pass");
+    delay(4000);
   }
-
-  if (MDNS.begin("agrirover")) {
-    Serial.println(F("[mDNS] Responding at http://agrirover.local"));
-    MDNS.addService("http", "tcp", 80);
-  }
-}
-
-// =========================================================================================
-// SECTION 16: ARDUINO MAIN ENTRY POINTS (SETUP & COOPERATIVE LOOP)
-// =========================================================================================
-
-void setup() {
-  Serial.begin(115200);
-  delay(500);
-
-  Serial.println(F("\n══════════════════════════════════════════════════════════════"));
-  Serial.println(F("    AgriRover Master Controller Booting (Team Innovex)        "));
-  Serial.println(F("══════════════════════════════════════════════════════════════"));
-
-  setupMotors();
-  setupRoboticArm();
-  setupSensors();
-  setupGPS();
-  tftManager.init();
-  setupWiFi();
-  setupWebServer();
-
-  Serial.println(F("[BOOT] All hardware subsystems ready. Entering cooperative loop."));
-}
-
-void loop() {
-  unsigned long now = millis();
-
-  // 1. Core safety watchdog: Halt motors if commands expire > 600ms
-  checkMotorSafetyWatchdog(now);
-
-  // 2. Continuous non-blocking GPS NMEA stream parsing
-  updateGPSParser();
-
-  // 3. Smooth robotic arm joint kinematics
-  updateArmKinematics(now);
-
-  // 4. Ground sensor sampling (DHT11, Soil Moisture, Rain, Water Level)
-  sampleSensors(now);
-
-  // 5. 2.4-inch TFT LCD Multi-screen graphical display updates
-  tftManager.updateDisplay(now);
-
-  // 6. Handle inbound browser teleoperation requests
-  server.handleClient();
-
-  // 7. Synchronize telemetry with SmartCropVision backend
-  syncTelemetryToBackend(now);
 }

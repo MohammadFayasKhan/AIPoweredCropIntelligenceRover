@@ -152,10 +152,13 @@ class SensorReading(BaseModel):
     rain: int = Field(0, ge=0, le=1, description="Binary rain state (1=raining, 0=dry)")
     rainfall_mm: Optional[float] = Field(None, ge=0.0, le=500.0)
     rainfall: Optional[float] = None
-    N: Optional[float] = None
-    P: Optional[float] = None
-    K: Optional[float] = None
-    ph: Optional[float] = None
+    water_level: Optional[float] = Field(None, ge=0.0, le=100.0)
+    water_level_mm: Optional[float] = Field(None, ge=0.0, le=200.0)
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    altitude_m: Optional[float] = None
+    satellites: Optional[int] = None
+    gps_valid: Optional[bool] = None
 
 
 # ── Root UI & Static Endpoints ────────────────────────────────────────────────
@@ -332,34 +335,129 @@ async def predict_compact(reading: SensorReading):
         )
         rec = crop_service.recommend(rec_req)
 
-        top3 = rec.top3_candidates
+        top3 = [
+            {
+                "crop": c.crop,
+                "confidence": c.confidence_pct,
+                "confidence_pct": c.confidence_pct,
+                "rank": c.rank,
+                "suitability_level": c.suitability_level,
+            }
+            for c in rec.top3_candidates
+        ]
         alerts = rec.disease_alerts
 
         iot_entry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "source": "iot",
+            "source": "esp32_gateway",
             "temperature": reading.temperature,
             "humidity": reading.humidity,
             "soil_moisture": reading.soil_moisture,
             "rain": reading.rain,
+            "water_level": reading.water_level if reading.water_level is not None else 0.0,
+            "water_level_mm": reading.water_level_mm if reading.water_level_mm is not None else 0.0,
+            "latitude": reading.latitude if reading.latitude is not None else 0.0,
+            "longitude": reading.longitude if reading.longitude is not None else 0.0,
+            "satellites": reading.satellites if reading.satellites is not None else 0,
             "recommended_crop": rec.recommended_crop,
             "confidence": rec.confidence_pct,
+            "confidence_pct": rec.confidence_pct,
             "alert_count": len(alerts),
+            "top3": top3,
+            "disease_alerts": [
+                {
+                    "name": a.name,
+                    "severity": a.severity,
+                    "trigger": a.trigger,
+                    "symptoms": a.symptoms,
+                    "technique": a.technique,
+                    "pesticide": a.pesticide,
+                }
+                for a in alerts
+            ],
         }
         history.append(iot_entry)
 
         global latest_iot
         latest_iot = iot_entry
 
+        # Broadcast live telemetry over WebSocket to instantly refresh dashboard
+        try:
+            import asyncio
+            from backend.app.api.v1.endpoints.iot import ws_manager
+            asyncio.create_task(ws_manager.broadcast({
+                "event": "TELEMETRY_UPDATE",
+                "data": {
+                    "timestamp": iot_entry["timestamp"],
+                    "device_id": "ESP32-WROOM-32",
+                    "sensor_telemetry": {
+                        "temperature_c": reading.temperature,
+                        "humidity_pct": reading.humidity,
+                        "soil_moisture_pct": reading.soil_moisture,
+                        "rain_detected": reading.rain,
+                        "water_level_pct": reading.water_level if reading.water_level is not None else 0.0,
+                        "water_level_mm": reading.water_level_mm if reading.water_level_mm is not None else 0.0,
+                        "water_state": "WATERLOGGED" if (reading.water_level_mm or 0) >= 25.0 else "NORMAL"
+                    },
+                    "gps": {
+                        "is_valid": reading.gps_valid or (reading.satellites or 0) >= 3,
+                        "latitude": reading.latitude if reading.latitude is not None else 0.0,
+                        "longitude": reading.longitude if reading.longitude is not None else 0.0,
+                        "altitude_m": reading.altitude_m if reading.altitude_m is not None else 0.0,
+                        "satellites_tracked": reading.satellites if reading.satellites is not None else 0,
+                        "fix_state": "3D_FIX" if (reading.gps_valid or (reading.satellites or 0) >= 3) else "SEARCHING"
+                    },
+                    "crop_intelligence": {
+                        "recommended_crop": rec.recommended_crop,
+                        "confidence_pct": rec.confidence_pct,
+                        "confidence": rec.confidence_pct,
+                        "top3_candidates": [
+                            {
+                                "crop": c["crop"],
+                                "confidence": c["confidence"],
+                                "confidence_pct": c["confidence_pct"],
+                                "rank": c.get("rank", 1),
+                                "suitability_level": c.get("suitability_level", "Viable")
+                            }
+                            for c in top3
+                        ],
+                        "disease_alerts": [
+                            {"name": d.name, "severity": d.severity, "trigger": d.trigger, "symptoms": d.symptoms}
+                            for d in alerts
+                        ],
+                        "features_used": {
+                            "temperature": reading.temperature,
+                            "humidity": reading.humidity,
+                            "soil_moisture": reading.soil_moisture,
+                            "rain": reading.rain
+                        }
+                    },
+                    "environmental_risk": {
+                        "heat_risk_level": "NORMAL" if reading.temperature < 32.0 else "HIGH",
+                        "heat_stress_index": round(reading.temperature, 1),
+                        "water_stress_level": "MILD_STRESS" if reading.soil_moisture < 35.0 else "OPTIMAL",
+                        "flood_risk_level": "WATERLOGGED" if (reading.water_level_mm or 0) >= 25.0 else "NORMAL",
+                        "overall_risk_score": 0.25
+                    },
+                    "irrigation_advisory": {
+                        "recommendation": "MONITOR" if reading.soil_moisture >= 30.0 else "IRRIGATE_LIGHT",
+                        "urgency": "LOW" if reading.soil_moisture >= 30.0 else "MEDIUM",
+                        "rationale": "Soil hydration optimal" if reading.soil_moisture >= 30.0 else "Soil depletion detected"
+                    }
+                }
+            }))
+        except Exception:
+            pass
+
         return {
             "ok": 1,
             "crop": rec.recommended_crop[:14],
             "conf": rec.confidence_pct,
             "ac": len(alerts),
-            "t2": top3[1].crop[:12] if len(top3) > 1 else "",
-            "c2": top3[1].confidence_pct if len(top3) > 1 else 0,
-            "t3": top3[2].crop[:12] if len(top3) > 2 else "",
-            "c3": top3[2].confidence_pct if len(top3) > 2 else 0,
+            "t2": (top3[1]["crop"][:12] if isinstance(top3[1], dict) else top3[1].crop[:12]) if len(top3) > 1 else "",
+            "c2": (top3[1]["confidence_pct"] if isinstance(top3[1], dict) else top3[1].confidence_pct) if len(top3) > 1 else 0,
+            "t3": (top3[2]["crop"][:12] if isinstance(top3[2], dict) else top3[2].crop[:12]) if len(top3) > 2 else "",
+            "c3": (top3[2]["confidence_pct"] if isinstance(top3[2], dict) else top3[2].confidence_pct) if len(top3) > 2 else 0,
             "alerts": [
                 {"n": d.name[:18], "s": d.severity}
                 for d in alerts[:4]
@@ -374,25 +472,69 @@ async def predict_compact(reading: SensorReading):
 @app.get("/latest", summary="Most Recent Genuine IoT Sensor Packet")
 async def get_latest():
     """
-    Returns the most recent physical sensor packet transmitted by an ESP8266.
-    Returns HTTP 404 if no physical hardware packet has been recorded.
+    Returns the most recent physical sensor packet transmitted by the ESP32 / IoT gateway.
+    Returns status: no_data if no physical hardware packet has been recorded.
     """
-    if latest_iot is None:
-        return {
-            "status": "no_data",
-            "temperature": None,
-            "humidity": None,
-            "soil_moisture": None,
-            "rain": None,
-            "message": "No IoT reading received yet. Waiting for ESP8266 transmission..."
-        }
-    return latest_iot
+    if latest_iot is not None:
+        return latest_iot
+
+    # Check IoT gateway unified store
+    try:
+        from backend.app.api.v1.endpoints import iot as iot_ep
+        if iot_ep._latest_observation is not None:
+            obs = iot_ep._latest_observation
+            t = obs.sensor_telemetry
+            c = obs.crop_intelligence or {}
+            return {
+                "timestamp": obs.timestamp,
+                "source": "esp32_gateway",
+                "temperature": t.temperature_c,
+                "humidity": t.humidity_pct,
+                "soil_moisture": t.soil_moisture_pct,
+                "rain": t.rain_detected,
+                "water_level": t.water_level_pct,
+                "recommended_crop": c.get("recommended_crop", "Pending"),
+                "confidence": c.get("confidence_pct", 0.0),
+                "alert_count": len(c.get("disease_alerts", [])),
+            }
+    except Exception:
+        pass
+
+    return {
+        "status": "no_data",
+        "temperature": None,
+        "humidity": None,
+        "soil_moisture": None,
+        "rain": None,
+        "message": "No IoT reading received yet. Waiting for ESP32 gateway transmission..."
+    }
 
 
 @app.get("/history", summary="Telemetry & Prediction History")
 async def get_history(limit: int = 20):
     """Returns the last N sensor readings and their model predictions."""
     items = list(history)[-limit:]
+    if not items:
+        try:
+            from backend.app.api.v1.endpoints import iot as iot_ep
+            for obs in iot_ep._observation_history[-limit:]:
+                t = obs.sensor_telemetry
+                c = obs.crop_intelligence or {}
+                items.append({
+                    "timestamp": obs.timestamp,
+                    "source": "esp32_gateway",
+                    "temperature": t.temperature_c,
+                    "humidity": t.humidity_pct,
+                    "soil_moisture": t.soil_moisture_pct,
+                    "rain": t.rain_detected,
+                    "water_level": t.water_level_pct,
+                    "recommended_crop": c.get("recommended_crop", "Pending"),
+                    "confidence": c.get("confidence_pct", 0.0),
+                    "alert_count": len(c.get("disease_alerts", [])),
+                })
+        except Exception:
+            pass
+
     items.reverse()
     return {"count": len(items), "readings": items}
 

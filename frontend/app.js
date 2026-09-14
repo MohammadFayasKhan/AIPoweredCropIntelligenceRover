@@ -296,6 +296,9 @@ if (typeof document !== "undefined") {
     initKeyboardListeners();
     syncSliderDisplays();
 
+    // Trigger initial prediction for immediate live crop and disease intelligence display
+    runPrediction(true);
+
     // Run initial health and model readiness check
     checkBackendHealth();
     // Poll backend health every 15 seconds
@@ -389,12 +392,13 @@ function initKeyboardListeners() {
 let _modeSwitching = false;
 
 function switchMode(mode, animate = true) {
+  if (mode === "rover" || (mode !== "crop" && mode !== "vision")) {
+    mode = "crop";
+  }
   const btnCrop = document.getElementById("btnModeCrop");
   const btnVision = document.getElementById("btnModeVision");
-  const btnRover = document.getElementById("btnModeRover");
   const cropSection = document.getElementById("cropSection");
   const visionSection = document.getElementById("visionSection");
-  const roverSection = document.getElementById("roverSection");
 
   const previousMode = activeMode;
   activeMode = mode;
@@ -408,12 +412,9 @@ function switchMode(mode, animate = true) {
   // Update button active state
   if (btnCrop) btnCrop.classList.toggle("active", mode === "crop");
   if (btnVision) btnVision.classList.toggle("active", mode === "vision");
-  if (btnRover) btnRover.classList.toggle("active", mode === "rover");
 
   const getSection = (m) => {
-    if (m === "crop") return cropSection;
     if (m === "vision") return visionSection;
-    if (m === "rover") return roverSection;
     return cropSection;
   };
 
@@ -427,7 +428,7 @@ function switchMode(mode, animate = true) {
 
   // Instant switch if no animation requested, same mode, or reduced motion
   if (!animate || previousMode === mode || prefersReducedMotion || _modeSwitching) {
-    [cropSection, visionSection, roverSection].forEach(sec => {
+    [cropSection, visionSection].forEach(sec => {
       if (sec) {
         if (sec === incoming) {
           sec.style.display = "grid";
@@ -453,7 +454,7 @@ function switchMode(mode, animate = true) {
   }
 
   setTimeout(() => {
-    [cropSection, visionSection, roverSection].forEach(sec => {
+    [cropSection, visionSection].forEach(sec => {
       if (sec && sec !== incoming) {
         sec.style.display = "none";
         sec.style.transition = "";
@@ -524,15 +525,15 @@ async function checkBackendHealth() {
   }
 }
 
-// ── ESP8266 PHYSICAL TELEMETRY LIFECYCLE ──────────────────────────────────────
+// ── ESP32 PHYSICAL TELEMETRY LIFECYCLE ──────────────────────────────────────
 /**
  * Strict rules implemented:
- * 1. ESP8266 must never appear Connected or LIVE when no physical packet has arrived.
- * 2. Backend availability is NOT treated as ESP8266 connectivity.
+ * 1. ESP32 must never appear Connected or LIVE when no physical packet has arrived.
+ * 2. Backend availability is NOT treated as ESP32 connectivity.
  * 3. Frontend polling does not create or refresh device connectivity.
  * 4. If telemetry packet is older than 35s, status transitions to STALE / OFFLINE.
  * 5. Manual slider values are clearly badged as MANUAL, never LIVE.
- * 6. Unavailable hardware data shows "--" and "Waiting for ESP8266...".
+ * 6. Unavailable hardware data shows "--" and "Waiting for ESP32 Gateway...".
  */
 async function pollLatestIotTelemetry() {
   const iotDot = document.getElementById("iotDot");
@@ -544,12 +545,12 @@ async function pollLatestIotTelemetry() {
     const res = await fetch(`${API_BASE}/latest`, { cache: "no-store" });
 
     if (res.status === 404) {
-      // Backend is online, but physical ESP8266 has not transmitted telemetry
+      // Backend is online, but physical ESP32 has not transmitted telemetry
       if (latestIotPacket === null) {
         espDeviceState = "waiting";
         if (iotDot) iotDot.className = "iot-dot";
         if (iotFeedBar) iotFeedBar.className = "iot-feed-bar";
-        if (iotFeedText) iotFeedText.textContent = "📡 IoT Hardware Sensor Link: Awaiting ESP8266 NodeMCU packets (DHT11, Capacitive Soil, YL-83 Rain) • Manual calibration active";
+        if (iotFeedText) iotFeedText.textContent = "📡 ESP32 Sensor Gateway: Awaiting hardware telemetry packets (DHT11, Soil, Rain, Water, GPS) • Manual calibration active";
         if (iotLiveValues) iotLiveValues.style.display = "none";
         setChipsUnavailable();
       }
@@ -566,7 +567,7 @@ async function pollLatestIotTelemetry() {
         espDeviceState = "waiting";
         if (iotDot) iotDot.className = "iot-dot";
         if (iotFeedBar) iotFeedBar.className = "iot-feed-bar";
-        if (iotFeedText) iotFeedText.textContent = "📡 IoT Hardware Sensor Link: Awaiting ESP8266 NodeMCU packets (DHT11, Capacitive Soil, YL-83 Rain) • Manual calibration active";
+        if (iotFeedText) iotFeedText.textContent = "📡 ESP32 Sensor Gateway: Awaiting hardware telemetry packets (DHT11, Soil, Rain, Water, GPS) • Manual calibration active";
         if (iotLiveValues) iotLiveValues.style.display = "none";
         setChipsUnavailable();
       }
@@ -587,7 +588,7 @@ async function pollLatestIotTelemetry() {
       espDeviceState = "connected";
       if (iotDot) iotDot.className = "iot-dot live";
       if (iotFeedBar) iotFeedBar.className = "iot-feed-bar iot-online";
-      if (iotFeedText) iotFeedText.textContent = "📡 ESP8266 Connected (LIVE Hardware Telemetry • Auto-updating)";
+      if (iotFeedText) iotFeedText.textContent = "🟢 ESP32 Sensor Gateway Connected (LIVE Hardware Telemetry • Auto-updating)";
 
       // Automatically apply live sensor telemetry to inputs on connection
       applyLiveTelemetryToInputs(data);
@@ -603,7 +604,7 @@ async function pollLatestIotTelemetry() {
       if (iotDot) iotDot.className = "iot-dot stale";
       if (iotFeedBar) iotFeedBar.className = "iot-feed-bar iot-stale";
       if (iotFeedText) {
-        iotFeedText.textContent = `⚠️ ESP8266 Offline (last packet ${formatAgo(ageSeconds)}) • Manual calibration active`;
+        iotFeedText.textContent = `⚠️ ESP32 Gateway Offline (last packet ${formatAgo(ageSeconds)}) • Manual calibration active`;
       }
       markSourceBadgeStale();
     }
@@ -613,7 +614,7 @@ async function pollLatestIotTelemetry() {
       espDeviceState = "waiting";
       if (iotDot) iotDot.className = "iot-dot";
       if (iotFeedBar) iotFeedBar.className = "iot-feed-bar";
-      if (iotFeedText) iotFeedText.textContent = "📡 IoT Hardware Sensor Link: Awaiting ESP8266 NodeMCU packets (DHT11, Capacitive Soil, YL-83 Rain) • Manual calibration active";
+      if (iotFeedText) iotFeedText.textContent = "📡 ESP32 Sensor Gateway: Awaiting hardware telemetry packets (DHT11, Soil, Rain, Water, GPS) • Manual calibration active";
       if (iotLiveValues) iotLiveValues.style.display = "none";
       setChipsUnavailable();
     }
@@ -642,7 +643,7 @@ function updateIotAgeTicker() {
       if (iotDot) iotDot.className = "iot-dot stale";
       if (iotFeedBar) iotFeedBar.className = "iot-feed-bar iot-stale";
       if (iotFeedText) {
-        iotFeedText.textContent = `⚠️ ESP8266 Offline (last seen ${formatAgo(ageSeconds)}) • Manual calibration active`;
+        iotFeedText.textContent = `⚠️ ESP32 Gateway Offline (last seen ${formatAgo(ageSeconds)}) • Manual calibration active`;
       }
       markSourceBadgeStale();
     }
@@ -655,6 +656,8 @@ function updateIotFeedChips(data, ageSeconds) {
   const iotH = document.getElementById("iot-h");
   const iotS = document.getElementById("iot-s");
   const iotR = document.getElementById("iot-r");
+  const iotW = document.getElementById("iot-w");
+  const iotGps = document.getElementById("iot-gps");
   const iotAgo = document.getElementById("iotAgo");
 
   if (iotLiveValues) iotLiveValues.style.display = "flex";
@@ -662,6 +665,14 @@ function updateIotFeedChips(data, ageSeconds) {
   if (iotH) iotH.textContent = data.humidity != null ? Number(data.humidity).toFixed(0) : "--";
   if (iotS) iotS.textContent = data.soil_moisture != null ? Number(data.soil_moisture).toFixed(0) : "--";
   if (iotR) iotR.textContent = data.rain === 1 ? "RAIN" : "NO RAIN";
+  if (iotW && data.water_level != null) iotW.textContent = `${Math.round(data.water_level)}%`;
+  if (iotGps) {
+    if (data.latitude && data.longitude) {
+      iotGps.textContent = `${data.latitude.toFixed(2)}, ${data.longitude.toFixed(2)}`;
+    } else if (data.satellites) {
+      iotGps.textContent = `${data.satellites} Sats`;
+    }
+  }
   if (iotAgo) iotAgo.textContent = formatAgo(ageSeconds);
 }
 
@@ -670,12 +681,16 @@ function setChipsUnavailable() {
   const iotH = document.getElementById("iot-h");
   const iotS = document.getElementById("iot-s");
   const iotR = document.getElementById("iot-r");
+  const iotW = document.getElementById("iot-w");
+  const iotGps = document.getElementById("iot-gps");
   const iotAgo = document.getElementById("iotAgo");
 
   if (iotT) iotT.textContent = "--";
   if (iotH) iotH.textContent = "--";
   if (iotS) iotS.textContent = "--";
   if (iotR) iotR.textContent = "--";
+  if (iotW) iotW.textContent = "--";
+  if (iotGps) iotGps.textContent = "--";
   if (iotAgo) iotAgo.textContent = "--";
 }
 
@@ -683,26 +698,74 @@ function applyLiveTelemetryToInputs(data) {
   const tempSlider = document.getElementById("temperature");
   const humSlider = document.getElementById("humidity");
   const soilSlider = document.getElementById("soil_moisture");
+  const waterSlider = document.getElementById("water_level");
 
   if (tempSlider && data.temperature != null) {
     tempSlider.value = data.temperature;
-    document.getElementById("val-temperature").textContent = `${Number(data.temperature).toFixed(1)}°C`;
+    const el = document.getElementById("val-temperature");
+    if (el) el.textContent = `${Number(data.temperature).toFixed(1)}°C`;
   }
   if (humSlider && data.humidity != null) {
     humSlider.value = data.humidity;
-    document.getElementById("val-humidity").textContent = `${Number(data.humidity).toFixed(0)}%`;
+    const el = document.getElementById("val-humidity");
+    if (el) el.textContent = `${Number(data.humidity).toFixed(0)}%`;
   }
   if (soilSlider && data.soil_moisture != null) {
     soilSlider.value = data.soil_moisture;
-    document.getElementById("val-soil_moisture").textContent = `${Number(data.soil_moisture).toFixed(0)}%`;
+    const el = document.getElementById("val-soil_moisture");
+    if (el) el.textContent = `${Number(data.soil_moisture).toFixed(0)}%`;
+  }
+  if (waterSlider && data.water_level != null) {
+    waterSlider.value = data.water_level;
+    const valWater = document.getElementById("val-water_level");
+    if (valWater) valWater.textContent = `${Math.round(data.water_level)}%`;
+    const valWaterMm = document.getElementById("val-water-mm");
+    if (valWaterMm) valWaterMm.textContent = `${data.water_level_mm != null ? Math.round(data.water_level_mm) : Math.round(data.water_level * 0.45)} mm`;
+    const stateBadge = document.getElementById("waterStateLabel");
+    if (stateBadge) {
+      const v = Number(data.water_level);
+      if (v >= 70) {
+        stateBadge.textContent = "FLOOD";
+        stateBadge.className = "water-state-text state-danger";
+      } else if (v >= 40) {
+        stateBadge.textContent = "WATCH";
+        stateBadge.className = "water-state-text state-warn";
+      } else {
+        stateBadge.textContent = "NORMAL";
+        stateBadge.className = "water-state-text";
+      }
+    }
   }
 
   setRainState(data.rain === 1);
 
-  // Update left panel badge to LIVE (ESP8266)
+  // Update GPS Card elements
+  const coordsEl = document.getElementById("val-gps-coords");
+  if (data.latitude != null && data.latitude !== 0.0) {
+    const latEl = document.getElementById("val-gps-lat");
+    if (latEl) latEl.textContent = `${Number(data.latitude).toFixed(4)}°`;
+    if (coordsEl) coordsEl.textContent = `${Number(data.latitude).toFixed(2)}°N ${Number(data.longitude).toFixed(2)}°E`;
+  } else if (coordsEl && !_isGpsDemoFix) {
+    coordsEl.textContent = "LAT -- LON --";
+  }
+  if (data.longitude != null && data.longitude !== 0.0) {
+    const lonEl = document.getElementById("val-gps-lon");
+    if (lonEl) lonEl.textContent = `${Number(data.longitude).toFixed(4)}°`;
+  }
+  if (data.satellites != null) {
+    const satsEl = document.getElementById("val-gps-sats");
+    if (satsEl) satsEl.textContent = `${data.satellites} Sats`;
+  }
+  const fixEl = document.getElementById("val-gps-fix");
+  if (fixEl) {
+    fixEl.textContent = (data.satellites >= 3 || data.latitude) ? "3D FIX" : "SEARCHING";
+    fixEl.className = `panel-badge ${(data.satellites >= 3 || data.latitude) ? "panel-badge-live" : "panel-badge-manual"}`;
+  }
+
+  // Update left panel badge to LIVE (ESP32)
   const sourceBadge = document.getElementById("sensorSourceBadge");
   if (sourceBadge) {
-    sourceBadge.textContent = "LIVE (ESP8266)";
+    sourceBadge.textContent = "LIVE (ESP32)";
     sourceBadge.className = "panel-badge panel-badge-live";
   }
 
@@ -710,12 +773,30 @@ function applyLiveTelemetryToInputs(data) {
   if (lastUpdated) {
     lastUpdated.textContent = new Date().toLocaleTimeString();
   }
+
+  // Seamless continuous auto-prediction & disease risk synchronization
+  if (data.disease_alerts && data.disease_alerts.length > 0) {
+    renderDiseaseRisks(data.disease_alerts);
+  }
+  const topCandidates = (data.top3 && data.top3.length > 0) ? data.top3 : (data.top3_candidates || []);
+  if (data.recommended_crop && topCandidates.length > 0) {
+    renderCropRecommendation(data);
+    const flags = {
+      fungal_risk: (data.humidity >= 75 && data.temperature >= 20 && data.temperature <= 32) ? "HIGH" : "LOW",
+      drought_risk: (data.soil_moisture < 30) ? "HIGH" : ((data.soil_moisture < 45) ? "MODERATE" : "LOW"),
+      waterlog_risk: ((data.water_level_mm || 0) >= 25 || data.soil_moisture >= 85) ? "HIGH" : "LOW"
+    };
+    renderRiskFlags(flags);
+  } else {
+    // Fetch complete ML inference including Top-3 candidates and disease pathology alerts
+    triggerAutoPredictionDebounced(150);
+  }
 }
 
 function markSourceBadgeStale() {
   const sourceBadge = document.getElementById("sensorSourceBadge");
   if (sourceBadge && sourceBadge.classList.contains("panel-badge-live")) {
-    sourceBadge.textContent = "STALE (ESP8266)";
+    sourceBadge.textContent = "STALE (ESP32)";
     sourceBadge.className = "panel-badge panel-badge-stale";
   }
 }
@@ -729,13 +810,23 @@ function formatAgo(seconds) {
   return `${hours}h ago`;
 }
 
-// ── MANUAL SENSOR INPUT HANDLERS ──────────────────────────────────────────────
+// ── MANUAL SENSOR INPUT HANDLERS & AUTO-PREDICTION ───────────────────────────
+let _autoPredictionTimer = null;
+
+function triggerAutoPredictionDebounced(delay = 350) {
+  if (_autoPredictionTimer) clearTimeout(_autoPredictionTimer);
+  _autoPredictionTimer = setTimeout(() => {
+    runPrediction(true);
+  }, delay);
+}
+
 function onManualInput(sensorId, value) {
   isManualInput = true;
   const displayMap = {
     temperature: `${Number(value).toFixed(1)}°C`,
     humidity: `${Number(value).toFixed(0)}%`,
     soil_moisture: `${Number(value).toFixed(0)}%`,
+    water_level: `${Number(value).toFixed(0)}%`,
   };
 
   const displayEl = document.getElementById(`val-${sensorId}`);
@@ -743,10 +834,65 @@ function onManualInput(sensorId, value) {
     displayEl.textContent = displayMap[sensorId];
   }
 
+  if (sensorId === "water_level") {
+    const valMm = document.getElementById("val-water-mm");
+    if (valMm) valMm.textContent = `${Math.round(value * 0.45)} mm`;
+    const stateBadge = document.getElementById("waterStateLabel");
+    if (stateBadge) {
+      const v = Number(value);
+      if (v >= 70) {
+        stateBadge.textContent = "FLOOD";
+        stateBadge.className = "water-state-text state-danger";
+      } else if (v >= 40) {
+        stateBadge.textContent = "WATCH";
+        stateBadge.className = "water-state-text state-warn";
+      } else {
+        stateBadge.textContent = "NORMAL";
+        stateBadge.className = "water-state-text";
+      }
+    }
+  }
+
   const sourceBadge = document.getElementById("sensorSourceBadge");
   if (sourceBadge) {
     sourceBadge.textContent = "MANUAL";
     sourceBadge.className = "panel-badge panel-badge-manual";
+  }
+
+  // Seamless live auto prediction without pressing analyze repeatedly
+  triggerAutoPredictionDebounced(350);
+}
+
+let _isGpsDemoFix = false;
+
+function toggleGpsDemoFix() {
+  _isGpsDemoFix = !_isGpsDemoFix;
+  const coordsEl = document.getElementById("val-gps-coords");
+  const satsEl = document.getElementById("val-gps-sats");
+  const fixEl = document.getElementById("val-gps-fix");
+  const altEl = document.getElementById("val-gps-alt");
+  const iotGps = document.getElementById("iot-gps");
+
+  if (_isGpsDemoFix) {
+    if (coordsEl) coordsEl.textContent = "13.08°N 80.27°E";
+    if (satsEl) satsEl.textContent = "8 Sats";
+    if (altEl) altEl.textContent = "Alt: 14 m";
+    if (fixEl) {
+      fixEl.textContent = "3D FIX";
+      fixEl.className = "panel-badge panel-badge-live";
+    }
+    if (iotGps) iotGps.textContent = "13.08, 80.27";
+    showToast("Simulated 3D GPS lock active: 13.0827° N, 80.2707° E (8 Satellites)", "success", "GPS NEO-6M");
+  } else {
+    if (coordsEl) coordsEl.textContent = "LAT -- LON --";
+    if (satsEl) satsEl.textContent = "0 Sats";
+    if (altEl) altEl.textContent = "Alt: -- m";
+    if (fixEl) {
+      fixEl.textContent = "SEARCHING";
+      fixEl.className = "panel-badge panel-badge-manual";
+    }
+    if (iotGps) iotGps.textContent = "--";
+    showToast("GPS returned to live hardware receiver state", "info", "GPS NEO-6M");
   }
 }
 
@@ -759,6 +905,8 @@ function toggleRain() {
     sourceBadge.textContent = "MANUAL";
     sourceBadge.className = "panel-badge panel-badge-manual";
   }
+
+  triggerAutoPredictionDebounced(250);
 }
 
 function setRainState(active) {
@@ -800,17 +948,24 @@ function loadPreset(presetName) {
     sourceBadge.className = "panel-badge panel-badge-manual";
   }
 
-  runPrediction();
+  runPrediction(false);
 }
 
 function syncSliderDisplays() {
   const tempVal = document.getElementById("temperature")?.value;
   const humVal = document.getElementById("humidity")?.value;
   const soilVal = document.getElementById("soil_moisture")?.value;
+  const waterVal = document.getElementById("water_level")?.value;
 
   if (tempVal) document.getElementById("val-temperature").textContent = `${Number(tempVal).toFixed(1)}°C`;
   if (humVal) document.getElementById("val-humidity").textContent = `${Number(humVal).toFixed(0)}%`;
   if (soilVal) document.getElementById("val-soil_moisture").textContent = `${Number(soilVal).toFixed(0)}%`;
+  if (waterVal) {
+    const wEl = document.getElementById("val-water_level");
+    if (wEl) wEl.textContent = `${Number(waterVal).toFixed(0)}%`;
+    const wMm = document.getElementById("val-water-mm");
+    if (wMm) wMm.textContent = `${Math.round(waterVal * 0.45)} mm`;
+  }
 }
 
 function initAutoToggle() {
@@ -823,10 +978,10 @@ function initAutoToggle() {
 }
 
 // ── CROP PREDICTION & DISEASE RISK PIPELINE ───────────────────────────────────
-async function runPrediction() {
-  const temp = parseFloat(document.getElementById("temperature").value);
-  const hum = parseFloat(document.getElementById("humidity").value);
-  const soil = parseFloat(document.getElementById("soil_moisture").value);
+async function runPrediction(silent = false) {
+  const temp = parseFloat(document.getElementById("temperature")?.value || 25);
+  const hum = parseFloat(document.getElementById("humidity")?.value || 65);
+  const soil = parseFloat(document.getElementById("soil_moisture")?.value || 50);
   const rain = isRainActive ? 1 : 0;
 
   const payload = {
@@ -836,8 +991,10 @@ async function runPrediction() {
     rain: rain,
   };
 
-  showLoading("Calculating Crop Intelligence & Disease Risks...");
-  renderCropSkeletonLoading();
+  if (!silent) {
+    showLoading("Calculating Crop Intelligence & Disease Risks...");
+    renderCropSkeletonLoading();
+  }
 
   try {
     const res = await fetch(`${API_BASE}/predict`, {
@@ -862,9 +1019,13 @@ async function runPrediction() {
       lastUpdated.textContent = new Date().toLocaleTimeString();
     }
   } catch (err) {
-    showErrorNotification(`Prediction error: ${err.message}`);
+    if (!silent) {
+      showErrorNotification(`Prediction error: ${err.message}`);
+    }
   } finally {
-    hideLoading();
+    if (!silent) {
+      hideLoading();
+    }
   }
 }
 
@@ -873,14 +1034,24 @@ function renderCropRecommendation(data) {
   if (!container) return;
 
   const topCrop = data.recommended_crop || "Unknown";
-  let rawConf = Number(data.confidence || 0);
+  let rawConf = Number(
+    data.confidence != null ? data.confidence :
+    (data.confidence_pct != null ? data.confidence_pct :
+    (data.conf != null ? data.conf : 0))
+  );
   if (rawConf <= 1.0 && rawConf > 0) {
     rawConf = rawConf * 100;
   }
   const confNum = Math.min(100, Math.max(0, rawConf));
   const confStr = `${confNum.toFixed(1)}%`;
 
-  const topAlternatives = data.top3 ? data.top3.slice(1) : (data.top_alternatives || []);
+  const topCandidates = (Array.isArray(data.top3) && data.top3.length > 0)
+    ? data.top3
+    : ((Array.isArray(data.top3_candidates) && data.top3_candidates.length > 0) ? data.top3_candidates : []);
+
+  const topAlternatives = topCandidates.length > 1
+    ? topCandidates.slice(1)
+    : (Array.isArray(data.top_alternatives) ? data.top_alternatives : []);
   const conditions = data.features || data.growing_conditions || {};
 
   const cropIcons = {
@@ -928,15 +1099,22 @@ function renderCropRecommendation(data) {
         <div class="top3-label">Secondary Viable Options</div>
         ${topAlternatives
           .map((alt, idx) => {
-            const altKey = alt.crop ? alt.crop.toLowerCase().replace(/[^a-z]/g, "") : "";
+            const altCropName = alt.crop || alt.name || "Alternative";
+            const altKey = altCropName.toLowerCase().replace(/[^a-z]/g, "");
             const altIcon = alt.icon || cropIcons[altKey] || "🌱";
-            let rawAlt = Number(alt.confidence || 0);
+            let rawAlt = Number(
+              alt.confidence != null ? alt.confidence :
+              (alt.confidence_pct != null ? alt.confidence_pct :
+              (alt.conf != null ? alt.conf :
+              (alt.probability != null ? alt.probability * 100 : 0)))
+            );
             if (rawAlt <= 1.0 && rawAlt > 0) rawAlt = rawAlt * 100;
             const altPct = Math.min(100, Math.max(0, rawAlt)).toFixed(1);
+            const rankNum = alt.rank || (idx + 2);
             return `
             <div class="top3-item">
-              <span class="top3-rank">${idx + 2}</span>
-              <span class="top3-crop">${altIcon} ${alt.crop}</span>
+              <span class="top3-rank">${rankNum}</span>
+              <span class="top3-crop" title="${altCropName}">${altIcon} ${altCropName}</span>
               <div class="top3-bar-wrap">
                 <div class="top3-bar" style="width: ${altPct}%;"></div>
               </div>
@@ -952,23 +1130,25 @@ function renderCropRecommendation(data) {
   container.innerHTML = `
     <div class="crop-result">
       <div class="crop-main-card">
-        <div class="crop-emoji">${icon}</div>
-        <div class="crop-info">
-          <div class="crop-name">${topCrop}</div>
-          <div class="crop-confidence-text">Optimal Ecological Match · Recommended Crop</div>
-        </div>
-        <div class="confidence-ring-wrap">
-          <div class="confidence-ring" style="background: conic-gradient(var(--green-primary) ${confNum * 3.6}deg, rgba(82, 183, 136, 0.15) 0deg);">
-            <span class="confidence-pct">${confStr}</span>
+        <div class="crop-card-row">
+          <div class="crop-emoji">${icon}</div>
+          <div class="crop-info">
+            <div class="crop-name">${topCrop}</div>
+            <div class="crop-confidence-text">Optimal Ecological Match · Recommended Crop</div>
+          </div>
+          <div class="confidence-ring-wrap">
+            <div class="confidence-ring" style="background: conic-gradient(var(--green-primary) ${confNum * 3.6}deg, rgba(82, 183, 136, 0.15) 0deg);">
+              <span class="confidence-pct">${confStr}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="rec-env-pills">
-        <span class="env-pill">🌡️ ${envTemp}°C</span>
-        <span class="env-pill">💧 ${envHum}% RH</span>
-        <span class="env-pill">🌱 ${envSoil}% Moisture</span>
-        <span class="env-pill">🌧️ ${envRain}</span>
+        <div class="rec-env-pills">
+          <span class="env-pill">🌡️ ${envTemp}°C</span>
+          <span class="env-pill">💧 ${envHum}% RH</span>
+          <span class="env-pill">🌱 ${envSoil}% Moisture</span>
+          <span class="env-pill">🌧️ ${envRain}</span>
+        </div>
       </div>
 
       ${altsHtml}
@@ -1192,8 +1372,10 @@ async function fetchTelemetryHistory() {
     if (!res.ok) return;
     const json = await res.json();
     const readings = json.readings || json.history || [];
-    // CRITICAL: Filter ONLY physical IoT hardware readings. Never plot dashboard prediction tests or default values.
-    const iotReadings = Array.isArray(readings) ? readings.filter((r) => r.source === "iot") : [];
+    // CRITICAL: Filter genuine physical IoT hardware readings (accept iot, esp32_gateway).
+    const iotReadings = Array.isArray(readings)
+      ? readings.filter((r) => r.source !== "manual_ui" && r.temperature != null)
+      : [];
     const emptyState = document.getElementById("chartEmptyState");
 
     if (iotReadings.length > 0) {
@@ -1210,8 +1392,8 @@ async function fetchTelemetryHistory() {
 
 function addTelemetryToChart(packet, shouldUpdate = true) {
   if (!historyChart || packet.temperature == null) return;
-  // Guard: Only real IoT packets are plotted
-  if (packet.source && packet.source !== "iot") return;
+  // Guard: Never plot synthetic manual sliders onto physical history chart
+  if (packet.source === "manual_ui") return;
 
   const emptyState = document.getElementById("chartEmptyState");
   if (emptyState) emptyState.style.display = "none";
@@ -4610,20 +4792,134 @@ function applyUnifiedObservation(obs) {
   if (agoEl) agoEl.textContent = "Live";
   if (liveVals) liveVals.style.display = "flex";
 
-  // Also update Crop Recommendation manual inputs if in auto/sync mode
+  // 1b. Update Left Sensor Panel (6 Inputs)
   const valTemp = document.getElementById("val-temperature");
   const valHum = document.getElementById("val-humidity");
   const valSoil = document.getElementById("val-soil_moisture");
+  const valWater = document.getElementById("val-water_level");
+  const valWaterMm = document.getElementById("val-water-mm");
   const sliderTemp = document.getElementById("temperature");
   const sliderHum = document.getElementById("humidity");
   const sliderSoil = document.getElementById("soil_moisture");
+  const sliderWater = document.getElementById("water_level");
 
-  if (valTemp && s.temperature_c) valTemp.textContent = s.temperature_c.toFixed(1);
-  if (valHum && s.humidity_pct) valHum.textContent = Math.round(s.humidity_pct);
-  if (valSoil && s.soil_moisture_pct) valSoil.textContent = Math.round(s.soil_moisture_pct);
-  if (sliderTemp && s.temperature_c) sliderTemp.value = s.temperature_c;
-  if (sliderHum && s.humidity_pct) sliderHum.value = s.humidity_pct;
-  if (sliderSoil && s.soil_moisture_pct) sliderSoil.value = s.soil_moisture_pct;
+  if (valTemp && s.temperature_c !== undefined) valTemp.textContent = `${s.temperature_c.toFixed(1)}°C`;
+  if (valHum && s.humidity_pct !== undefined) valHum.textContent = `${Math.round(s.humidity_pct)}%`;
+  if (valSoil && s.soil_moisture_pct !== undefined) valSoil.textContent = `${Math.round(s.soil_moisture_pct)}%`;
+  if (valWater && s.water_level_pct !== undefined) valWater.textContent = `${Math.round(s.water_level_pct)}%`;
+  if (valWaterMm) {
+    const depthMm = s.water_level_mm !== undefined ? s.water_level_mm : (s.water_level_pct || 0) * 0.45;
+    valWaterMm.textContent = `${Math.round(depthMm)} mm`;
+  }
+  const stateBadge = document.getElementById("waterStateLabel");
+  if (stateBadge && s.water_level_pct !== undefined) {
+    const v = Number(s.water_level_pct);
+    if (v >= 70) {
+      stateBadge.textContent = "FLOOD";
+      stateBadge.className = "water-state-text state-danger";
+    } else if (v >= 40) {
+      stateBadge.textContent = "WATCH";
+      stateBadge.className = "water-state-text state-warn";
+    } else {
+      stateBadge.textContent = "NORMAL";
+      stateBadge.className = "water-state-text";
+    }
+  }
+
+  if (sliderTemp && s.temperature_c !== undefined) sliderTemp.value = s.temperature_c;
+  if (sliderHum && s.humidity_pct !== undefined) sliderHum.value = s.humidity_pct;
+  if (sliderSoil && s.soil_moisture_pct !== undefined) sliderSoil.value = s.soil_moisture_pct;
+  if (sliderWater && s.water_level_pct !== undefined) sliderWater.value = s.water_level_pct;
+
+  if (s.rain_detected !== undefined) {
+    setRainState(Boolean(s.rain_detected));
+  }
+
+  // 1c. Update GPS NEO-6M Receiver Card
+  const coordsEl = document.getElementById("val-gps-coords");
+  const satsEl = document.getElementById("val-gps-sats");
+  const fixEl = document.getElementById("val-gps-fix");
+  const altEl = document.getElementById("val-gps-alt");
+
+  if (g.latitude && g.latitude !== 0.0) {
+    if (coordsEl) coordsEl.textContent = `${g.latitude.toFixed(2)}°N ${g.longitude.toFixed(2)}°E`;
+  } else if (coordsEl && !_isGpsDemoFix) {
+    coordsEl.textContent = "LAT -- LON --";
+  }
+  if (satsEl) satsEl.textContent = `${g.satellites_tracked || 0} Sats`;
+  if (fixEl) {
+    const hasFix = g.is_valid || (g.satellites_tracked >= 3) || (g.latitude && g.latitude !== 0.0);
+    fixEl.textContent = g.fix_state || (hasFix ? "3D FIX" : "SEARCHING");
+    fixEl.className = `panel-badge ${hasFix ? "panel-badge-live" : "panel-badge-manual"}`;
+  }
+  if (altEl) altEl.textContent = `Alt: ${Math.round(g.altitude_m || 0)} m`;
+
+  // 1d. Update Status Badges
+  const sourceBadge = document.getElementById("sensorSourceBadge");
+  if (sourceBadge) {
+    sourceBadge.textContent = "LIVE (ESP32)";
+    sourceBadge.className = "panel-badge panel-badge-live";
+  }
+  const feedText = document.getElementById("iotFeedText");
+  if (feedText) {
+    feedText.textContent = "🟢 ESP32 Sensor Gateway Connected (LIVE Hardware Telemetry • Auto-updating)";
+  }
+  const feedBar = document.getElementById("iotFeedBar");
+  if (feedBar) {
+    feedBar.className = "iot-feed-bar iot-online";
+  }
+  const feedDot = document.getElementById("iotDot");
+  if (feedDot) {
+    feedDot.className = "iot-dot live";
+  }
+
+  // 1e. Continuous Real-Time History Chart Plotting
+  if (s.temperature_c !== undefined) {
+    addTelemetryToChart({
+      timestamp: obs.timestamp || new Date().toISOString(),
+      source: "esp32_gateway",
+      temperature: s.temperature_c,
+      humidity: s.humidity_pct,
+      soil_moisture: s.soil_moisture_pct
+    }, true);
+  }
+
+  // 1f. Seamless Live Crop Intelligence & Disease Alert Rendering
+  if (obs.crop_intelligence && obs.crop_intelligence.recommended_crop) {
+    const ci = obs.crop_intelligence;
+    const recData = {
+      recommended_crop: ci.recommended_crop,
+      confidence: ci.confidence_pct != null ? ci.confidence_pct : (ci.confidence || 0),
+      confidence_pct: ci.confidence_pct != null ? ci.confidence_pct : (ci.confidence || 0),
+      top3: ci.top3_candidates || ci.top3,
+      top3_candidates: ci.top3_candidates || ci.top3,
+      top_alternatives: ((ci.top3_candidates || ci.top3) || []).slice(1),
+      features: ci.features_used || {
+        temperature: s.temperature_c,
+        humidity: s.humidity_pct,
+        soil_moisture: s.soil_moisture_pct,
+        rain: s.rain_detected
+      },
+      disease_alerts: ci.disease_alerts || [],
+      disease_risks: ci.disease_alerts || []
+    };
+    document.getElementById("cropSection")?.classList.add("has-results");
+    renderCropRecommendation(recData);
+    renderDiseaseRisks(ci.disease_alerts || []);
+    const flags = {
+      fungal_risk: (s.humidity_pct >= 75 && s.temperature_c >= 20 && s.temperature_c <= 32) ? "HIGH" : "LOW",
+      drought_risk: (s.soil_moisture_pct < 30) ? "HIGH" : ((s.soil_moisture_pct < 45) ? "MODERATE" : "LOW"),
+      waterlog_risk: ((s.water_level_mm || 0) >= 25 || s.soil_moisture_pct >= 85) ? "HIGH" : "LOW"
+    };
+    renderRiskFlags(flags);
+  } else {
+    triggerAutoPredictionDebounced(200);
+  }
+
+  const lastUpdated = document.getElementById("lastUpdated");
+  if (lastUpdated) {
+    lastUpdated.textContent = new Date().toLocaleTimeString();
+  }
 
   // 2. Rover Section: Ground Telemetry Quad
   const telTemp = document.getElementById("telemetryTemp");
@@ -4681,16 +4977,16 @@ function applyUnifiedObservation(obs) {
   }
 
   // 4. GPS Navigation
-  const latEl = document.getElementById("gpsLatVal");
-  const lonEl = document.getElementById("gpsLonVal");
-  const altEl = document.getElementById("gpsAltVal");
-  const satsEl = document.getElementById("gpsSatsVal");
+  const navLatEl = document.getElementById("gpsLatVal");
+  const navLonEl = document.getElementById("gpsLonVal");
+  const navAltEl = document.getElementById("gpsAltVal");
+  const navSatsEl = document.getElementById("gpsSatsVal");
   const fixBadge = document.getElementById("gpsFixBadge");
 
-  if (latEl && g.latitude !== undefined && g.latitude !== null) latEl.textContent = `${g.latitude.toFixed(6)}° N`;
-  if (lonEl && g.longitude !== undefined && g.longitude !== null) lonEl.textContent = `${g.longitude.toFixed(6)}° E`;
-  if (altEl && g.altitude_m !== undefined && g.altitude_m !== null) altEl.textContent = `${g.altitude_m.toFixed(1)} m MSL`;
-  if (satsEl && g.satellites_tracked !== undefined) satsEl.textContent = `${g.satellites_tracked} Visible`;
+  if (navLatEl && g.latitude !== undefined && g.latitude !== null) navLatEl.textContent = `${g.latitude.toFixed(6)}° N`;
+  if (navLonEl && g.longitude !== undefined && g.longitude !== null) navLonEl.textContent = `${g.longitude.toFixed(6)}° E`;
+  if (navAltEl && g.altitude_m !== undefined && g.altitude_m !== null) navAltEl.textContent = `${g.altitude_m.toFixed(1)} m MSL`;
+  if (navSatsEl && g.satellites_tracked !== undefined) navSatsEl.textContent = `${g.satellites_tracked} Visible`;
   if (fixBadge && g.fix_state) fixBadge.textContent = g.fix_state;
 
   // 5. Rover Chassis Teleoperation State
@@ -4952,37 +5248,39 @@ function clearActivityLog() {
 }
 
 // ── Keyboard Teleoperation Shortcuts (Arrow Keys & WASD) ──────────────────────
-window.addEventListener("keydown", (e) => {
-  if (activeMode !== "rover") return;
-  if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+if (typeof window !== "undefined") {
+  window.addEventListener("keydown", (e) => {
+    if (typeof activeMode === "undefined" || activeMode !== "rover") return;
+    if (document.activeElement && ["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
 
-  if (["ArrowUp", "w", "W"].includes(e.key)) {
-    e.preventDefault();
-    if (currentDriveDirection !== "FORWARD") startRoverDrive("FORWARD");
-  } else if (["ArrowDown", "s", "S"].includes(e.key)) {
-    e.preventDefault();
-    if (currentDriveDirection !== "BACKWARD") startRoverDrive("BACKWARD");
-  } else if (["ArrowLeft", "a", "A"].includes(e.key)) {
-    e.preventDefault();
-    if (currentDriveDirection !== "LEFT") startRoverDrive("LEFT");
-  } else if (["ArrowRight", "d", "D"].includes(e.key)) {
-    e.preventDefault();
-    if (currentDriveDirection !== "RIGHT") startRoverDrive("RIGHT");
-  } else if (e.key === " " || e.key === "Escape") {
-    e.preventDefault();
-    stopRoverDrive();
-  }
-});
+    if (["ArrowUp", "w", "W"].includes(e.key)) {
+      e.preventDefault();
+      if (currentDriveDirection !== "FORWARD") startRoverDrive("FORWARD");
+    } else if (["ArrowDown", "s", "S"].includes(e.key)) {
+      e.preventDefault();
+      if (currentDriveDirection !== "BACKWARD") startRoverDrive("BACKWARD");
+    } else if (["ArrowLeft", "a", "A"].includes(e.key)) {
+      e.preventDefault();
+      if (currentDriveDirection !== "LEFT") startRoverDrive("LEFT");
+    } else if (["ArrowRight", "d", "D"].includes(e.key)) {
+      e.preventDefault();
+      if (currentDriveDirection !== "RIGHT") startRoverDrive("RIGHT");
+    } else if (e.key === " " || e.key === "Escape") {
+      e.preventDefault();
+      stopRoverDrive();
+    }
+  });
 
-window.addEventListener("keyup", (e) => {
-  if (activeMode !== "rover") return;
-  if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+  window.addEventListener("keyup", (e) => {
+    if (typeof activeMode === "undefined" || activeMode !== "rover") return;
+    if (document.activeElement && ["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
 
-  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "W", "s", "S", "a", "A", "d", "D"].includes(e.key)) {
-    e.preventDefault();
-    stopRoverDrive();
-  }
-});
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "W", "s", "S", "a", "A", "d", "D"].includes(e.key)) {
+      e.preventDefault();
+      stopRoverDrive();
+    }
+  });
+}
 
 // ── Startup Initialization ───────────────────────────────────────────────────
 if (typeof window !== "undefined") {

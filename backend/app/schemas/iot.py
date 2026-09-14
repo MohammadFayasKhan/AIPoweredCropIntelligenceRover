@@ -8,7 +8,7 @@ environmental risk reasoning, and two-way teleoperation commands.
 from __future__ import annotations
 
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from datetime import datetime, timezone
 
 
@@ -25,7 +25,16 @@ class GPSData(BaseModel):
     hdop: Optional[float] = Field(None, description="Horizontal Dilution of Precision (spatial accuracy proxy)")
     fix_state: str = Field("NO_FIX", description="GPS fix status: NO_FIX, 2D_FIX, 3D_FIX, DGPS_FIX")
     is_valid: bool = Field(False, description="True only when satellite fix passes WGS84 validity bounds")
+    fix_valid: Optional[bool] = Field(None, description="Alias for is_valid")
     fix_age_ms: Optional[int] = Field(None, description="Age of last valid NMEA fix in milliseconds")
+
+    @model_validator(mode="after")
+    def sync_fix_valid(self):
+        if self.fix_valid is not None:
+            self.is_valid = self.fix_valid
+        elif self.is_valid:
+            self.fix_valid = self.is_valid
+        return self
 
 
 class SensorTelemetry(BaseModel):

@@ -64,6 +64,17 @@ DISEASE_KNOWLEDGE_BASE = [
         "technique": "Reduce greenhouse/field humidity immediately. Prune dense foliage to allow morning drying.",
     },
     {
+        "id": "foliar_humidity_stress",
+        "name": "High Foliar Humidity / Spore Germination",
+        "type": "Fungal",
+        "severity": "HIGH",
+        "trigger": "Humidity ≥ 80% and Temperature 20°C to 35°C",
+        "condition": lambda t, h, rain, sm: h >= 80 and 20 <= t <= 35,
+        "symptoms": "High boundary layer moisture induces foliar water-congestion and accelerates fungal spore germination.",
+        "pesticide": "Preventative bio-fungicide: Trichoderma viride 5 g/L or Copper Oxychloride 2 g/L.",
+        "technique": "Enhance plant spacing and canopy aeration; avoid overhead sprinkler wetting.",
+    },
+    {
         "id": "anthracnose",
         "name": "Anthracnose (Colletotrichum spp.)",
         "type": "Fungal",
@@ -308,6 +319,76 @@ class CropInferenceService:
         alerts.sort(key=lambda a: SEVERITY_ORDER.get(a.severity, 99))
         return alerts
 
+    def get_disease_knowledge(
+        self,
+        disease_name: str,
+        temperature: Optional[float] = None,
+        humidity: Optional[float] = None,
+        rain: Optional[int] = None,
+        soil_moisture: Optional[float] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Cross-references predicted foliar pathology with curated agronomic knowledge base.
+        Evaluates whether current microclimate (DHT11, capacitive soil, rain) favors pathogen proliferation.
+        """
+        if not disease_name or "healthy" in disease_name.lower():
+            return None
+
+        d_lower = disease_name.lower().replace("_", " ")
+        matched_rule = None
+
+        for rule in DISEASE_KNOWLEDGE_BASE:
+            r_id = rule["id"].lower().replace("_", " ")
+            r_name = rule["name"].lower()
+            if r_id in d_lower or any(word in d_lower for word in r_id.split()):
+                matched_rule = rule
+                break
+            elif any(part in d_lower for part in ["blight", "mildew", "mold", "rot", "mite", "aphid", "anthracnose"]):
+                if any(part in r_name for part in ["blight", "mildew", "mold", "rot", "mite", "aphid", "anthracnose"] if part in d_lower):
+                    matched_rule = rule
+                    break
+
+        if not matched_rule:
+            if "blight" in d_lower:
+                matched_rule = next((r for r in DISEASE_KNOWLEDGE_BASE if r["id"] == "late_blight"), None)
+            elif "mildew" in d_lower:
+                matched_rule = next((r for r in DISEASE_KNOWLEDGE_BASE if r["id"] == "powdery_mildew"), None)
+
+        if not matched_rule:
+            return None
+
+        is_favorable = False
+        favorability_text = "UNKNOWN_NO_SENSORS"
+        contributing_signals = []
+
+        if temperature is not None and humidity is not None:
+            r_int = int(rain) if rain is not None else 0
+            sm_val = float(soil_moisture) if soil_moisture is not None else 50.0
+            try:
+                is_favorable = bool(matched_rule["condition"](temperature, humidity, r_int, sm_val))
+                if is_favorable:
+                    favorability_text = "FAVORABLE_HIGH_PATHOGEN_PRESSURE"
+                    contributing_signals.append(f"Ambient microclimate ({temperature:.1f}°C, {humidity:.1f}% RH) satisfies pathogen trigger: {matched_rule['trigger']}")
+                else:
+                    favorability_text = "UNFAVORABLE_CONDITIONS_CONTAINED"
+                    contributing_signals.append(f"Current microclimate ({temperature:.1f}°C, {humidity:.1f}% RH) does not trigger active spore release")
+            except Exception as e:
+                logger.warning(f"Error evaluating environmental favorability: {e}")
+
+        return {
+            "disease_id": matched_rule["id"],
+            "disease_name": matched_rule["name"],
+            "pathology_type": matched_rule["type"],
+            "severity": matched_rule["severity"],
+            "environmental_trigger": matched_rule["trigger"],
+            "is_environment_favorable": is_favorable,
+            "environmental_favorability": favorability_text,
+            "contributing_signals": contributing_signals,
+            "symptoms": matched_rule["symptoms"],
+            "pesticide_prescription": matched_rule["pesticide"],
+            "cultural_management": matched_rule["technique"]
+        }
+
     def recommend(self, req: CropRecommendationRequest) -> CropRecommendationResponse:
         """
         Runs the complete agro-climatic crop inference pipeline.
@@ -375,9 +456,9 @@ class CropInferenceService:
         
         # Environmental risk flags
         rain_int = int(req.rain)
-        fungal_risk = 1 if (req.humidity > 80.0 and req.temperature > 28.0) else 0
-        drought_risk = 1 if (rain_int == 0 and req.soil_moisture < 25.0) else 0
-        waterlog_risk = 1 if (rain_int == 1 or req.soil_moisture > 85.0) else 0
+        fungal_risk = 1 if (req.humidity >= 75.0 and req.temperature >= 20.0) else 0
+        drought_risk = 1 if (rain_int == 0 and req.soil_moisture < 35.0) else 0
+        waterlog_risk = 1 if (rain_int == 1 or req.soil_moisture > 75.0) else 0
         
         features_used = EnvironmentalFeaturesUsed(
             temperature=req.temperature,

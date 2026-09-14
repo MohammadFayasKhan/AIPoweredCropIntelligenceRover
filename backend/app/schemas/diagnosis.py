@@ -232,6 +232,8 @@ class DiagnosisResponse(BaseModel):
     camera_device_id: Optional[str] = Field(None, description="Authenticated hardware device ID (if captured via ESP32-CAM)")
     camera_capture_id: Optional[str] = Field(None, description="Verified capture transaction ID")
     camera_capture_latency_ms: Optional[float] = Field(None, description="Hardware frame acquisition latency in milliseconds")
+    environmental_context: Optional[Dict[str, Any]] = Field(None, description="Paired live field sensor telemetry snapshot (DHT11, Soil, Rain, Water, GPS)")
+    disease_knowledge: Optional[Dict[str, Any]] = Field(None, description="Enriched disease knowledge base entry with environmental favorability evaluation")
 
 
 class ErrorResponse(BaseModel):

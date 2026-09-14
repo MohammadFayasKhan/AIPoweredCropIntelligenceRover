@@ -248,3 +248,90 @@ def test_n8n_alert_cooldown_deduplication():
     assert dispatcher.is_in_cooldown("heat_risk_detected", "test_plot_1") is True
     # Different key should not be in cooldown
     assert dispatcher.is_in_cooldown("heat_risk_detected", "test_plot_2") is False
+
+
+def test_disease_knowledge_base_environmental_favorability():
+    """Verify disease knowledge engine correctly evaluates pathogen trigger conditions against sensor telemetry."""
+    from backend.app.services.crop_service import crop_service
+
+    # Case 1: Late Blight with high humidity (88%) and temperate climate (20°C) -> Favorable
+    dk_favorable = crop_service.get_disease_knowledge(
+        disease_name="Tomato Late Blight",
+        temperature=20.0,
+        humidity=88.0,
+        rain=1,
+        soil_moisture=70.0
+    )
+    assert dk_favorable is not None
+    assert dk_favorable["disease_id"] == "late_blight"
+    assert dk_favorable["is_environment_favorable"] is True
+    assert dk_favorable["environmental_favorability"] == "FAVORABLE_HIGH_PATHOGEN_PRESSURE"
+    assert "Mancozeb" in dk_favorable["pesticide_prescription"]
+
+    # Case 2: Late Blight with low humidity (40%) and high temperature (35°C) -> Unfavorable
+    dk_unfavorable = crop_service.get_disease_knowledge(
+        disease_name="Tomato Late Blight",
+        temperature=35.0,
+        humidity=40.0,
+        rain=0,
+        soil_moisture=30.0
+    )
+    assert dk_unfavorable is not None
+    assert dk_unfavorable["is_environment_favorable"] is False
+    assert dk_unfavorable["environmental_favorability"] == "UNFAVORABLE_CONDITIONS_CONTAINED"
+
+    # Case 3: Healthy foliage -> No disease knowledge match
+    dk_healthy = crop_service.get_disease_knowledge("Tomato Healthy")
+    assert dk_healthy is None
+
+
+def test_multimodal_vision_enrichment_with_iot_context():
+    """Verify that leaf diagnosis attaches live field sensor telemetry and evaluates disease knowledge."""
+    from tests.test_api import get_test_sample_images
+    val_images = get_test_sample_images()
+    sample_path = val_images[0]
+    with open(sample_path, "rb") as f:
+        file_bytes = f.read()
+
+    # 1. Ingest known IoT observation
+    payload = {
+        "observation_id": "obs-test-enrichment-01",
+        "device_id": "agrirover-esp32-01",
+        "sensor_telemetry": {
+            "temperature_c": 22.5,
+            "humidity_pct": 89.0,
+            "soil_moisture_raw": 2100,
+            "soil_moisture_pct": 65.0,
+            "rain_detected": 1,
+            "rain_intensity_raw": 1500,
+            "rain_intensity_pct": 85.0,
+            "water_level_raw": 600,
+            "water_level_pct": 18.0,
+        },
+        "gps": {
+            "fix_valid": True,
+            "latitude": 12.971598,
+            "longitude": 77.594562,
+            "satellites": 9,
+            "hdop": 1.1,
+        }
+    }
+    obs_res = client.post("/api/v1/iot/observation", json=payload)
+    assert obs_res.status_code == 200
+
+    # 2. Diagnose image with attach_iot_context=True
+    diag_res = client.post(
+        "/api/v1/vision/diagnose",
+        files={"file": (sample_path.name, file_bytes, "image/jpeg")},
+        data={"model_tier": "server", "attach_iot_context": "true"}
+    )
+    assert diag_res.status_code == 200
+    data = diag_res.json()
+
+    assert data["environmental_context"] is not None
+    assert data["environmental_context"]["temperature_c"] == 22.5
+    assert data["environmental_context"]["humidity_pct"] == 89.0
+    assert data["environmental_context"]["rain_detected"] == 1
+    assert data["environmental_context"]["gps_fix"] is True
+    assert data["environmental_context"]["observation_id"] == "obs-test-enrichment-01"
+

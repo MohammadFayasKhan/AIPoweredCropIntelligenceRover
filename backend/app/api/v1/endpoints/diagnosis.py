@@ -6,8 +6,11 @@ triggers hierarchical ML vision cascade, and returns typed agronomic diagnosis.
 
 from typing import Optional
 import uuid
+import logging
 from fastapi import APIRouter, Request, UploadFile, File, Form, HTTPException, status
 from fastapi.responses import JSONResponse
+
+logger = logging.getLogger("smartcropvision.diagnosis")
 
 from backend.app.services.inference_service import inference_engine
 from backend.app.services.esp32_gateway import esp32_gateway
@@ -38,7 +41,8 @@ async def diagnose_leaf_image(
     crop_context: Optional[str] = Form(None, description="Optional crop hint (e.g., Tomato, Corn, Grape)"),
     temperature_c: Optional[float] = Form(None, description="Optional ambient temperature in Celsius"),
     humidity_pct: Optional[float] = Form(None, description="Optional relative humidity percentage"),
-    symptom_notes: Optional[str] = Form(None, description="Optional grower symptom description")
+    symptom_notes: Optional[str] = Form(None, description="Optional grower symptom description"),
+    attach_iot_context: Optional[bool] = Form(False, description="Whether to attach live field IoT telemetry to multimodal context")
 ) -> DiagnosisResponse:
     """
     Authoritative plant diagnostic pipeline:
@@ -105,19 +109,18 @@ async def diagnose_leaf_image(
             }
         )
 
-    # Enrich multimodal context with live field sensors if not explicitly provided
-    try:
-        from backend.app.api.v1.endpoints.iot import _latest_observation, ws_manager
-        if _latest_observation is not None:
-            s = _latest_observation.sensor_telemetry
-            g = _latest_observation.gps
-            if temperature_c is None:
-                temperature_c = s.temperature_c
-            if humidity_pct is None:
-                humidity_pct = s.humidity_pct
-    except Exception:
-        _latest_observation = None
-        ws_manager = None
+    # Enrich multimodal context with live field sensors if explicitly requested or if authentic esp32_cam capture
+    if attach_iot_context or (validated_source == "esp32_cam" and (temperature_c is None or humidity_pct is None)):
+        try:
+            from backend.app.api.v1.endpoints.iot import _latest_observation
+            if _latest_observation is not None:
+                s = _latest_observation.sensor_telemetry
+                if temperature_c is None:
+                    temperature_c = s.temperature_c
+                if humidity_pct is None:
+                    humidity_pct = s.humidity_pct
+        except Exception:
+            pass
 
     # Build optional multimodal context dict if provided
     multimodal_context = None
@@ -144,22 +147,53 @@ async def diagnose_leaf_image(
             camera_metadata=camera_metadata
         )
 
-        # Synchronize diagnosis into unified field observation
+        # Synchronize diagnosis into unified field observation & enrich with disease knowledge
         try:
             from backend.app.api.v1.endpoints.iot import _latest_observation, ws_manager
+            from backend.app.services.crop_service import crop_service
+
             if _latest_observation is not None:
+                s = _latest_observation.sensor_telemetry
+                g = _latest_observation.gps
+                response.environmental_context = {
+                    "temperature_c": s.temperature_c,
+                    "humidity_pct": s.humidity_pct,
+                    "soil_moisture_pct": s.soil_moisture_pct,
+                    "soil_moisture_raw": s.soil_moisture_raw,
+                    "rain_detected": s.rain_detected,
+                    "water_level_pct": s.water_level_pct,
+                    "gps_latitude": g.latitude if (g.is_valid or g.latitude is not None) else None,
+                    "gps_longitude": g.longitude if (g.is_valid or g.longitude is not None) else None,
+                    "gps_fix": g.is_valid,
+                    "observation_id": _latest_observation.observation_id,
+                    "timestamp": _latest_observation.timestamp,
+                    "freshness": "LIVE"
+                }
+
+                # Query disease knowledge engine with vision diagnosis + live sensors
+                diag = response.diagnosis
+                disease_name = diag.disease_common_name if diag else "Healthy"
+                dk = crop_service.get_disease_knowledge(
+                    disease_name=disease_name,
+                    temperature=s.temperature_c,
+                    humidity=s.humidity_pct,
+                    rain=s.rain_detected,
+                    soil_moisture=s.soil_moisture_pct
+                )
+                if dk:
+                    response.disease_knowledge = dk
+
+                # Synchronize vision result into unified field observation
                 _latest_observation.crop_vision = {
-                    "crop_name": response.crop_name,
-                    "disease_name": response.disease_name,
-                    "confidence_pct": response.confidence_pct,
-                    "is_healthy": response.is_healthy,
-                    "severity_level": response.severity_level,
-                    "treatment_plan": response.treatment_plan.dict() if response.treatment_plan else None,
-                    "detections_count": len(response.detections) if response.detections else 0,
+                    "crop_name": diag.crop if diag else "Unknown",
+                    "disease_name": diag.disease_common_name if diag else "Unknown",
+                    "confidence_pct": diag.confidence_pct if diag else 0.0,
+                    "is_healthy": not diag.is_infected if diag else True,
+                    "severity_level": diag.severity_level if diag else "Low",
                     "timestamp": response.timestamp
                 }
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Error enriching diagnosis with field context: {e}")
 
         return response
     except ImageValidationError as ive:

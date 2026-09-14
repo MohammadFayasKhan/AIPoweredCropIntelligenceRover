@@ -306,7 +306,7 @@ input:checked + .slider-toggle::before {
 }
 .iot-chip.chip-stale strong { color: var(--yellow); }
 
-/* Flash animation when new ESP8266 telemetry arrives */
+/* Flash animation when new ESP32 telemetry arrives */
 @keyframes chipFlash {
   0%   { background: rgba(82,183,136,0.45); border-color: rgba(82,183,136,0.8); box-shadow: 0 0 10px rgba(82,183,136,0.4); }
   100% { background: rgba(82,183,136,0.1);  border-color: rgba(82,183,136,0.25); box-shadow: none; }
@@ -482,7 +482,7 @@ input:checked + .slider-toggle::before {
     grid-template-columns: var(--left-panel-width, 380px) 10px 1fr;
     grid-template-rows   : 100%;
     gap                  : 14px;
-    padding              : 16px 24px 18px;
+    padding              : 10px 24px 14px;
     max-width            : 1560px;
     margin               : 0 auto;
     width                : 100%;
@@ -550,13 +550,35 @@ input:checked + .slider-toggle::before {
     position       : relative;
     display        : flex;
     flex-direction : column;
-    gap            : 12px;
-    padding-bottom : 28px;
+    gap            : 10px;
+    padding        : 14px 16px;
     box-sizing     : border-box;
   }
 
+  .sensor-panel .panel-header {
+    margin-bottom : 6px;
+    padding-bottom: 8px;
+    flex-shrink   : 0;
+  }
+
+  .sensor-panel .sensor-grid {
+    flex          : 1 1 auto;
+    min-height    : 290px;
+    margin-bottom : 0;
+  }
+
+  .sensor-panel .predict-btn {
+    flex-shrink  : 0;
+    margin-bottom: 0;
+  }
+
+  .sensor-panel .presets {
+    flex-shrink: 0;
+    margin-top : 0;
+  }
+
   /* Prevent any left-panel controls from collapsing or overlapping */
-  .sensor-panel > *,
+  .sensor-panel > *:not(.sensor-grid),
   #visionInputPanel > * {
     flex-shrink: 0;
   }
@@ -706,16 +728,22 @@ input:checked + .slider-toggle::before {
 .sensor-grid {
   display              : grid;
   grid-template-columns: 1fr 1fr;
-  gap                  : 12px;
-  margin-bottom        : 16px;
+  grid-template-rows   : repeat(3, 1fr);
+  gap                  : 9px;
+  margin-bottom        : 9px;
 }
 
 .sensor-card {
-  background   : var(--bg-card);
-  border       : 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding      : 14px;
-  transition   : border-color 0.3s, box-shadow 0.3s;
+  background     : var(--bg-card);
+  border         : 1px solid var(--border);
+  border-radius  : var(--radius-sm);
+  padding        : 10px 12px;
+  display        : flex;
+  flex-direction : column;
+  justify-content: space-between;
+  box-sizing     : border-box;
+  transition     : border-color 0.3s, box-shadow 0.3s;
+  height         : 100%;
 }
 .sensor-card:hover {
   border-color: var(--border-bright);
@@ -725,21 +753,21 @@ input:checked + .slider-toggle::before {
 .sensor-card-header {
   display      : flex;
   align-items  : center;
-  gap          : 6px;
-  margin-bottom: 8px;
+  gap          : 5px;
+  margin-bottom: 4px;
 }
 
-.sensor-icon  { font-size: 14px; }
+.sensor-icon  { font-size: 13px; }
 .sensor-label { font-size: 11px; color: var(--text-secondary); font-weight: 500; flex: 1; }
-.sensor-unit  { font-size: 10px; color: var(--text-muted); }
+.sensor-unit  { font-size: 9.5px; color: var(--text-muted); }
 
 .sensor-value-display {
   font-family   : 'Space Grotesk', sans-serif;
-  font-size     : 28px;
+  font-size     : 24px;
   font-weight   : 700;
   color         : var(--green-bright);
   text-align    : center;
-  margin        : 8px 0;
+  margin        : auto 0;
   letter-spacing: -0.5px;
   transition    : color 0.3s;
 }
@@ -761,8 +789,8 @@ input:checked + .slider-toggle::before {
 }
 .sensor-slider::-webkit-slider-thumb {
   appearance   : none;
-  width        : 16px;
-  height       : 16px;
+  width        : 15px;
+  height       : 15px;
   border-radius: 50%;
   background   : var(--green-bright);
   border       : 2px solid #0d2e0d;
@@ -773,9 +801,9 @@ input:checked + .slider-toggle::before {
 .slider-range {
   display        : flex;
   justify-content: space-between;
-  font-size      : 9px;
+  font-size      : 8.5px;
   color          : var(--text-muted);
-  margin-top     : 4px;
+  margin-top     : 2px;
 }
 
 /* ── Rain Toggle Button ──────────────────────────────────────────── */
@@ -783,21 +811,21 @@ input:checked + .slider-toggle::before {
 
 .rain-toggle {
   width         : 100%;
-  margin        : 10px 0 6px;
-  padding       : 14px 10px;
+  margin        : 5px 0 2px;
+  padding       : 7px 8px;
   border-radius : var(--radius-sm);
   border        : 2px solid rgba(82,183,136,0.35);
   background    : linear-gradient(135deg, #0d2a0d, #112011);
   color         : var(--green-bright);
   font-family   : 'Space Grotesk', sans-serif;
-  font-size     : 15px;
+  font-size     : 13px;
   font-weight   : 700;
   letter-spacing: 0.06em;
   cursor        : pointer;
   display       : flex;
   align-items   : center;
   justify-content: center;
-  gap           : 10px;
+  gap           : 8px;
   transition    : all 0.25s ease;
   flex          : 1;
 }
@@ -818,26 +846,85 @@ input:checked + .slider-toggle::before {
   box-shadow  : 0 0 16px rgba(76,201,240,0.2);
 }
 
-.rain-toggle-icon  { font-size: 22px; line-height: 1; }
-.rain-toggle-label { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; }
+.rain-toggle-icon  { font-size: 18px; line-height: 1; }
+.rain-toggle-label { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; }
 
 .rain-hint {
-  font-size : 9.5px;
+  font-size : 8.5px;
   color     : var(--text-muted);
   text-align: center;
-  margin-top: 2px;
+  margin-top: 1px;
 }
+
+/* ── Water Level & Field Drainage Card ─────────────────────────────── */
+#card-water .sensor-value-display {
+  color: #4cc9f0;
+}
+#card-water .sensor-slider {
+  background: linear-gradient(to right, #2a9d8f, #4cc9f0);
+}
+#card-water .sensor-slider::-webkit-slider-thumb {
+  background: #4cc9f0;
+  box-shadow: 0 0 10px rgba(76, 201, 240, 0.6);
+  border-color: #06222b;
+}
+
+.water-state-text {
+  font-weight   : 700;
+  color         : var(--green-bright);
+  letter-spacing: 0.05em;
+  transition    : color 0.25s ease;
+}
+.water-state-text.state-warn {
+  color: #ffb703;
+}
+.water-state-text.state-danger {
+  color: #ff6b6b;
+}
+
+/* ── GPS NEO-6M Location Card ────────────────────────────────────── */
+.gps-card {
+  display        : flex;
+  flex-direction : column;
+  justify-content: space-between;
+}
+
+.gps-val-display {
+  font-family   : 'Space Grotesk', sans-serif !important;
+  font-size     : 17px !important;
+  font-weight   : 700 !important;
+  letter-spacing: 0.02em !important;
+  margin        : 4px 0 !important;
+  color         : var(--green-bright);
+  text-align    : center;
+  white-space   : nowrap;
+}
+
+.gps-bottom-row {
+  display        : flex;
+  justify-content: space-between;
+  align-items    : center;
+  margin-top     : auto;
+  padding-top    : 2px;
+}
+
+.gps-alt-text {
+  font-size  : 10px;
+  color      : var(--text-secondary);
+  font-weight: 500;
+}
+
 
 /* ── Action Buttons ──────────────────────────────────────────────── */
 .predict-btn {
   width        : 100%;
-  padding      : 13px;
+  padding      : 10px 14px;
   background   : linear-gradient(135deg, var(--green-primary), #3a8a60);
   color        : #080f08;
   border       : none;
   border-radius: var(--radius-sm);
   font-family  : 'Space Grotesk', sans-serif;
-  font-size    : 14px;
+  font-size    : 13.5px;
   font-weight  : 700;
   letter-spacing: 0.04em;
   cursor       : pointer;
@@ -847,33 +934,33 @@ input:checked + .slider-toggle::before {
   gap          : 8px;
   transition   : transform 0.2s, box-shadow 0.2s;
   box-shadow   : 0 4px 16px rgba(82, 183, 136, 0.3);
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 .predict-btn:hover  { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(82, 183, 136, 0.45); }
 .predict-btn:active { transform: translateY(0); }
-.btn-icon { font-size: 16px; }
+.btn-icon { font-size: 15px; }
 
 /* ── Presets ──────────────────────────────────────────────────────── */
-.presets { margin-top: 4px; }
+.presets { margin-top: 0; }
 .presets-label {
-  font-size    : 11px;
+  font-size    : 10px;
   color        : var(--text-muted);
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   font-weight  : 500;
 }
 .preset-buttons {
   display              : grid;
   grid-template-columns: repeat(2, 1fr);
-  gap                  : 7px;
+  gap                  : 5px;
 }
 .preset-btn {
   background   : var(--bg-card);
   border       : 1px solid var(--border);
   border-radius: var(--radius-sm);
   color        : var(--text-secondary);
-  font-size    : 11.5px;
+  font-size    : 11px;
   font-weight  : 500;
-  padding      : 7px 10px;
+  padding      : 5px 8px;
   cursor       : pointer;
   transition   : all 0.2s;
   text-align   : left;
@@ -907,14 +994,44 @@ input:checked + .slider-toggle::before {
 }
 
 .crop-main-card {
-  display      : flex;
+  display        : flex;
+  flex-direction : column;
+  gap            : 14px;
+  background     : linear-gradient(135deg, #0f240f, #153315);
+  border         : 1px solid var(--border-bright);
+  border-radius  : var(--radius);
+  padding        : 18px 22px;
+  box-shadow     : var(--shadow-glow);
+  box-sizing     : border-box;
+}
+
+.crop-card-row {
+  display    : flex;
+  align-items: center;
+  gap        : 18px;
+  width      : 100%;
+}
+
+.crop-main-card .rec-env-pills {
+  display    : flex;
+  flex-wrap  : wrap;
+  gap        : 8px;
+  margin     : 0;
+  padding-top: 12px;
+  border-top : 1px solid rgba(82, 183, 136, 0.2);
+}
+
+.crop-main-card .env-pill {
+  background   : rgba(0, 0, 0, 0.35);
+  border       : 1px solid rgba(82, 183, 136, 0.25);
+  border-radius: 20px;
+  padding      : 4px 10px;
+  font-size    : 11px;
+  font-weight  : 500;
+  color        : var(--text-secondary);
+  display      : inline-flex;
   align-items  : center;
-  gap          : 18px;
-  background   : linear-gradient(135deg, #0f240f, #153315);
-  border       : 1px solid var(--border-bright);
-  border-radius: var(--radius);
-  padding      : 18px 22px;
-  box-shadow   : var(--shadow-glow);
+  gap          : 4px;
 }
 
 .crop-emoji { font-size: 46px; }
@@ -968,7 +1085,7 @@ input:checked + .slider-toggle::before {
   font-size     : 11px;
   color         : var(--text-muted);
   font-weight   : 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -982,44 +1099,60 @@ input:checked + .slider-toggle::before {
   display      : flex;
   align-items  : center;
   gap          : 10px;
-  background   : var(--bg-card);
-  border       : 1px solid var(--border);
+  background   : rgba(14, 28, 18, 0.65);
+  border       : 1px solid rgba(82, 183, 136, 0.2);
   border-radius: var(--radius-sm);
   padding      : 8px 14px;
   font-size    : 12px;
+  transition   : all 0.25s ease;
+}
+.top3-item:hover {
+  border-color: rgba(82, 183, 136, 0.45);
+  background  : rgba(16, 185, 129, 0.09);
+  transform   : translateX(2px);
 }
 
-.top3-rank { font-size: 14px; }
+.top3-rank {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size  : 13px;
+  font-weight: 700;
+  color      : var(--green-bright);
+  width      : 14px;
+  text-align : center;
+}
 .top3-crop {
-  font-weight: 600;
-  color      : var(--text-primary);
-  width      : 110px;
-  overflow   : hidden;
+  font-weight  : 600;
+  color        : var(--text-primary);
+  width        : 115px;
+  overflow     : hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space  : nowrap;
 }
 
 .top3-bar-wrap {
   flex         : 1;
-  background   : rgba(255,255,255,0.06);
-  height       : 6px;
-  border-radius: 3px;
+  background   : rgba(255, 255, 255, 0.07);
+  height       : 7px;
+  border-radius: 4px;
   overflow     : hidden;
+  box-shadow   : inset 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 .top3-bar {
   height       : 100%;
-  background   : var(--green-primary);
-  border-radius: 3px;
-  transition   : width 0.6s ease;
+  background   : linear-gradient(90deg, #059669 0%, #10b981 60%, #34d399 100%);
+  border-radius: 4px;
+  box-shadow   : 0 0 8px rgba(52, 211, 153, 0.35);
+  transition   : width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .top3-conf {
   font-family: 'Space Grotesk', sans-serif;
   font-weight: 700;
-  font-size  : 12px;
-  color      : var(--text-secondary);
-  width      : 46px;
+  font-size  : 12.5px;
+  color      : #34d399;
+  width      : 48px;
   text-align : right;
+  text-shadow: 0 0 8px rgba(52, 211, 153, 0.3);
 }
 
 /* ── Disease Panel ───────────────────────────────────────────────── */
@@ -4127,6 +4260,8 @@ body.camera-modal-open {
 .btn-rover-ping:hover {
   background: rgba(255, 255, 255, 0.09);
   color: #ffffff;
+}
+
 /* ── AGRIROVER CONSOLE & FIELD IOT STYLING (SIH 2026) ─────────────────── */
 .rover-grid {
   display: grid;

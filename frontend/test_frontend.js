@@ -422,3 +422,41 @@ test("frontend/style.css has balanced curly braces and zero unclosed media queri
   }
   assert.strictEqual(stack.length, 0, `Unclosed open braces '{' detected: ${stack.length}`);
 });
+
+// Test 19: Secondary Viable Options Confidence Parsing (Both confidence and confidence_pct)
+test("Secondary Viable Options confidence parser correctly extracts confidence and confidence_pct", () => {
+  function parseAlternative(alt, idx) {
+    let rawAlt = Number(
+      alt.confidence != null ? alt.confidence :
+      (alt.confidence_pct != null ? alt.confidence_pct :
+      (alt.conf != null ? alt.conf :
+      (alt.probability != null ? alt.probability * 100 : 0)))
+    );
+    if (rawAlt <= 1.0 && rawAlt > 0) rawAlt = rawAlt * 100;
+    const altPct = Math.min(100, Math.max(0, rawAlt)).toFixed(1);
+    const rankNum = alt.rank || (idx + 2);
+    return { altPct, rankNum };
+  }
+
+  // Case 1: Raw IoT packet with confidence_pct
+  const alt1 = { crop: "Muskmelon", confidence_pct: 41.7, rank: 2 };
+  const res1 = parseAlternative(alt1, 0);
+  assert.strictEqual(res1.altPct, "41.7");
+  assert.strictEqual(res1.rankNum, 2);
+
+  // Case 2: Third candidate with confidence_pct
+  const alt2 = { crop: "Mothbeans", confidence_pct: 6.6, rank: 3 };
+  const res2 = parseAlternative(alt2, 1);
+  assert.strictEqual(res2.altPct, "6.6");
+  assert.strictEqual(res2.rankNum, 3);
+
+  // Case 3: Legacy or direct endpoint with confidence
+  const alt3 = { crop: "Muskmelon", confidence: 41.7, rank: 2 };
+  const res3 = parseAlternative(alt3, 0);
+  assert.strictEqual(res3.altPct, "41.7");
+
+  // Case 4: Zero confidence should not break
+  const alt4 = { crop: "Barley", confidence: 0 };
+  const res4 = parseAlternative(alt4, 0);
+  assert.strictEqual(res4.altPct, "0.0");
+});
