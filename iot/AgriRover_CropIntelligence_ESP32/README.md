@@ -85,12 +85,10 @@ The firmware creates 4 custom 5x8 characters:
 
 ### 5. Backend Deployment Targets & Auto-Failover Modes
 
-The firmware features a triple-mode target selector (`TARGET_MODE` in `AgriRover_CropIntelligence_ESP32.ino`):
-
-- **Mode 0 (`TARGET_MODE 0` — Public Production Cloud):**
+- **Mode 0 (`TARGET_MODE 0` — Public Production Cloud [Default / Primary]):**
   - **Endpoint:** `https://aipoweredcropintelligencerover.dpdns.org/predict/compact`
-  - **Transport:** HTTPS with DigiCert Global Root G2 certificate validation (fallback to TLS insecure if system clock unset)
-  - **Use Case:** Outdoor/field deployment where the rover operates independently and feeds the live public dashboard directly.
+  - **Transport:** HTTPS with DigiCert Global Root G2 certificate validation (with resilient fallback to TLS insecure if system clock unset)
+  - **Use Case:** Direct outdoor/field operations connecting straight to the live public web dashboard.
 
 - **Mode 1 (`TARGET_MODE 1` — Local Mac Development):**
   - **Endpoint:** `http://172.20.10.4:8000/predict/compact`
@@ -98,10 +96,10 @@ The firmware features a triple-mode target selector (`TARGET_MODE` in `AgriRover
   - **Subnet Auto-Discovery:** Automatically scans `172.20.10.x` hotspot subnet to detect the Mac's IP dynamically if it changes.
   - **Use Case:** Local paired development and rapid debugging on Mac.
 
-- **Mode 2 (`TARGET_MODE 2` — Smart Dual-Mode Auto-Failover [Default]):**
-  - Attempts the Local Mac server first for ultra-fast local testing.
-  - If the Local Mac server is unreachable (or computer is asleep/away), it immediately and seamlessly routes telemetry via HTTPS to the Public Cloud (`https://aipoweredcropintelligencerover.dpdns.org`).
-  - Guarantees zero telemetry loss and eliminates the need to reflash firmware when moving between bench testing and field demonstrations.
+- **Mode 2 (`TARGET_MODE 2` — Smart Dual-Mode Auto-Failover):**
+  - Routes telemetry to the **Public Production Cloud (`https://aipoweredcropintelligencerover.dpdns.org`) as PRIMARY**.
+  - If the public cloud is ever unreachable (e.g., loss of cellular internet), it automatically fails over to the Local Mac dev server (`http://172.20.10.4:8000`).
+  - Guarantees zero telemetry loss across network transitions.
 
 - **Method:** `POST`
 - **Content-Type:** `application/json`

@@ -87,10 +87,10 @@ const char *WIFI_SSID = "Fayas";     // WiFi hotspot name
 const char *WIFI_PASS = "777888666"; // WiFi password
 
 // ── Target Mode Selection ─────────────────────────────────────────────
-//   0 = PUBLIC PRODUCTION CLOUD (https://aipoweredcropintelligencerover.dpdns.org)
+//   0 = PUBLIC PRODUCTION CLOUD (https://aipoweredcropintelligencerover.dpdns.org) [PRIMARY]
 //   1 = LOCAL MAC DEV           (http://172.20.10.4:8000)
-//   2 = SMART DUAL-MODE         (Attempts Local Mac first; auto-failovers to Public Cloud if offline)
-#define TARGET_MODE 2 // 2 = Seamless Auto-Failover (Recommended)
+//   2 = SMART DUAL-MODE         (Public Cloud PRIMARY; Auto-fallback to Local Mac if offline)
+#define TARGET_MODE 0 // 0 = Public Production Cloud (https://aipoweredcropintelligencerover.dpdns.org)
 
 String g_localDevUrl = "http://172.20.10.4:8000/predict/compact";
 const char *PUBLIC_CLOUD_URL = "https://aipoweredcropintelligencerover.dpdns.org/predict/compact";
@@ -100,7 +100,7 @@ const char *TARGET_LABEL = "dpdns.org PROD";
 #elif TARGET_MODE == 1
 const char *TARGET_LABEL = "172.20.10.4:8000";
 #else
-const char *TARGET_LABEL = "Auto Local+Cloud";
+const char *TARGET_LABEL = "Cloud (Auto)";
 #endif
 
 // DigiCert Global Root G2 Certificate (Authoritative root for Azure Cloud / dpdns.org, matching ESP32-CAM)
@@ -422,61 +422,67 @@ void sendToServer() {
   int code = -1;
   bool success = false;
 
-#if TARGET_MODE == 1 || TARGET_MODE == 2
-  // Attempt local Mac server first
-  Serial.println("[HTTP] Attempting LOCAL MAC → " + g_localDevUrl);
-  http.begin(plainClient, g_localDevUrl);
+#if TARGET_MODE == 0 || TARGET_MODE == 2
+  // ── Public Production Cloud (Azure / DPDNS) - PRIMARY ────────────────
+#if TARGET_MODE == 2
+  Serial.println("[HTTP] POST (PUBLIC CLOUD PRIMARY) → " + String(PUBLIC_CLOUD_URL));
+#else
+  Serial.println("[HTTP] POST (PUBLIC CLOUD) → " + String(PUBLIC_CLOUD_URL));
+#endif
+  secureClient.setCACert(DIGICERT_ROOT_CA);
+  http.begin(secureClient, PUBLIC_CLOUD_URL);
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(3000);
+  http.setTimeout(8000);
   code = http.POST(body);
   if (code == 200 || code == 201) {
     String resp = http.getString();
-    Serial.println("[HTTP] Local Response: " + resp);
+    Serial.println("[HTTP] Cloud Response: " + resp);
     parseResponse(resp);
     g_serverOK = true;
     success = true;
   } else {
-    Serial.printf("[HTTP] Local unavailable (code %d)\n", code);
-#if TARGET_MODE == 2
-    discoverLocalBackend(); // Probe hotspot subnet in case Mac IP changed
-#endif
-  }
-  http.end();
-#endif
-
-#if TARGET_MODE == 0 || TARGET_MODE == 2
-  // Public Production Cloud (Azure / DPDNS) - Primary or Failover
-  if (!success) {
-#if TARGET_MODE == 2
-    Serial.println("[HTTP] Failover: Routing telemetry to PUBLIC CLOUD (dpdns.org)...");
-#else
-    Serial.println("[HTTP] POST (PUBLIC CLOUD) → " + String(PUBLIC_CLOUD_URL));
-#endif
-    secureClient.setCACert(DIGICERT_ROOT_CA);
+    // Fallback with setInsecure in case of clock or intermediate verification difference
+    secureClient.setInsecure();
     http.begin(secureClient, PUBLIC_CLOUD_URL);
     http.addHeader("Content-Type", "application/json");
     http.setTimeout(8000);
     code = http.POST(body);
     if (code == 200 || code == 201) {
       String resp = http.getString();
-      Serial.println("[HTTP] Cloud Response: " + resp);
+      Serial.println("[HTTP] Cloud (Insecure fallback) Response: " + resp);
       parseResponse(resp);
       g_serverOK = true;
       success = true;
     } else {
-      // Fallback with setInsecure in case of clock or intermediate verification difference
-      secureClient.setInsecure();
-      http.begin(secureClient, PUBLIC_CLOUD_URL);
-      http.addHeader("Content-Type", "application/json");
-      http.setTimeout(8000);
-      code = http.POST(body);
-      if (code == 200 || code == 201) {
-        String resp = http.getString();
-        Serial.println("[HTTP] Cloud (Insecure fallback) Response: " + resp);
-        parseResponse(resp);
-        g_serverOK = true;
-        success = true;
-      }
+      Serial.printf("[HTTP] Public Cloud unavailable (code %d)\n", code);
+    }
+  }
+  http.end();
+#endif
+
+#if TARGET_MODE == 1 || TARGET_MODE == 2
+  // ── Local Mac Server - Fallback if Cloud Offline (Mode 2) or Standalone (Mode 1) ──
+  if (!success) {
+#if TARGET_MODE == 2
+    Serial.println("[HTTP] Failover: Cloud unreachable, routing to LOCAL MAC (" + g_localDevUrl + ")...");
+#else
+    Serial.println("[HTTP] POST (LOCAL MAC) → " + g_localDevUrl);
+#endif
+    http.begin(plainClient, g_localDevUrl);
+    http.addHeader("Content-Type", "application/json");
+    http.setTimeout(3000);
+    code = http.POST(body);
+    if (code == 200 || code == 201) {
+      String resp = http.getString();
+      Serial.println("[HTTP] Local Response: " + resp);
+      parseResponse(resp);
+      g_serverOK = true;
+      success = true;
+    } else {
+      Serial.printf("[HTTP] Local unavailable (code %d)\n", code);
+#if TARGET_MODE == 2
+      discoverLocalBackend(); // Probe hotspot subnet in case Mac IP changed
+#endif
     }
     http.end();
   }
