@@ -59,6 +59,12 @@ class Settings:
     ALLOW_CREDENTIALS: bool = os.getenv("ALLOW_CREDENTIALS", "true").lower() in ("true", "1", "yes")
     SECRET_KEY: str = os.getenv("SECRET_KEY", "smartcropvision-insecure-dev-key-change-in-prod")
 
+    # ESP32-CAM Field Hardware Gateway & Device Settings
+    ESP32_CAM_ENABLED: bool = os.getenv("ENABLE_ESP32_CAM", "true").lower() in ("true", "1", "yes")
+    ESP32_CAM_SECRET_KEY: str = os.getenv("ESP32_CAM_SECRET_KEY", "smartcropvision-esp32-token-innovex")
+    ESP32_HEARTBEAT_TIMEOUT_SECONDS: int = int(os.getenv("ESP32_HEARTBEAT_TIMEOUT_SECONDS", "30"))
+    ESP32_CAPTURE_TIMEOUT_SECONDS: int = int(os.getenv("ESP32_CAPTURE_TIMEOUT_SECONDS", "12"))
+
     # Groq Cloud Multimodal Intelligence & Semantic Validation Gateway
     GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY", None)
     GROQ_VISION_MODEL: str = os.getenv("GROQ_VISION_MODEL", "qwen/qwen3.8-27b")

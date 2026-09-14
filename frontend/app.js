@@ -238,6 +238,19 @@ let showBoundingBoxes = true;
 let showSpecimenBoxes = true;
 let showLesionBoxes = true;
 
+// ESP32-CAM (OV2640) Field Hardware State
+let currentVisionInputMode = "upload"; // 'upload' | 'camera' | 'esp32'
+let currentVisionImageSource = "browser_upload"; // 'browser_upload' | 'browser_camera' | 'esp32_cam'
+let currentEsp32CaptureId = null;
+let currentEsp32CaptureMeta = null;
+let esp32StatusPollTimer = null;
+let esp32StreamActive = false;
+let esp32StreamAbortController = null;
+let esp32FrameCount = 0;
+let esp32FpsTimer = null;
+let esp32DeviceOnline = false;
+let isFetchingEsp32Frame = false;
+
 // Presets for Quick Scenarios
 const SENSOR_PRESETS = {
   monsoon: { temperature: 24, humidity: 88, soil_moisture: 85, rain: 1 },
@@ -291,6 +304,10 @@ if (typeof document !== "undefined") {
     // Poll for genuine physical ESP8266 telemetry
     pollLatestIotTelemetry();
     setInterval(pollLatestIotTelemetry, 10000);
+
+    // Poll for genuine physical ESP32-CAM field hardware (fast 3.5s cycle for immediate hotspot link)
+    pollEsp32Status();
+    setInterval(pollEsp32Status, 3500);
 
     // High-resolution 1-second ticker to detect stale physical hardware immediately
     setInterval(updateIotAgeTicker, 1000);
@@ -1646,12 +1663,22 @@ const SmartCropVisionCamera = {
       lastModified: Date.now()
     });
 
+    currentVisionImageSource = "browser_camera";
+    currentEsp32CaptureId = null;
+    currentEsp32CaptureMeta = null;
+    const provTag = document.getElementById("cvProvenanceTag");
+    if (provTag) {
+      provTag.style.display = "inline-flex";
+      provTag.className = "provenance-tag camera-provenance";
+      provTag.innerHTML = `📸 Device Camera`;
+    }
+
     this.close();
 
     showToast("Photo captured from camera. Verifying leaf specimen...", "info", "Specimen Received");
 
     if (typeof processSelectedImageFile === "function") {
-      await processSelectedImageFile(capturedFile, false);
+      await processSelectedImageFile(capturedFile, false, "browser_camera");
     }
   },
 
@@ -1811,12 +1838,435 @@ function fallbackToUploadFromCamera() {
 }
 
 // Ensure camera stream is stopped if window is closed or backgrounded
-window.addEventListener("beforeunload", () => {
-  SmartCropVisionCamera.stopAllStreams();
-});
-window.addEventListener("pagehide", () => {
-  SmartCropVisionCamera.stopAllStreams();
-});
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
+    SmartCropVisionCamera.stopAllStreams();
+    stopEsp32Stream();
+  });
+  window.addEventListener("pagehide", () => {
+    SmartCropVisionCamera.stopAllStreams();
+    stopEsp32Stream();
+  });
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ESP32-CAM (OV2640) FIELD HARDWARE CONTROLLER & 3-MODE INPUT SWITCHER
+// ═════════════════════════════════════════════════════════════════════════════
+
+function setVisionInputMode(mode) {
+  currentVisionInputMode = mode;
+
+  const tabUpload = document.getElementById("tabModeUpload");
+  const tabCamera = document.getElementById("tabModeCamera");
+  const tabEsp32 = document.getElementById("tabModeEsp32");
+  const dropzone = document.getElementById("cvDropzone");
+  const esp32Panel = document.getElementById("esp32CamPanel");
+
+  if (tabUpload) {
+    tabUpload.classList.toggle("active", mode === "upload");
+    tabUpload.setAttribute("aria-selected", mode === "upload" ? "true" : "false");
+  }
+  if (tabCamera) {
+    tabCamera.classList.toggle("active", mode === "camera");
+    tabCamera.setAttribute("aria-selected", mode === "camera" ? "true" : "false");
+  }
+  if (tabEsp32) {
+    tabEsp32.classList.toggle("active", mode === "esp32");
+    tabEsp32.setAttribute("aria-selected", mode === "esp32" ? "true" : "false");
+  }
+
+  if (mode === "upload") {
+    stopEsp32Stream();
+    if (esp32Panel) esp32Panel.style.display = "none";
+    if (dropzone) dropzone.style.display = "block";
+  } else if (mode === "camera") {
+    stopEsp32Stream();
+    if (esp32Panel) esp32Panel.style.display = "none";
+    if (dropzone) dropzone.style.display = "block";
+    openCameraModal();
+  } else if (mode === "esp32") {
+    if (dropzone) dropzone.style.display = "none";
+    if (esp32Panel) esp32Panel.style.display = "block";
+    pollEsp32Status();
+    startEsp32Stream();
+  }
+}
+
+async function pollEsp32Status() {
+  const badgeDot = document.getElementById("esp32HeaderDot");
+  const badgeIcon = document.getElementById("esp32HeaderIcon");
+  const badgeText = document.getElementById("esp32HeaderText") || document.getElementById("esp32HeaderStatusText");
+  const headerBadge = document.getElementById("esp32HeaderBadge");
+  const tabBadge = document.getElementById("esp32TabBadge");
+  const connBadge = document.getElementById("esp32ConnBadge");
+  const connText = document.getElementById("esp32ConnText");
+  const subText = document.getElementById("esp32SubText");
+  const captureBtn = document.getElementById("btnEsp32Capture");
+
+  const camChip = document.getElementById("iotCameraChip");
+  const camChipDot = document.getElementById("iotCameraChipDot");
+  const camChipText = document.getElementById("iotCameraChipText");
+
+  const rssiEl = document.getElementById("esp32Rssi");
+  const heapEl = document.getElementById("esp32Heap");
+  const resEl = document.getElementById("esp32Res");
+  const diagDevId = document.getElementById("diagDeviceId");
+  const diagFw = document.getElementById("diagFirmware");
+  const diagIp = document.getElementById("diagIp");
+  const diagUptime = document.getElementById("diagUptime");
+  const diagCaptures = document.getElementById("diagCaptures");
+  const diagHeartbeat = document.getElementById("diagHeartbeat");
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/esp32/status`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+    const dev = data.active_device || (data.devices && data.devices.length > 0 ? data.devices[0] : null);
+    const isOnline = Boolean(dev && dev.is_online);
+    esp32DeviceOnline = isOnline;
+
+    if (isOnline && dev) {
+      // Seamless auto-reconnect: if ESP32 CAM tab is active and not currently viewing an analysis result, start stream
+      if (currentVisionInputMode === "esp32" && !esp32StreamActive && !currentVisionResult) {
+        startEsp32Stream();
+      }
+      if (headerBadge) {
+        headerBadge.style.display = "inline-flex";
+        headerBadge.className = "server-badge esp32-header-badge online";
+      }
+      if (badgeDot) {
+        badgeDot.className = "badge-dot badge-dot-online";
+      }
+      if (badgeIcon) {
+        badgeIcon.textContent = "📹";
+      }
+      if (badgeText) badgeText.textContent = `ESP32 CAM Online · ${dev.camera_type || 'OV2640'}`;
+      if (camChip) {
+        camChip.style.display = "inline-flex";
+        if (camChipDot) camChipDot.className = "badge-dot badge-dot-online";
+        if (camChipText) camChipText.textContent = `Online (${dev.camera_type || 'OV2640'})`;
+      }
+      if (tabBadge) {
+        tabBadge.className = "esp32-tab-pill-badge badge-online";
+        tabBadge.textContent = "Online";
+      }
+      if (connBadge) {
+        connBadge.className = "esp32-conn-badge badge-online";
+      }
+      if (connText) connText.textContent = "ESP32 CAM Online";
+      if (subText) subText.textContent = `Field Optical Sensor · Ready (${dev.device_id})`;
+      if (captureBtn) captureBtn.disabled = false;
+
+      if (rssiEl) rssiEl.textContent = dev.rssi != null ? dev.rssi : "--";
+      if (heapEl) heapEl.textContent = dev.free_heap ? Math.round(dev.free_heap / 1024) : "--";
+      if (resEl) resEl.textContent = dev.frame_size || "QVGA";
+
+      if (diagDevId) diagDevId.textContent = dev.device_id || "--";
+      if (diagFw) diagFw.textContent = dev.firmware_version || "--";
+      if (diagIp) diagIp.textContent = dev.ip_address || "Outbound Gateway";
+      if (diagUptime) {
+        const u = dev.uptime_seconds || 0;
+        const mins = Math.floor(u / 60);
+        const secs = u % 60;
+        diagUptime.textContent = `${mins}m ${secs}s`;
+      }
+      if (diagCaptures) diagCaptures.textContent = dev.total_captures != null ? dev.total_captures : "0";
+      if (diagHeartbeat) {
+        diagHeartbeat.textContent = dev.last_heartbeat_ago_s != null ? `${dev.last_heartbeat_ago_s}s ago` : "Active";
+      }
+    } else {
+      if (headerBadge) {
+        headerBadge.style.display = "inline-flex";
+        headerBadge.className = "server-badge esp32-header-badge offline";
+      }
+      if (badgeDot) {
+        badgeDot.className = "badge-dot badge-dot-offline";
+      }
+      if (badgeIcon) {
+        badgeIcon.textContent = "📹";
+      }
+      if (badgeText) badgeText.textContent = "ESP32 CAM Offline";
+      if (camChip) {
+        camChip.style.display = "none";
+      }
+      if (tabBadge) {
+        tabBadge.className = "esp32-tab-pill-badge badge-offline";
+        tabBadge.textContent = "Offline";
+      }
+      if (connBadge) {
+        connBadge.className = "esp32-conn-badge badge-offline";
+      }
+      if (connText) connText.textContent = "ESP32 CAM Offline";
+      if (subText) subText.textContent = "Field Optical Sensor · Standby";
+      if (captureBtn) captureBtn.disabled = true;
+
+      if (rssiEl) rssiEl.textContent = "--";
+      if (heapEl) heapEl.textContent = "--";
+      if (diagCaptures) diagCaptures.textContent = "0";
+    }
+  } catch (err) {
+    esp32DeviceOnline = false;
+    if (headerBadge) {
+      headerBadge.style.display = "inline-flex";
+      headerBadge.className = "server-badge esp32-header-badge offline";
+    }
+    if (badgeDot) {
+      badgeDot.className = "badge-dot badge-dot-offline";
+    }
+    if (badgeIcon) {
+      badgeIcon.textContent = "📹";
+    }
+    if (badgeText) badgeText.textContent = "ESP32 CAM Offline";
+    if (camChip) {
+      camChip.style.display = "none";
+    }
+    if (tabBadge) {
+      tabBadge.className = "esp32-tab-pill-badge badge-offline";
+      tabBadge.textContent = "Offline";
+    }
+    if (connBadge) {
+      connBadge.className = "esp32-conn-badge badge-offline";
+    }
+    if (connText) connText.textContent = "ESP32 CAM Offline";
+    if (captureBtn) captureBtn.disabled = true;
+  }
+}
+
+function refreshEsp32State() {
+  pollEsp32Status();
+  if (currentVisionInputMode === "esp32") {
+    startEsp32Stream();
+  }
+}
+
+function startEsp32Stream() {
+  if (esp32StreamActive) return;
+  esp32StreamActive = true;
+  esp32FrameCount = 0;
+
+  const overlay = document.getElementById("esp32StreamOverlay");
+  const overlayMsg = document.getElementById("esp32OverlayMessage");
+  const liveImg = document.getElementById("esp32LiveImg");
+  const fpsEl = document.getElementById("esp32Fps");
+
+  if (overlay) overlay.style.display = "flex";
+  if (overlayMsg) overlayMsg.textContent = "Connecting to ESP32 CAM live preview...";
+
+  // Explicitly command backend and ESP32 hardware to enable preview streaming
+  fetch(`${API_BASE}/api/v1/esp32/stream-control`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ active: true })
+  }).catch(() => {});
+
+  if (esp32FpsTimer) clearInterval(esp32FpsTimer);
+  esp32FpsTimer = setInterval(() => {
+    if (fpsEl) fpsEl.textContent = esp32FrameCount;
+    esp32FrameCount = 0;
+  }, 1000);
+
+  esp32StreamAbortController = new AbortController();
+  fetchEsp32PreviewLoop();
+}
+
+function stopEsp32Stream() {
+  esp32StreamActive = false;
+  if (esp32FpsTimer) {
+    clearInterval(esp32FpsTimer);
+    esp32FpsTimer = null;
+  }
+  const fpsEl = document.getElementById("esp32Fps");
+  if (fpsEl) fpsEl.textContent = "--";
+
+  if (esp32StreamAbortController) {
+    esp32StreamAbortController.abort();
+    esp32StreamAbortController = null;
+  }
+
+  const liveImg = document.getElementById("esp32LiveImg");
+  if (liveImg) {
+    if (liveImg.dataset.blobUrl) {
+      URL.revokeObjectURL(liveImg.dataset.blobUrl);
+      delete liveImg.dataset.blobUrl;
+    }
+    liveImg.style.display = "none";
+    liveImg.src = "";
+  }
+}
+
+let lastRenderedFrameAge = null;
+
+async function fetchEsp32PreviewLoop() {
+  if (!esp32StreamActive) return;
+  if (isFetchingEsp32Frame) return;
+  isFetchingEsp32Frame = true;
+
+  const liveImg = document.getElementById("esp32LiveImg");
+  const overlay = document.getElementById("esp32StreamOverlay");
+  const overlayMsg = document.getElementById("esp32OverlayMessage");
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/esp32/preview?t=${Date.now()}`, {
+      cache: "no-store",
+      signal: esp32StreamAbortController ? esp32StreamAbortController.signal : undefined
+    });
+
+    if (res.ok && res.status === 200) {
+      const ageSec = parseFloat(res.headers.get("X-Frame-Age-Seconds") || "0");
+      const blob = await res.blob();
+      if (blob.size > 0 && esp32StreamActive) {
+        if (ageSec <= 8.0) {
+          const newUrl = URL.createObjectURL(blob);
+          const oldUrl = liveImg.dataset.blobUrl;
+          liveImg.src = newUrl;
+          liveImg.dataset.blobUrl = newUrl;
+          if (oldUrl) URL.revokeObjectURL(oldUrl);
+
+          liveImg.style.display = "block";
+          if (overlay) overlay.style.display = "none";
+          if (ageSec !== lastRenderedFrameAge) {
+            esp32FrameCount++;
+            lastRenderedFrameAge = ageSec;
+          }
+        } else {
+          // Frame in cache is older than 8 seconds — camera is settling or disconnected
+          if (overlay) {
+            overlay.style.display = "flex";
+            if (overlayMsg) overlayMsg.textContent = "Live frame delayed. Reconnecting to sensor...";
+          }
+        }
+      }
+    } else {
+      if (overlay) {
+        overlay.style.display = "flex";
+        if (overlayMsg) overlayMsg.textContent = "Waiting for live frame from ESP32 CAM...";
+      }
+    }
+  } catch (err) {
+    if (err.name !== "AbortError") {
+      // transient network wait
+    }
+  } finally {
+    isFetchingEsp32Frame = false;
+    if (esp32StreamActive) {
+      setTimeout(fetchEsp32PreviewLoop, 80);
+    }
+  }
+}
+
+async function triggerEsp32Capture() {
+  const btn = document.getElementById("btnEsp32Capture");
+  const btnText = document.getElementById("btnEsp32CaptureText");
+  const flash = document.getElementById("esp32CaptureFlash");
+
+  if (!btn || btn.disabled) return;
+
+  btn.disabled = true;
+  if (btnText) btnText.textContent = "Capturing OV2640 Frame...";
+
+  if (flash) {
+    flash.classList.add("flash-active");
+    setTimeout(() => flash.classList.remove("flash-active"), 400);
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/esp32/capture`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resolution: "SVGA", quality: 10 }),
+    });
+
+    if (!res.ok) {
+      let errorMsg = `Capture failed (HTTP ${res.status})`;
+      try {
+        const errJson = await res.json();
+        if (typeof errJson.detail === "string") {
+          errorMsg = errJson.detail;
+        } else if (errJson.detail && typeof errJson.detail.message === "string") {
+          errorMsg = errJson.detail.message;
+        } else if (typeof errJson.message === "string") {
+          errorMsg = errJson.message;
+        } else if (errJson.detail) {
+          errorMsg = JSON.stringify(errJson.detail);
+        }
+      } catch {
+        // fallback to default errorMsg
+      }
+      throw new Error(errorMsg);
+    }
+
+    const data = await res.json();
+    if (!data.image_base64) {
+      throw new Error("No image data returned from camera capture.");
+    }
+
+    // Safely strip data URL header if present before decoding
+    let b64 = data.image_base64;
+    if (typeof b64 === "string" && b64.includes(",")) {
+      b64 = b64.split(",")[1];
+    }
+    b64 = (b64 || "").replace(/\s/g, "");
+
+    // Convert base64 to File object
+    const byteCharacters = atob(b64);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: "image/jpeg" });
+
+    const filename = `esp32_${data.device_id || "cam"}_${data.capture_id || Date.now()}.jpg`;
+    const capturedFile = new File([blob], filename, { type: "image/jpeg", lastModified: Date.now() });
+
+    currentEsp32CaptureId = data.capture_id;
+    currentVisionImageSource = "esp32_cam";
+    currentEsp32CaptureMeta = data;
+
+    // Stop stream to conserve device RAM and network bandwidth
+    stopEsp32Stream();
+
+    // Switch view to dropzone preview workspace
+    const esp32Panel = document.getElementById("esp32CamPanel");
+    const dropzone = document.getElementById("cvDropzone");
+    const dropzonePrompt = document.getElementById("dropzonePrompt");
+    const dropzonePreviewWrap = document.getElementById("dropzonePreviewWrap");
+
+    if (esp32Panel) esp32Panel.style.display = "none";
+    if (dropzone) dropzone.style.display = "block";
+    if (dropzonePrompt) dropzonePrompt.style.display = "none";
+    if (dropzonePreviewWrap) dropzonePreviewWrap.style.display = "flex";
+
+    // Show provenance badge
+    const provTag = document.getElementById("cvProvenanceTag");
+    if (provTag) {
+      provTag.style.display = "inline-flex";
+      provTag.className = "provenance-tag esp32-provenance";
+      provTag.innerHTML = `📹 ESP32 CAM · OV2640 (${data.resolution || 'SVGA'}) · ${data.latency_ms || '--'}ms`;
+    }
+
+    showToast(`High-resolution frame captured from ESP32 CAM (${data.resolution || 'SVGA'}). Verifying specimen...`, "success", "Hardware Capture");
+
+    // Automatically feed into preflight validation and analysis preparation
+    await processSelectedImageFile(capturedFile, false, "esp32_cam", data.capture_id);
+
+  } catch (err) {
+    console.error("ESP32 capture error:", err);
+    let msg = "Failed to capture image from ESP32 CAM.";
+    if (typeof err === "string") {
+      msg = err;
+    } else if (err && typeof err.message === "string") {
+      msg = err.message;
+    } else if (err && err.detail) {
+      msg = typeof err.detail === "string" ? err.detail : (err.detail.message || JSON.stringify(err.detail));
+    }
+    showToast(msg, "error", "Capture Error");
+  } finally {
+    if (btn) btn.disabled = !esp32DeviceOnline;
+    if (btnText) btnText.textContent = "Capture Specimen";
+  }
+}
 
 function openPreviewInModal(event) {
   if (event && typeof event.stopPropagation === "function") {
@@ -1831,6 +2281,11 @@ function openPreviewInModal(event) {
 function handleCvFileSelect(event) {
   const files = event.target.files;
   if (files && files.length > 0) {
+    currentVisionImageSource = "browser_upload";
+    currentEsp32CaptureId = null;
+    currentEsp32CaptureMeta = null;
+    const provTag = document.getElementById("cvProvenanceTag");
+    if (provTag) provTag.style.display = "none";
     processSelectedImageFile(files[0]);
   }
 }
@@ -1895,6 +2350,33 @@ function clearPreviousVisionResults() {
   }
 }
 
+function handleRecaptureButtonClick(event) {
+  if (event && typeof event.stopPropagation === "function") {
+    event.stopPropagation();
+  }
+  if (currentVisionInputMode === "esp32" || currentVisionImageSource === "esp32_cam") {
+    resetVisionToNewSpecimen(event);
+  } else {
+    openCameraModal(event);
+  }
+}
+
+async function setEsp32CameraConfig(config) {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/esp32/camera-config`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config)
+    });
+    const data = await res.json();
+    if (data.status === "success") {
+      showToast("Camera sensor parameters updated.", "success", "Sensor Calibrated");
+    }
+  } catch (err) {
+    console.warn("Failed to set camera config:", err);
+  }
+}
+
 function resetVisionToNewSpecimen(event) {
   if (event && typeof event.stopPropagation === "function") {
     event.stopPropagation();
@@ -1921,15 +2403,40 @@ function resetVisionToNewSpecimen(event) {
   const dropzonePrompt = document.getElementById("dropzonePrompt");
   const previewWrap = document.getElementById("dropzonePreviewWrap");
   const filenameEl = document.getElementById("cvPreviewFilename");
+  const dropzone = document.getElementById("cvDropzone");
+  const esp32Panel = document.getElementById("esp32CamPanel");
 
   if (previewImg) previewImg.src = "";
   if (filenameEl) filenameEl.textContent = "sample.jpg";
-  if (dropzonePrompt) dropzonePrompt.style.display = "flex";
   if (previewWrap) previewWrap.style.display = "none";
 
   clearPreviousVisionResults();
   setVisionUIState(VisionUIState.EMPTY);
-  showToast("Foliar workspace reset. Ready for new specimen.", "info", "Workspace Reset");
+
+  const wasEsp32 = (currentVisionInputMode === "esp32" || currentVisionImageSource === "esp32_cam");
+  currentEsp32CaptureId = null;
+  currentEsp32CaptureMeta = null;
+
+  const provTag = document.getElementById("cvProvenanceTag");
+  if (provTag) {
+    provTag.style.display = "none";
+    provTag.innerHTML = "";
+  }
+
+  if (wasEsp32) {
+    currentVisionInputMode = "esp32";
+    currentVisionImageSource = "esp32_cam";
+    if (dropzone) dropzone.style.display = "none";
+    if (esp32Panel) esp32Panel.style.display = "block";
+    startEsp32Stream();
+    showToast("Cleared specimen. Resumed live ESP32-CAM preview.", "info", "Live Camera Ready");
+  } else {
+    currentVisionImageSource = "browser_upload";
+    if (dropzone) dropzone.style.display = "block";
+    if (dropzonePrompt) dropzonePrompt.style.display = "flex";
+    if (esp32Panel) esp32Panel.style.display = "none";
+    showToast("Foliar workspace reset. Ready for new specimen.", "info", "Workspace Reset");
+  }
 }
 
 function toggleQualityDrawer() {
@@ -2068,11 +2575,19 @@ function renderValidationBanner(validation) {
     if (msgEl) msgEl.textContent = reason;
     banner.style.display = "flex";
   } else if (status === "VALID_PLANT_IMAGE") {
-    banner.className = "validation-banner validation-banner-valid";
-    if (iconEl) iconEl.textContent = "🌿";
-    if (titleEl) titleEl.textContent = "Valid Crop Specimen Verified";
-    if (msgEl) msgEl.textContent = reason;
-    banner.style.display = "none";
+    if (validation.image_quality && validation.image_quality.includes("Degraded")) {
+      banner.className = "validation-banner validation-banner-uncertain";
+      if (iconEl) iconEl.textContent = "📹";
+      if (titleEl) titleEl.textContent = "Camera Quality Degraded · ESP32-CAM OV2640";
+      if (msgEl) msgEl.textContent = reason || "Sensor compression or mild optical blur tolerated under authenticated ESP32-CAM policy. Specimen confirmed as plant foliage.";
+      banner.style.display = "flex";
+    } else {
+      banner.className = "validation-banner validation-banner-valid";
+      if (iconEl) iconEl.textContent = "🌿";
+      if (titleEl) titleEl.textContent = "Valid Crop Specimen Verified";
+      if (msgEl) msgEl.textContent = reason;
+      banner.style.display = "none";
+    }
   } else {
     banner.style.display = "none";
   }
@@ -2131,11 +2646,14 @@ function renderInvalidImagePanel(validation, isScreenshot = false, isNonPlant = 
   document.getElementById("visionSection")?.classList.add("has-results");
 }
 
-async function processSelectedImageFile(file, isSample = false) {
+async function processSelectedImageFile(file, isSample = false, source = null, esp32CaptureId = null) {
   if (!file || !file.type.startsWith("image/")) {
     showErrorNotification("Please upload a valid image file (JPEG, PNG, or WebP).");
     return;
   }
+
+  if (source) currentVisionImageSource = source;
+  if (esp32CaptureId) currentEsp32CaptureId = esp32CaptureId;
 
   // Stale response protection: assign unique request ID to this image instance
   const thisImageId = "img_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
@@ -2193,16 +2711,24 @@ async function processSelectedImageFile(file, isSample = false) {
   const formData = new FormData();
   formData.append("file", file, file.name);
   formData.append("request_id", thisImageId);
+  formData.append("source", currentVisionImageSource || "browser_upload");
+  if (currentEsp32CaptureId) {
+    formData.append("esp32_capture_id", currentEsp32CaptureId);
+  }
 
-  // Safety watchdog timeout (4.5s max): Ensure UI never stays stuck in validating state
+  // Safety watchdog timeout (9.0s max): If validation takes long, prompt user to verify specimen
   const validationTimeout = setTimeout(() => {
     if (activeVisionRequestId === thisImageId && currentVisionState === VisionUIState.VALIDATING) {
-      console.warn("Validation timeout reached; releasing UI to verified specimen state.");
-      setVisionUIState(VisionUIState.VALID_PLANT_IMAGE, "Specimen Ready · Awaiting Analysis");
-      renderValidationBanner({ validation_status: "VALID_PLANT_IMAGE", is_inference_allowed: true });
+      console.warn("Validation timeout reached; prompting specimen verification.");
+      setVisionUIState(VisionUIState.VALIDATION_UNCERTAIN, "Specimen check timed out. Ensure photograph is a clear plant leaf.");
+      renderValidationBanner({
+        validation_status: "VALIDATION_UNCERTAIN",
+        validation_reason: "Automated botanical validation timed out. Please ensure this image contains a clear plant leaf.",
+        is_inference_allowed: true
+      });
       scrollAndHighlightAnalyzeButton();
     }
-  }, 4500);
+  }, 9000);
 
   try {
     const valRes = await fetch(`${API_BASE}/validate/vision`, {
@@ -2263,7 +2789,7 @@ async function processSelectedImageFile(file, isSample = false) {
 
     // Image verified: Valid plant foliage photograph
     setVisionUIState(VisionUIState.VALID_PLANT_IMAGE, "Verified Foliar Specimen");
-    renderValidationBanner({ validation_status: "VALID_PLANT_IMAGE", is_inference_allowed: true });
+    renderValidationBanner(valData);
 
     // Auto-scroll to highlight Analyze button for user
     requestAnimationFrame(() => {
@@ -2284,11 +2810,13 @@ async function processSelectedImageFile(file, isSample = false) {
     if (err.name === "AbortError") return;
     if (activeVisionRequestId !== thisImageId) return;
 
-    console.warn("Validation notice, safely enabling analysis:", err);
-    // Safe, non-blocking fallback if network times out
-    setVisionUIState(VisionUIState.VALID_PLANT_IMAGE, "Specimen Ready · Awaiting Analysis");
-    renderValidationBanner({ validation_status: "VALID_PLANT_IMAGE", is_inference_allowed: true });
-    scrollAndHighlightAnalyzeButton();
+    console.warn("Validation service notice:", err);
+    setVisionUIState(VisionUIState.VALIDATION_UNCERTAIN, "Specimen check incomplete. Ensure image is a clear plant leaf.");
+    renderValidationBanner({
+      validation_status: "VALIDATION_UNCERTAIN",
+      validation_reason: "Validation check encountered an issue. Please ensure your specimen is an authentic plant leaf.",
+      is_inference_allowed: false
+    });
   } finally {
     clearTimeout(validationTimeout);
   }
@@ -2511,6 +3039,10 @@ async function runVisionPrediction(overrideForce = false, includeExplainability 
   formData.append("model_tier", currentVisionModelTier || "server");
   formData.append("include_explainability", includeExplainability ? "true" : "false");
   formData.append("request_id", requestId);
+  formData.append("source", currentVisionImageSource || "browser_upload");
+  if (currentEsp32CaptureId) {
+    formData.append("esp32_capture_id", currentEsp32CaptureId);
+  }
   if (overrideForce) {
     formData.append("force_inference", "true");
   }
@@ -3273,6 +3805,16 @@ function renderTechnicalDetails(data = {}) {
         <span class="tech-label">Primary Classifier</span>
         <span class="tech-val">EfficientNetV2-S (256×256)</span>
       </div>
+      ${data && data.camera_source === "esp32_cam" ? `
+      <div class="tech-item" style="border-color: rgba(82, 183, 136, 0.4); background: rgba(82, 183, 136, 0.08);">
+        <span class="tech-label" style="color: var(--green-bright);">📹 Camera Hardware</span>
+        <span class="tech-val" style="color: var(--green-bright);">ESP32 CAM · OV2640 (${data.camera_device_id || 'esp32-cam-01'})</span>
+      </div>
+      <div class="tech-item" style="border-color: rgba(82, 183, 136, 0.4); background: rgba(82, 183, 136, 0.08);">
+        <span class="tech-label" style="color: var(--green-bright);">Optical Capture Latency</span>
+        <span class="tech-val" style="color: var(--green-bright);">${data.camera_capture_latency_ms || '--'} ms</span>
+      </div>
+      ` : ''}
       <div class="tech-item">
         <span class="tech-label tooltip-wrap" tabindex="0" aria-label="Test Top-1 Accuracy: 95.13% held-out test evaluation.">
           Test Top-1 Accuracy ℹ️

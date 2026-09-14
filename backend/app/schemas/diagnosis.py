@@ -228,6 +228,10 @@ class DiagnosisResponse(BaseModel):
     short_explanation: Optional[str] = Field(None, description="Clear plain-language explanation of what this diagnosis means")
     what_to_check: Optional[str] = Field(None, description="Practical observational steps to inspect nearby foliage")
     warnings: List[str] = Field(default_factory=list, description="Operational warnings or degraded component notices")
+    camera_source: Optional[str] = Field(None, description="Provenance source of image: e.g. 'ESP32-CAM · OV2640', 'Browser Upload', 'Device Camera'")
+    camera_device_id: Optional[str] = Field(None, description="Authenticated hardware device ID (if captured via ESP32-CAM)")
+    camera_capture_id: Optional[str] = Field(None, description="Verified capture transaction ID")
+    camera_capture_latency_ms: Optional[float] = Field(None, description="Hardware frame acquisition latency in milliseconds")
 
 
 class ErrorResponse(BaseModel):

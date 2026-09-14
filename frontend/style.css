@@ -3518,10 +3518,455 @@ body.camera-modal-open {
   .camera-modal-backdrop,
   .camera-modal-dialog,
   .scan-corner,
-  .camera-shutter-flash {
+  .camera-shutter-flash,
+  .esp32-capture-flash {
     animation : none !important;
     transition: none !important;
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ESP32-CAM (OV2640) FIELD HARDWARE UI DESIGN SYSTEM
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Top Header Status Badge ────────────────────────────────────────── */
+.server-badge.esp32-header-badge,
+.esp32-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(82, 183, 136, 0.08);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: default;
+  transition: all 0.3s ease;
+}
+
+.esp32-header-badge .badge-icon {
+  font-size: 13px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+
+.esp32-header-badge.online {
+  background: rgba(82, 183, 136, 0.12);
+  border-color: rgba(82, 183, 136, 0.38);
+  color: #e8f5e9;
+}
+
+.esp32-header-badge.offline {
+  background: rgba(239, 35, 60, 0.08);
+  border-color: rgba(239, 35, 60, 0.25);
+  color: #ffcdd2;
+}
+
+.iot-camera-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  background: rgba(82, 183, 136, 0.12);
+  border: 1px solid rgba(82, 183, 136, 0.3);
+  color: var(--green-bright);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.badge-dot-offline {
+  background: #ef233c !important;
+  box-shadow: 0 0 6px rgba(239, 35, 60, 0.6) !important;
+}
+
+.badge-dot-online {
+  background: #52b788 !important;
+  box-shadow: 0 0 8px rgba(82, 183, 136, 0.8) !important;
+  animation: statusPulse 2s infinite;
+}
+
+.badge-dot-connecting {
+  background: #ffbe0b !important;
+  box-shadow: 0 0 6px rgba(255, 190, 11, 0.6) !important;
+  animation: statusPulse 1s infinite;
+}
+
+/* ── Segmented Input Mode Tabs ──────────────────────────────────────── */
+.input-mode-segmented {
+  display: flex;
+  gap: 4px;
+  background: rgba(13, 26, 13, 0.6);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(82, 183, 136, 0.2);
+  margin-top: 10px;
+  margin-bottom: 12px;
+}
+
+.input-mode-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: calc(var(--radius-sm) - 2px);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.input-mode-tab:hover {
+  color: var(--text-primary);
+  background: rgba(82, 183, 136, 0.08);
+}
+
+.input-mode-tab.active {
+  color: var(--green-bright);
+  background: rgba(82, 183, 136, 0.16);
+  border-color: rgba(82, 183, 136, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  font-weight: 600;
+}
+
+.esp32-tab-pill-badge {
+  font-size: 0.62rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.badge-offline {
+  background: rgba(239, 35, 60, 0.18);
+  color: #ff8a9a;
+  border: 1px solid rgba(239, 35, 60, 0.35);
+}
+
+.badge-online {
+  background: rgba(82, 183, 136, 0.22);
+  color: #52b788;
+  border: 1px solid rgba(82, 183, 136, 0.45);
+}
+
+.badge-connecting {
+  background: rgba(255, 190, 11, 0.2);
+  color: #ffbe0b;
+  border: 1px solid rgba(255, 190, 11, 0.4);
+}
+
+/* ── ESP32-CAM Panel ────────────────────────────────────────────────── */
+.esp32-cam-panel {
+  background: linear-gradient(135deg, rgba(13, 26, 13, 0.92), rgba(6, 14, 6, 0.96));
+  border: 1px solid rgba(82, 183, 136, 0.28);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  margin-bottom: 14px;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.esp32-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.esp32-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.esp32-cam-icon {
+  font-size: 1.3rem;
+}
+
+.esp32-cam-heading {
+  display: block;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.esp32-cam-sub {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.esp32-conn-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.esp32-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ── Viewport & Viewfinder ──────────────────────────────────────────── */
+.esp32-viewport-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4/3;
+  max-height: 290px;
+  background: #030803;
+  border-radius: calc(var(--radius-sm) - 2px);
+  overflow: hidden;
+  border: 1px solid rgba(82, 183, 136, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.esp32-live-stream {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #030803;
+}
+
+.esp32-live-canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.esp32-viewfinder-brackets {
+  position: absolute;
+  inset: 14px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.vf-bracket {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: rgba(82, 183, 136, 0.75);
+  border-style: solid;
+}
+
+.bracket-tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+.bracket-tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+.bracket-bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+.bracket-br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+.vf-center-target {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+  border: 1px dashed rgba(82, 183, 136, 0.4);
+  border-radius: 50%;
+}
+
+.esp32-stream-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 12, 5, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  z-index: 5;
+  padding: 16px;
+  text-align: center;
+}
+
+.esp32-overlay-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(82, 183, 136, 0.2);
+  border-top-color: var(--green-bright);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.esp32-overlay-message {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.esp32-overlay-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  max-width: 260px;
+}
+
+.esp32-capture-flash {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+  transition: opacity 0.3s ease;
+}
+
+.esp32-capture-flash.flashing {
+  opacity: 0.85;
+}
+
+/* ── Telemetry Quick Chips ──────────────────────────────────────────── */
+.esp32-telemetry-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  margin-bottom: 12px;
+}
+
+.esp32-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(82, 183, 136, 0.08);
+  border: 1px solid rgba(82, 183, 136, 0.2);
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.esp32-chip strong {
+  color: var(--green-bright);
+  font-weight: 600;
+}
+
+/* ── Actions Row ────────────────────────────────────────────────────── */
+.esp32-actions-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-esp32-capture {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #2d6a4f, #1b4332);
+  border: 1px solid var(--green-bright);
+  color: #f8fafc;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(45, 106, 79, 0.4);
+}
+
+.btn-esp32-capture:hover:not(:disabled) {
+  background: linear-gradient(135deg, #40916c, #2d6a4f);
+  box-shadow: 0 6px 20px rgba(82, 183, 136, 0.45);
+  transform: translateY(-1px);
+}
+
+.btn-esp32-capture:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+  box-shadow: none;
+}
+
+.btn-esp32-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: rgba(82, 183, 136, 0.08);
+  border: 1px solid rgba(82, 183, 136, 0.25);
+  color: var(--green-bright);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-esp32-refresh:hover {
+  background: rgba(82, 183, 136, 0.2);
+  border-color: var(--green-bright);
+}
+
+/* ── Technical Diagnostics Details ──────────────────────────────────── */
+.esp32-diag-details {
+  margin-top: 12px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(82, 183, 136, 0.15);
+  border-radius: var(--radius-sm);
+}
+
+.esp32-diag-summary {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.esp32-diag-summary:hover {
+  color: var(--green-bright);
+}
+
+.esp32-diag-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding-top: 8px;
+  font-size: 0.7rem;
+}
+
+.diag-item {
+  color: var(--text-muted);
+}
+
+.diag-item strong {
+  color: #d8f3dc;
+  font-weight: 500;
+}
+
+/* ── Specimen Provenance Tag ────────────────────────────────────────── */
+.provenance-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(45, 106, 79, 0.35);
+  border: 1px solid rgba(82, 183, 136, 0.5);
+  color: #95d5b2;
 }
 
 

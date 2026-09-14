@@ -137,8 +137,8 @@ def extract_botanical_signals(img_bgr: np.ndarray) -> Dict[str, Any]:
     # Excess Green Index: ExG = 2G - R - B
     exg = 2.0 * g - r - b
 
-    # Green foliage mask: typical leaf hue range 22 to 98 with moderate saturation
-    green_foliage_mask = ((hue >= 22) & (hue <= 98) & (sat >= 25) & (val >= 25)) | (exg > 10.0)
+    # Green foliage mask: typical leaf hue range 20 to 102 with moderate saturation or positive ExG
+    green_foliage_mask = ((hue >= 20) & (hue <= 102) & (sat >= 20) & (val >= 20)) | (exg > 6.0)
     green_presence_ratio = float(np.sum(green_foliage_mask) / total_pixels)
 
     # Necrotic / chlorotic / rust lesion tissue on leaves:
@@ -328,11 +328,18 @@ def extract_botanical_signals(img_bgr: np.ndarray) -> Dict[str, Any]:
 def validate_plant_image(
     img_bgr: np.ndarray,
     detector_model: Optional[Any] = None,
-    filename: Optional[str] = None
+    filename: Optional[str] = None,
+    source: str = "browser_upload",
+    camera_metadata: Optional[Dict[str, Any]] = None
 ) -> DomainValidationResult:
     """
-    Authoritative domain validation preflight.
+    Authoritative domain validation preflight with source-aware technical policy.
     Evaluates raw BGR image and determines whether it represents a valid crop leaf specimen.
+
+    Supported Sources:
+      - 'browser_upload': Strict technical thresholds (clear lab/field photos)
+      - 'browser_camera': Standard browser camera thresholds
+      - 'esp32_cam': Authenticated field hardware (OV2640 sensor tolerance, mild blur, lower resolution)
 
     Returns:
       DomainValidationResult with validation_status in:
@@ -342,6 +349,11 @@ def validate_plant_image(
         LOW_QUALITY_OR_UNCERTAIN_IMAGE
     """
     signals = extract_botanical_signals(img_bgr)
+    signals["source"] = source
+    if camera_metadata:
+        signals["camera_metadata"] = {k: v for k, v in camera_metadata.items() if k != "frame_bytes"}
+
+    is_esp32 = (source == "esp32_cam")
     blur = signals["blur_variance"]
     bright = signals["mean_brightness"]
     contrast = signals["contrast_std"]
@@ -382,14 +394,25 @@ def validate_plant_image(
             if groq_res.category == "plant_leaf" and groq_res.inference_allowed:
                 groq_confirmed_plant = True
                 signals["groq_vision"]["botanical_foliage_override"] = True
+
+                # Evaluate camera-degraded technical quality
+                quality_desc = "Groq Vision Verified"
+                reason_desc = "Plant leaf confirmed by Groq Vision AI. Specimen is suitable for crop disease diagnosis."
+                if is_esp32:
+                    if blur < 120.0 or contrast < 24.0 or bright < 35.0 or bright > 220.0 or min(img_bgr.shape[:2]) < 300:
+                        quality_desc = "Camera Quality Degraded (ESP32-CAM OV2640)"
+                        reason_desc = "Plant leaf verified by Groq Vision AI. Field ESP32-CAM capture accepted under source-aware quality policy."
+                    else:
+                        quality_desc = "Groq Vision Verified (ESP32-CAM OV2640)"
+
                 # Return VALID immediately — Groq is authoritative
                 return DomainValidationResult(
                     validation_status="VALID_PLANT_IMAGE",
-                    validation_reason="Plant leaf confirmed by Groq Vision AI. Specimen is suitable for crop disease diagnosis.",
+                    validation_reason=reason_desc,
                     validation_confidence=0.97,
                     plant_presence=True,
                     leaf_presence=True,
-                    image_quality="Groq Vision Verified",
+                    image_quality=quality_desc,
                     is_inference_allowed=True,
                     telemetry=signals,
                     screenshot_or_document_probability=0.0,
@@ -531,11 +554,17 @@ def validate_plant_image(
 
     # A4. Screenshot / document — local CV tiebreaker (Groq offline fallback only)
     if is_screenshot_or_doc:
-        # Only let through if YOLO detector found a real leaf
-        if not has_detector_confirmation:
+        # Check if the screen displays a botanical leaf photo
+        screen_foliage_present = bool(
+            (foliar_ratio >= 0.04 or green_ratio >= 0.05) and skin_ratio < 0.35
+        )
+        if has_detector_confirmation or (is_esp32 and screen_foliage_present):
+            signals["phone_or_secondary_display_specimen"] = True
+            is_screenshot_or_doc = False
+        else:
             return DomainValidationResult(
                 validation_status="INVALID_SCREENSHOT_OR_DOCUMENT",
-                validation_reason="Invalid image. This appears to be a digital document, UI screenshot, or software interface. "
+                validation_reason="Invalid image. This appears to be a screenshot or document (digital document, UI screenshot, or software interface). "
                                   "Please upload a direct photograph of a plant leaf.",
                 validation_confidence=0.93,
                 plant_presence=False,
@@ -546,16 +575,33 @@ def validate_plant_image(
                 screenshot_or_document_probability=max(0.85, screen_prob),
                 inference_allowed=False
             )
-        else:
-            signals["phone_or_secondary_display_specimen"] = True
 
     # A5. General non-plant objects (Groq offline fallback only)
-    # Use YOLO detector as the positive signal — HSV ratios are unreliable
-    if not has_detector_confirmation:
+    has_botanical_foliage = bool(
+        (foliar_ratio >= 0.04 or green_ratio >= 0.05) and
+        not is_doc and skin_ratio < 0.35
+    )
+    has_esp32_foliage = bool(is_esp32 and has_botanical_foliage)
+
+    if not has_detector_confirmation and not has_esp32_foliage:
+        if blur < 20.0 and has_botanical_foliage:
+            return DomainValidationResult(
+                validation_status="LOW_QUALITY_IMAGE",
+                validation_reason="Image quality is insufficient for crop diagnosis. Please upload a focused photograph.",
+                validation_confidence=0.80,
+                plant_presence=True,
+                leaf_presence=True,
+                image_quality="Severely Blurred",
+                is_inference_allowed=False,
+                telemetry=signals,
+                screenshot_or_document_probability=screen_prob,
+                inference_allowed=False
+            )
+
         return DomainValidationResult(
             validation_status="INVALID_NON_PLANT_IMAGE",
             validation_reason="Invalid image. No plant or crop leaf could be detected. "
-                              "Please upload a clear photograph of a plant leaf for crop health analysis.",
+                              "Please upload a clear image of a plant leaf for crop health analysis.",
             validation_confidence=0.85,
             plant_presence=False,
             leaf_presence=False,
@@ -568,11 +614,11 @@ def validate_plant_image(
 
     # ══════════════════════════════════════════════════════════════════════════
     # PHASE B: LOW QUALITY OR UNCERTAIN PLANT SPECIMENS
-    # (Only reached when Groq is offline and YOLO detector confirmed a leaf)
+    # (Only reached when Groq is offline and YOLO detector confirmed a leaf or ESP32 foliage detected)
     # ══════════════════════════════════════════════════════════════════════════
-    # Foliage presence: trust detector confirmation (Groq already returned above)
+    # Foliage presence: trust detector confirmation or authentic ESP32 foliar signature
     has_foliar_presence = bool(
-        has_detector_confirmation
+        has_detector_confirmation or has_esp32_foliage
     )
 
     # B1. Severe underexposure (only if image is virtually pitch black and has zero foliage)
@@ -621,7 +667,7 @@ def validate_plant_image(
         )
 
     # B4. Insufficient detector support (Groq offline fallback)
-    if not has_detector_confirmation:
+    if not has_detector_confirmation and not has_esp32_foliage:
         return DomainValidationResult(
             validation_status="VALIDATION_UNCERTAIN",
             validation_reason="Plant presence could not be confirmed with certainty. "
@@ -652,13 +698,22 @@ def validate_plant_image(
     ]
     validation_conf = float(np.clip(np.mean(conf_factors), 0.70, 0.99))
 
+    quality_desc = "Good / Diagnostic Ready"
+    reason_desc = "Verified plant leaf specimen suitable for multi tier agricultural analysis."
+    if is_esp32:
+        if blur < 120.0 or contrast < 24.0 or bright < 35.0 or min(img_bgr.shape[:2]) < 300:
+            quality_desc = "Camera Quality Degraded (ESP32-CAM OV2640)"
+            reason_desc = "Foliage verified under adjusted ESP32-CAM camera policy. Mild sensor degradation accepted."
+        else:
+            quality_desc = "Good / Diagnostic Ready (ESP32-CAM OV2640)"
+
     return DomainValidationResult(
         validation_status="VALID_PLANT_IMAGE",
-        validation_reason="Verified plant leaf specimen suitable for multi tier agricultural analysis.",
+        validation_reason=reason_desc,
         validation_confidence=validation_conf,
         plant_presence=True,
         leaf_presence=True,
-        image_quality="Good / Diagnostic Ready",
+        image_quality=quality_desc,
         is_inference_allowed=True,
         telemetry=signals,
         screenshot_or_document_probability=screen_prob,

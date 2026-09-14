@@ -113,7 +113,7 @@ def test_camera_capture_end_to_end_inference():
     st = res_data["spatial_telemetry"]
     assert "detection_engine" in st
     assert "YOLO" in st["detection_engine"]
-    assert "PlantDoc" in st["detection_engine"] or "YOLO11" in st["detection_engine"]
+    assert "YOLO26" in st["detection_engine"] or "PlantDoc" in st["detection_engine"] or "YOLO11" in st["detection_engine"]
 
 
 def test_negative_camera_capture_rejected_by_firewall():

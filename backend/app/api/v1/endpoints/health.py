@@ -158,7 +158,7 @@ async def models_status() -> ModelsStatusResponse:
             description="38-class high-speed studio leaf screening (224x224)"
         ),
         ModelInfo(
-            name="YOLO26 Multi-Domain Agricultural Detector" if is_yolo26 else "YOLO11 PlantDoc Specimen Detector",
+            name="YOLO26 Multi-Domain Agricultural Detector (PlantDoc)" if is_yolo26 else "YOLO11 PlantDoc Specimen Detector",
             tier="Tier 2 Vision (YOLO26)" if is_yolo26 else "Tier 2 Vision (YOLO11 PlantDoc)",
             checkpoint=t2_path.name,
             size_mb=round(t2_size, 2),

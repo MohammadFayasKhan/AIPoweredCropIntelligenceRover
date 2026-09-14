@@ -10,6 +10,7 @@ from fastapi import APIRouter, Request, UploadFile, File, Form, HTTPException, s
 from fastapi.responses import JSONResponse
 
 from backend.app.services.inference_service import inference_engine
+from backend.app.services.esp32_gateway import esp32_gateway
 from backend.app.utils.image_processing import ImageValidationError
 from backend.app.schemas.diagnosis import DiagnosisResponse, ErrorResponse
 
@@ -25,11 +26,13 @@ router = APIRouter()
         500: {"model": ErrorResponse, "description": "Internal model execution or inference failure"}
     },
     summary="Diagnose Plant Leaf Image",
-    description="Upload a plant leaf photograph to execute the 3-Tier SmartCropVision pipeline."
+    description="Upload a plant leaf photograph or provide an authenticated ESP32-CAM capture ID to execute the 3-Tier SmartCropVision pipeline."
 )
 async def diagnose_leaf_image(
     request: Request,
-    file: UploadFile = File(..., description="Plant leaf photograph (JPEG, PNG, or WebP up to 15 MB)"),
+    file: Optional[UploadFile] = File(None, description="Plant leaf photograph (JPEG, PNG, or WebP up to 15 MB)"),
+    source: Optional[str] = Form("browser_upload", description="Source: 'browser_upload', 'browser_camera', or 'esp32_cam'"),
+    esp32_capture_id: Optional[str] = Form(None, description="Authentic capture ID from ESP32-CAM hardware capture"),
     model_tier: Optional[str] = Form("server", description="Vision model tier: 'server', 'edge', or 'ensemble'"),
     include_explainability: bool = Form(False, description="Whether to compute the full 9-stage explainability suite"),
     crop_context: Optional[str] = Form(None, description="Optional crop hint (e.g., Tomato, Corn, Grape)"),
@@ -40,32 +43,67 @@ async def diagnose_leaf_image(
     """
     Authoritative plant diagnostic pipeline:
     1. Validates upload stream, magic bytes, dimensions, and MIME format.
-    2. Runs Tier 1 classification: Server-grade EfficientNet-B2 (default), Edge MobileNetV2, or Ensemble.
-    3. Runs Tier 2 YOLOv8-nano lesion localization if infected.
+    2. Runs Tier 1 classification: Server-grade EfficientNetV2-S (default), Edge MobileNetV2, or Ensemble.
+    3. Runs Tier 2 YOLO26/YOLO11 lesion localization if infected.
     4. Runs Tier 3 Mobile-UNet sub-pixel segmentation if infected.
-    5. Optionally computes 9-stage explainability (Grad-CAM and feature activation maps).
+    5. Applies source-aware quality policy for authentic ESP32-CAM captures while maintaining strict semantic plant validation.
     6. Incorporates optional paired multimodal context with explicit modality traceability.
     7. Formulates grounded agronomic action advisory and returns payload.
     """
     request_id = getattr(request.state, "request_id", None) or uuid.uuid4().hex[:12]
-    filename = file.filename or "uploaded_leaf.jpg"
-    content_type = file.content_type
+    camera_metadata = None
+    validated_source = source or "browser_upload"
 
-    try:
-        file_bytes = await file.read()
-    except Exception as e:
+    # Authenticate ESP32 capture provenance if claimed
+    if esp32_capture_id:
+        provenance = esp32_gateway.verify_and_consume_provenance(esp32_capture_id)
+        if provenance:
+            validated_source = "esp32_cam"
+            camera_metadata = {
+                "device_id": provenance["device_id"],
+                "capture_id": esp32_capture_id,
+                "capture_latency_ms": provenance.get("capture_latency_ms"),
+                "camera_model": provenance.get("camera_model", "OV2640"),
+                "camera_source": "ESP32-CAM · OV2640"
+            }
+        else:
+            # Stale or unverified capture ID - do not permit esp32_cam quality policy bypass
+            validated_source = "browser_upload"
+
+    if file is not None and file.filename:
+        filename = file.filename or "uploaded_leaf.jpg"
+        content_type = file.content_type
+
+        try:
+            file_bytes = await file.read()
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "error_code": "FILE_READ_ERROR",
+                    "message": f"Failed to read image stream: {str(e)}",
+                    "recovery_hint": "Ensure the image file is not corrupted and try re-uploading.",
+                    "request_id": request_id
+                }
+            )
+        finally:
+            await file.close()
+    elif camera_metadata and "frame_bytes" in provenance:
+        file_bytes = provenance["frame_bytes"]
+        filename = f"{esp32_capture_id}.jpg"
+        content_type = "image/jpeg"
+    else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "status": "error",
-                "error_code": "FILE_READ_FAILED",
-                "message": f"Failed to read uploaded file payload: {str(e)}",
-                "recovery_hint": "Please try selecting the image file again.",
+                "error_code": "NO_IMAGE_PROVIDED",
+                "message": "Neither file upload nor authentic ESP32 capture ID was provided.",
+                "recovery_hint": "Please choose an image file or capture a frame from ESP32 CAM.",
                 "request_id": request_id
             }
         )
-    finally:
-        await file.close()
 
     # Build optional multimodal context dict if provided
     multimodal_context = None
@@ -87,7 +125,9 @@ async def diagnose_leaf_image(
             model_tier=model_tier or "server",
             include_explainability=include_explainability,
             request_id=request_id,
-            multimodal_context=multimodal_context
+            multimodal_context=multimodal_context,
+            source=validated_source,
+            camera_metadata=camera_metadata
         )
         return response
     except ImageValidationError as ive:

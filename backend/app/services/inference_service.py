@@ -602,7 +602,9 @@ class InferenceEngine:
         include_explainability: bool = False,
         request_id: Optional[str] = None,
         multimodal_context: Optional[Dict[str, Any]] = None,
-        force_inference: bool = False
+        force_inference: bool = False,
+        source: str = "browser_upload",
+        camera_metadata: Optional[Dict[str, Any]] = None
     ) -> DiagnosisResponse:
         """
         Executes authoritative multi-tier agricultural vision inference on an uploaded leaf image:
@@ -630,7 +632,16 @@ class InferenceEngine:
         # Defends against arbitrary out-of-domain uploads (people, vehicles, documents, animals, blank frames)
         # Evaluates botanical vegetation index, spectral chrominance, photometrics, and YOLO PlantDoc cues.
         detector_candidate = self.model_tier2_plantdoc
-        val_result = validate_plant_image(img_bgr, detector_model=detector_candidate, filename=filename)
+        val_result = validate_plant_image(
+            img_bgr,
+            detector_model=detector_candidate,
+            filename=filename,
+            source=source,
+            camera_metadata=camera_metadata
+        )
+
+        if source == "esp32_cam" and val_result.image_quality and "Degraded" in val_result.image_quality:
+            warnings.append("Notice: Image acquired via field ESP32-CAM (OV2640) has mild sensor degradation; analyzed under adjusted camera quality policy.")
 
         if not val_result.is_inference_allowed and not force_inference:
             # HALT: Do not execute disease classification, detection, segmentation, or Grad-CAM.
@@ -687,7 +698,11 @@ class InferenceEngine:
                 ),
                 modalities_used=["image"],
                 multimodal_context=multimodal_context,
-                warnings=[f"Image validation rejected input: {val_result.validation_reason}"]
+                warnings=[f"Image validation rejected input: {val_result.validation_reason}"],
+                camera_source="ESP32-CAM · OV2640" if source == "esp32_cam" else ("Device Camera" if source == "browser_camera" else "Browser Upload"),
+                camera_device_id=camera_metadata.get("device_id") if camera_metadata else None,
+                camera_capture_id=camera_metadata.get("capture_id") if camera_metadata else None,
+                camera_capture_latency_ms=camera_metadata.get("capture_latency_ms") if camera_metadata else None,
             )
 
         # Acquire lock to ensure thread/concurrency safe tensor execution
@@ -1321,7 +1336,11 @@ class InferenceEngine:
             multimodal_context=multimodal_context,
             short_explanation=short_explanation,
             what_to_check=what_to_check,
-            warnings=warnings
+            warnings=warnings,
+            camera_source="ESP32-CAM · OV2640" if source == "esp32_cam" else ("Device Camera" if source == "browser_camera" else "Browser Upload"),
+            camera_device_id=camera_metadata.get("device_id") if camera_metadata else None,
+            camera_capture_id=camera_metadata.get("capture_id") if camera_metadata else None,
+            camera_capture_latency_ms=camera_metadata.get("capture_latency_ms") if camera_metadata else None,
         )
 
 

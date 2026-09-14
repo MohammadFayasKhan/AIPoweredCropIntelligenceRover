@@ -35,6 +35,11 @@
         <span class="badge-dot" id="badgeDot"></span>
         <span id="badgeText">Connecting to Backend...</span>
       </div>
+      <div class="server-badge esp32-header-badge" id="esp32HeaderBadge" title="ESP32-CAM Field Camera Status">
+        <span class="badge-dot badge-dot-offline" id="esp32HeaderDot"></span>
+        <span class="badge-icon" id="esp32HeaderIcon">📹</span>
+        <span id="esp32HeaderText">ESP32 CAM Offline</span>
+      </div>
     </div>
   </header>
 
@@ -50,6 +55,10 @@
         <span class="iot-chip" id="iot-rain-chip">🌧️ <strong id="iot-r">--</strong></span>
         <span class="iot-chip" id="iot-alerts-chip" style="display:none">🦠 <strong id="iot-ac">0</strong> alerts</span>
         <span class="iot-ago" id="iotAgo">--</span>
+      </div>
+      <div class="iot-camera-chip" id="iotCameraChip" style="display:none;" title="ESP32-CAM Field Camera Hardware Status">
+        <span class="badge-dot badge-dot-offline" id="iotCameraChipDot" style="width:7px;height:7px;"></span>
+        <span>📹 ESP32-CAM: <strong id="iotCameraChipText">Offline</strong></span>
       </div>
     </div>
   </div>
@@ -227,10 +236,27 @@
           <span id="visionStateStatusText">Status: Idle · Awaiting Specimen</span>
         </div>
 
+        <!-- Specimen Input Mode Switcher (Upload / Device Camera / ESP32 CAM) -->
+        <div class="input-mode-segmented" role="tablist" aria-label="Specimen Input Mode">
+          <button type="button" class="input-mode-tab active" id="tabModeUpload" onclick="setVisionInputMode('upload')" role="tab" aria-selected="true">
+            <span class="mode-tab-icon">📁</span>
+            <span>Upload Image</span>
+          </button>
+          <button type="button" class="input-mode-tab" id="tabModeCamera" onclick="setVisionInputMode('camera')" role="tab" aria-selected="false">
+            <span class="mode-tab-icon">📸</span>
+            <span>Device Camera</span>
+          </button>
+          <button type="button" class="input-mode-tab" id="tabModeEsp32" onclick="setVisionInputMode('esp32')" role="tab" aria-selected="false">
+            <span class="mode-tab-icon">📹</span>
+            <span>ESP32 CAM</span>
+            <span class="esp32-tab-pill-badge badge-offline" id="esp32TabBadge">Offline</span>
+          </button>
+        </div>
+
         <!-- Dedicated Hidden File Input (isolated outside dropzone to prevent event bubbling recursion) -->
         <input type="file" id="cvFileInput" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handleCvFileSelect(event)" />
 
-        <!-- Upload Dropzone -->
+        <!-- Upload Dropzone (Upload Mode & Common Preview Workspace) -->
         <div class="cv-dropzone" id="cvDropzone" onclick="handleDropzoneContainerClick(event)">
           <div class="dropzone-content" id="dropzonePrompt">
             <div class="dropzone-upload-area" onclick="triggerCvFileInput(event)" role="button" tabindex="0" aria-label="Click to browse leaf photo or drag here">
@@ -256,14 +282,88 @@
               <button type="button" class="preview-expand-btn" onclick="openPreviewInModal(event)" title="Fullscreen Preview">⛶</button>
             </div>
             <div class="preview-meta-row" onclick="event.stopPropagation()">
-              <span class="preview-filename" id="cvPreviewFilename" title="Current specimen filename">sample.jpg</span>
+              <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span class="preview-filename" id="cvPreviewFilename" title="Current specimen filename">sample.jpg</span>
+                <span class="provenance-tag" id="cvProvenanceTag" style="display:none;"></span>
+              </div>
               <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                <button type="button" class="change-img-btn btn-camera-recapture" onclick="openCameraModal(event)" aria-label="Retake with Device Camera">📸 Take New Photo</button>
+                <button type="button" class="change-img-btn btn-camera-recapture" onclick="handleRecaptureButtonClick(event)" aria-label="Retake Specimen Photo">📸 Take New Photo</button>
                 <button type="button" class="change-img-btn btn-choose-other" onclick="triggerCvFileInput(event)" aria-label="Choose Another Image to Analyze">📁 Choose File</button>
                 <button type="button" class="change-img-btn btn-reset-specimen" onclick="resetVisionToNewSpecimen(event)" title="Reset workspace and upload new specimen" aria-label="Reset workspace">✕ Clear</button>
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- ESP32-CAM Field Hardware Live Interface Panel -->
+        <div class="esp32-cam-panel" id="esp32CamPanel" style="display: none;">
+          <div class="esp32-panel-header">
+            <div class="esp32-title-wrap">
+              <span class="esp32-cam-icon">📹</span>
+              <div class="esp32-title-text">
+                <strong class="esp32-cam-heading">ESP32 CAM · OV2640</strong>
+                <span class="esp32-cam-sub" id="esp32SubText">Field Optical Sensor · Standby</span>
+              </div>
+            </div>
+            <div class="esp32-conn-badge badge-offline" id="esp32ConnBadge">
+              <span class="esp32-dot"></span>
+              <span id="esp32ConnText">ESP32 CAM Offline</span>
+            </div>
+          </div>
+
+          <!-- Video Viewport with Corner Alignment Crop Brackets -->
+          <div class="esp32-viewport-container" id="esp32ViewportContainer">
+            <div class="esp32-viewfinder-brackets">
+              <span class="vf-bracket bracket-tl"></span>
+              <span class="vf-bracket bracket-tr"></span>
+              <span class="vf-bracket bracket-bl"></span>
+              <span class="vf-bracket bracket-br"></span>
+              <div class="vf-center-target"></div>
+            </div>
+
+            <img id="esp32LiveImg" class="esp32-live-stream" alt="ESP32 CAM Live Feed" style="display:none;" />
+
+            <div class="esp32-stream-overlay" id="esp32StreamOverlay">
+              <div class="esp32-overlay-spinner" id="esp32OverlaySpinner"></div>
+              <div class="esp32-overlay-message" id="esp32OverlayMessage">Connecting to ESP32 CAM...</div>
+              <div class="esp32-overlay-hint" id="esp32OverlayHint">Power on your ESP32-CAM and ensure it is connected to Wi-Fi.</div>
+            </div>
+
+            <!-- Capture Flash Animation Layer -->
+            <div class="esp32-capture-flash" id="esp32CaptureFlash"></div>
+          </div>
+
+          <!-- Live Telemetry Quick Chips -->
+          <div class="esp32-telemetry-row">
+            <span class="esp32-chip" title="WiFi Signal Strength"><span class="chip-icon">📶</span> <strong id="esp32Rssi">--</strong> dBm</span>
+            <span class="esp32-chip" title="Free Heap Memory"><span class="chip-icon">💾</span> <strong id="esp32Heap">--</strong> KB</span>
+            <span class="esp32-chip" title="Optical Resolution"><span class="chip-icon">📐</span> <strong id="esp32Res">QVGA</strong></span>
+            <span class="esp32-chip" title="Stream Frame Rate"><span class="chip-icon">⚡</span> <strong id="esp32Fps">--</strong> FPS</span>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="esp32-actions-row">
+            <button type="button" class="btn-esp32-capture" id="btnEsp32Capture" onclick="triggerEsp32Capture()" disabled title="Capture high-resolution frame from OV2640">
+              <span class="btn-capture-icon">📸</span>
+              <span id="btnEsp32CaptureText">Capture Specimen</span>
+            </button>
+            <button type="button" class="btn-esp32-refresh" id="btnEsp32Refresh" onclick="refreshEsp32State()" title="Refresh device status">
+              <span>↻</span>
+            </button>
+          </div>
+
+          <!-- Collapsible Technical Diagnostics -->
+          <details class="esp32-diag-details" id="esp32DiagDetails">
+            <summary class="esp32-diag-summary">⚙️ Technical Diagnostics</summary>
+            <div class="esp32-diag-grid">
+              <div class="diag-item"><span>Device ID:</span> <strong id="diagDeviceId">esp32-cam-01</strong></div>
+              <div class="diag-item"><span>Firmware:</span> <strong id="diagFirmware">--</strong></div>
+              <div class="diag-item"><span>IP Address:</span> <strong id="diagIp">--</strong></div>
+              <div class="diag-item"><span>Uptime:</span> <strong id="diagUptime">--</strong></div>
+              <div class="diag-item"><span>Total Captures:</span> <strong id="diagCaptures">0</strong></div>
+              <div class="diag-item"><span>Last Heartbeat:</span> <strong id="diagHeartbeat">--</strong></div>
+            </div>
+          </details>
         </div>
 
         <!-- Pre-Inference Domain Validation Banner -->
