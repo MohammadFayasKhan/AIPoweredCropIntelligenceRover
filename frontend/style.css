@@ -3969,6 +3969,168 @@ body.camera-modal-open {
   color: #95d5b2;
 }
 
+/* ── AgriRover + 4-DOF Robotic Arm Header Badge ──────────────────────── */
+.server-badge.rover-header-badge,
+.rover-header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(33, 90, 48, 0.18);
+  border: 1px solid rgba(118, 200, 147, 0.35);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: none;
+  color: #e8f5e9;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.rover-header-badge:hover {
+  background: rgba(46, 125, 50, 0.32);
+  border-color: rgba(95, 207, 114, 0.65);
+  box-shadow: 0 0 14px rgba(95, 207, 114, 0.3);
+  transform: translateY(-1px);
+}
+
+.rover-header-badge .badge-icon {
+  font-size: 13px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── AgriRover + 4-DOF Robotic Arm Teleop Bridge Card ────────────────── */
+.rover-teleop-bridge-card {
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: linear-gradient(145deg, rgba(16, 35, 22, 0.95), rgba(11, 23, 16, 0.95));
+  border: 1px solid rgba(118, 200, 147, 0.28);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 6px 20px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rover-bridge-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rover-bridge-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.rover-bridge-icon {
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: rgba(95, 207, 114, 0.12);
+  border: 1px solid rgba(118, 200, 147, 0.3);
+  border-radius: 10px;
+}
+
+.rover-bridge-title strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f4f8f3;
+}
+
+.rover-bridge-sub {
+  display: block;
+  font-size: 10px;
+  color: #849688;
+  font-weight: 600;
+}
+
+.rover-status-pill {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(118, 200, 147, 0.2);
+  color: #76c893;
+}
+
+.rover-bridge-desc {
+  font-size: 11px;
+  line-height: 1.45;
+  color: #c8d6c9;
+  margin: 0;
+}
+
+.rover-bridge-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.btn-rover-launch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2d6a4f, #1b4332);
+  border: 1px solid rgba(95, 207, 114, 0.45);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.btn-rover-launch:hover {
+  background: linear-gradient(135deg, #388e3c, #2d6a4f);
+  border-color: #5fcf72;
+  box-shadow: 0 0 16px rgba(95, 207, 114, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-rover-launch .launch-icon {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.btn-rover-ping {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(118, 200, 147, 0.25);
+  color: #c8d6c9;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-rover-ping:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
+  border-color: rgba(118, 200, 147, 0.5);
+}
+
+
 
 
 

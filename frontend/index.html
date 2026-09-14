@@ -40,6 +40,11 @@
         <span class="badge-icon" id="esp32HeaderIcon">📹</span>
         <span id="esp32HeaderText">ESP32 CAM Offline</span>
       </div>
+      <a class="server-badge rover-header-badge" id="roverHeaderBadge" href="http://agrirover.local" target="_blank" rel="noopener noreferrer" title="AgriRover + 4-DOF Robotic Arm Console (http://agrirover.local)">
+        <span class="badge-dot badge-dot-offline" id="roverHeaderDot"></span>
+        <span class="badge-icon" id="roverHeaderIcon">🚜🦾</span>
+        <span id="roverHeaderText">AgriRover Console</span>
+      </a>
     </div>
   </header>
 
@@ -364,6 +369,32 @@
               <div class="diag-item"><span>Last Heartbeat:</span> <strong id="diagHeartbeat">--</strong></div>
             </div>
           </details>
+
+          <!-- AgriRover + 4-DOF Robotic Arm Teleoperation Integration -->
+          <div class="rover-teleop-bridge-card" id="roverTeleopBridgeCard">
+            <div class="rover-bridge-header">
+              <div class="rover-bridge-title">
+                <span class="rover-bridge-icon">🚜🦾</span>
+                <div>
+                  <strong>AgriRover &amp; 4-DOF Robotic Arm</strong>
+                  <span class="rover-bridge-sub">Dual Teleoperation &amp; Manipulator Console</span>
+                </div>
+              </div>
+              <span class="rover-status-pill" id="roverBridgePill">agrirover.local</span>
+            </div>
+            <p class="rover-bridge-desc">
+              Direct field actuation layer: control 4-wheel rover chassis navigation, inspect crop canopies, or articulate the 4-DOF robotic manipulator to align the camera or collect leaf specimens.
+            </p>
+            <div class="rover-bridge-actions">
+              <a href="http://agrirover.local" target="_blank" rel="noopener noreferrer" class="btn-rover-launch" id="btnRoverLaunch">
+                <span>⚡ Open Rover &amp; Arm Console</span>
+                <span class="launch-icon">↗</span>
+              </a>
+              <button type="button" class="btn-rover-ping" id="btnRoverPing" onclick="pingRover()" title="Check connection to AgriRover Controller">
+                <span>📶 Check Link</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Pre-Inference Domain Validation Banner -->

@@ -4485,3 +4485,63 @@ if (typeof window !== "undefined") {
     }
   })();
 }
+
+// ── AGRIROVER & 4-DOF ROBOTIC ARM TELEOPERATION BRIDGE ────────────────────────
+let roverEndpoint = "http://agrirover.local";
+
+async function pingRover() {
+  const pill = document.getElementById("roverBridgePill");
+  const headerDot = document.getElementById("roverHeaderDot");
+  const headerText = document.getElementById("roverHeaderText");
+
+  if (pill) {
+    pill.textContent = "Probing...";
+    pill.style.color = "#e5c95d";
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const resp = await fetch(`${roverEndpoint}/status`, {
+      method: "GET",
+      signal: controller.signal
+    }).catch(() => null);
+    clearTimeout(timeout);
+
+    if (resp && resp.ok) {
+      const data = await resp.json();
+      if (pill) {
+        const armInfo = data.arm ? `Arm: ${Math.round(data.arm.base)}°` : "Ready";
+        pill.textContent = `Online • ${armInfo}`;
+        pill.style.color = "#5fcf72";
+      }
+      if (headerDot) {
+        headerDot.className = "badge-dot badge-dot-online";
+      }
+      if (headerText) {
+        headerText.textContent = "AgriRover Online";
+      }
+      if (typeof showToast === "function") {
+        showToast("AgriRover & 4-DOF Arm controller online.", "success", "Hardware Link");
+      }
+    } else {
+      if (pill) {
+        pill.textContent = "Standby (Click to Open)";
+        pill.style.color = "#8ee69b";
+      }
+      if (typeof showToast === "function") {
+        showToast("Access http://agrirover.local or your ESP32 IP to control.", "info", "AgriRover Bridge");
+      }
+    }
+  } catch (err) {
+    if (pill) {
+      pill.textContent = "Standby • agrirover.local";
+      pill.style.color = "#849688";
+    }
+  }
+}
+
+if (typeof window !== "undefined") {
+  window.pingRover = pingRover;
+}
+
