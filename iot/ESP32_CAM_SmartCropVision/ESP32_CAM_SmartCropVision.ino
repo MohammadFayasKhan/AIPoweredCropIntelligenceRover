@@ -475,8 +475,7 @@ void maintainWebSocketConnection() {
   }
 
   #if USE_SECURE_WSS
-    wsClient.setCACert(DIGICERT_ROOT_CA);
-    wsClient.setInsecure(); // Dual verification: sets root CA and allows TLS handshake
+    wsClient.setCACert(DIGICERT_ROOT_CA); // Authoritative DigiCert root certificate validation for Azure
   #endif
 
   // For standard HTTPS (443) or HTTP (80), omit explicit port to ensure clean RFC Host header
