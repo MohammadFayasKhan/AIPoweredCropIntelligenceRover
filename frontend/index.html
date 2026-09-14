@@ -30,6 +30,9 @@
         <button type="button" class="mode-btn" id="btnModeVision" onclick="switchMode('vision')">
           🔬 Plant Vision
         </button>
+        <button type="button" class="mode-btn" id="btnModeRover" onclick="switchMode('rover')">
+          🚜 AgriRover Console
+        </button>
       </div>
       <div class="server-badge" id="serverBadge" title="FastAPI Backend Status">
         <span class="badge-dot" id="badgeDot"></span>
@@ -40,7 +43,7 @@
         <span class="badge-icon" id="esp32HeaderIcon">📹</span>
         <span id="esp32HeaderText">ESP32 CAM Offline</span>
       </div>
-      <a class="server-badge rover-header-badge" id="roverHeaderBadge" href="http://agrirover.local" target="_blank" rel="noopener noreferrer" title="AgriRover + 4-DOF Robotic Arm Console (http://agrirover.local)">
+      <a class="server-badge rover-header-badge" id="roverHeaderBadge" href="#rover" onclick="switchMode('rover'); return false;" title="AgriRover + 4-DOF Robotic Arm Console">
         <span class="badge-dot badge-dot-offline" id="roverHeaderDot"></span>
         <span class="badge-icon" id="roverHeaderIcon">🚜🦾</span>
         <span id="roverHeaderText">AgriRover Console</span>
@@ -52,12 +55,16 @@
   <div class="iot-feed-bar" id="iotFeedBar">
     <div class="iot-feed-inner">
       <span class="iot-dot" id="iotDot"></span>
-      <span id="iotFeedText">📡 IoT Hardware Sensor Link: Awaiting ESP8266 NodeMCU packets (DHT11, Capacitive Soil, YL-83 Rain) • Manual calibration active</span>
+      <span id="iotFeedText">📡 AgriRover IoT Sensor Link: Connected to Dual-Core ESP32 (DHT11, Soil v1.2, Rain, Water, GPS)</span>
       <div class="iot-live-values" id="iotLiveValues" style="display:none">
         <span class="iot-chip" id="chip-t">🌡️ <strong id="iot-t">--</strong>°C</span>
         <span class="iot-chip" id="chip-h">💧 <strong id="iot-h">--</strong>%</span>
         <span class="iot-chip" id="chip-s">🌱 <strong id="iot-s">--</strong>%</span>
         <span class="iot-chip" id="iot-rain-chip">🌧️ <strong id="iot-r">--</strong></span>
+        <span class="iot-chip" id="chip-water">🌊 <strong id="iot-w">--</strong>%</span>
+        <span class="iot-chip" id="chip-heat">🔥 <strong id="iot-heat">--</strong>°C</span>
+        <span class="iot-chip" id="chip-gps">📍 <strong id="iot-gps">--</strong></span>
+        <span class="iot-chip" id="chip-irrig">🚜 <strong id="iot-irrig">--</strong></span>
         <span class="iot-chip" id="iot-alerts-chip" style="display:none">🦠 <strong id="iot-ac">0</strong> alerts</span>
         <span class="iot-ago" id="iotAgo">--</span>
       </div>
@@ -703,6 +710,355 @@
           <!-- 9 Stages dynamically populated from backend explainability pipeline -->
         </div>
       </section>
+    </div>
+  </main>
+
+  <!-- ── AGRIROVER & FIELD IOT CONTROL CONSOLE ────────────────── -->
+  <main class="main-grid rover-grid" id="roverSection" style="display: none;">
+    <!-- LEFT COLUMN: Chassis Teleoperation & 4-DOF Manipulator -->
+    <div class="rover-left-column">
+
+      <!-- Panel: Mobility & Teleoperation Cockpit -->
+      <section class="panel rover-teleop-panel" id="roverTeleopPanel">
+        <div class="panel-header">
+          <span class="panel-icon">🚜</span>
+          <h2 class="panel-title">AgriRover Teleoperation</h2>
+          <span class="panel-badge" id="roverMotionBadge">STOPPED</span>
+        </div>
+
+        <div class="teleop-hud">
+          <div class="teleop-stats-row">
+            <div class="teleop-stat">
+              <span class="teleop-stat-label">Watchdog</span>
+              <span class="teleop-stat-val text-success" id="roverWatchdogVal">ACTIVE (600ms)</span>
+            </div>
+            <div class="teleop-stat">
+              <span class="teleop-stat-label">Speed PWM</span>
+              <span class="teleop-stat-val" id="roverSpeedVal">200 / 255</span>
+            </div>
+            <div class="teleop-stat">
+              <span class="teleop-stat-label">Signal</span>
+              <span class="teleop-stat-val" id="roverRssiVal">-- dBm</span>
+            </div>
+            <div class="teleop-stat">
+              <span class="teleop-stat-label">Uptime</span>
+              <span class="teleop-stat-val" id="roverUptimeVal">0s</span>
+            </div>
+          </div>
+
+          <!-- D-PAD Cross Movement Controls -->
+          <div class="dpad-container" id="dpadContainer">
+            <button type="button" class="dpad-btn dpad-up" id="btnRoverForward" onmousedown="startRoverDrive('FORWARD')" onmouseup="stopRoverDrive()" ontouchstart="startRoverDrive('FORWARD')" ontouchend="stopRoverDrive()" aria-label="Drive Forward">
+              <span>▲</span>
+              <small>FWD</small>
+            </button>
+            <div class="dpad-middle-row">
+              <button type="button" class="dpad-btn dpad-left" id="btnRoverLeft" onmousedown="startRoverDrive('LEFT')" onmouseup="stopRoverDrive()" ontouchstart="startRoverDrive('LEFT')" ontouchend="stopRoverDrive()" aria-label="Turn Left">
+                <span>◄</span>
+                <small>LEFT</small>
+              </button>
+              <button type="button" class="dpad-btn dpad-stop" id="btnRoverStop" onclick="stopRoverDrive()" aria-label="Stop Motors">
+                <span>■</span>
+                <small>STOP</small>
+              </button>
+              <button type="button" class="dpad-btn dpad-right" id="btnRoverRight" onmousedown="startRoverDrive('RIGHT')" onmouseup="stopRoverDrive()" ontouchstart="startRoverDrive('RIGHT')" ontouchend="stopRoverDrive()" aria-label="Turn Right">
+                <span>►</span>
+                <small>RIGHT</small>
+              </button>
+            </div>
+            <button type="button" class="dpad-btn dpad-down" id="btnRoverBackward" onmousedown="startRoverDrive('BACKWARD')" onmouseup="stopRoverDrive()" ontouchstart="startRoverDrive('BACKWARD')" ontouchend="stopRoverDrive()" aria-label="Drive Backward">
+              <span>▼</span>
+              <small>REV</small>
+            </button>
+          </div>
+
+          <!-- Drive Auxiliary Controls -->
+          <div class="teleop-aux-controls">
+            <div class="slider-control-group">
+              <label for="roverSpeedSlider" class="control-label">
+                <span>⚡ Drive Speed PWM</span>
+                <span id="roverSpeedSliderLabel">200 (78%)</span>
+              </label>
+              <input type="range" id="roverSpeedSlider" class="sensor-slider" min="100" max="255" value="200" oninput="setRoverSpeed(this.value)" />
+            </div>
+
+            <div class="aux-btn-row">
+              <button type="button" class="aux-btn" id="btnHeadlightToggle" onclick="toggleHeadlight()">
+                <span id="headlightIcon">💡</span>
+                <span id="headlightLabel">Headlight: OFF</span>
+              </button>
+              <button type="button" class="aux-btn btn-danger-pulsing" id="btnEmergencyStop" onclick="triggerEmergencyStop()">
+                <span>🚨 EMERGENCY STOP</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: 4-DOF Robotic Arm Manipulator -->
+      <section class="panel rover-arm-panel" id="roverArmPanel">
+        <div class="panel-header">
+          <span class="panel-icon">🦾</span>
+          <h2 class="panel-title">4-DOF Robotic Manipulator</h2>
+          <span class="panel-badge" id="armStatusBadge">READY</span>
+        </div>
+
+        <div class="arm-console-body">
+          <div class="arm-sliders-grid">
+            <div class="arm-joint-card">
+              <div class="joint-header">
+                <span class="joint-name">Base Rotation (Ch 0)</span>
+                <span class="joint-val" id="armBaseVal">90°</span>
+              </div>
+              <input type="range" class="sensor-slider" id="armBaseSlider" min="5" max="175" value="90" oninput="onArmSliderChange('base', this.value)" />
+              <div class="slider-range"><span>5° Left</span><span>175° Right</span></div>
+            </div>
+
+            <div class="arm-joint-card">
+              <div class="joint-header">
+                <span class="joint-name">Shoulder Lift (Ch 1)</span>
+                <span class="joint-val" id="armShoulderVal">90°</span>
+              </div>
+              <input type="range" class="sensor-slider" id="armShoulderSlider" min="0" max="180" value="90" oninput="onArmSliderChange('shoulder', this.value)" />
+              <div class="slider-range"><span>0° Low</span><span>180° High</span></div>
+            </div>
+
+            <div class="arm-joint-card">
+              <div class="joint-header">
+                <span class="joint-name">Elbow Reach (Ch 2)</span>
+                <span class="joint-val" id="armElbowVal">90°</span>
+              </div>
+              <input type="range" class="sensor-slider" id="armElbowSlider" min="0" max="180" value="90" oninput="onArmSliderChange('elbow', this.value)" />
+              <div class="slider-range"><span>0° Retracted</span><span>180° Extended</span></div>
+            </div>
+
+            <div class="arm-joint-card">
+              <div class="joint-header">
+                <span class="joint-name">Gripper Claw (Ch 3)</span>
+                <span class="joint-val" id="armGripperVal">180° (Open)</span>
+              </div>
+              <input type="range" class="sensor-slider" id="armGripperSlider" min="70" max="180" value="180" oninput="onArmSliderChange('gripper', this.value)" />
+              <div class="slider-range"><span>70° Closed</span><span>180° Open</span></div>
+            </div>
+          </div>
+
+          <!-- Stance Presets & Inspection Workflow Trigger -->
+          <div class="arm-actions-row">
+            <button type="button" class="arm-action-btn" onclick="sendArmPreset('home')">🏠 Home Stance</button>
+            <button type="button" class="arm-action-btn" onclick="sendArmPreset('inspect')">📐 Inspect Stance</button>
+            <button type="button" class="arm-action-btn" onclick="sendArmGripper('open')">👐 Open Claw</button>
+            <button type="button" class="arm-action-btn" onclick="sendArmGripper('close')">✊ Close Claw</button>
+          </div>
+
+          <div class="arm-inspection-banner">
+            <div class="inspection-text">
+              <strong>🔬 Automated Foliage Inspection Sequence</strong>
+              <p>Positions arm at calibrated leaf focal distance, captures camera frame, and executes 3-tier neural diagnosis with sensor snapshot.</p>
+            </div>
+            <button type="button" class="btn-inspect-trigger" id="btnArmInspectTrigger" onclick="triggerRoboticInspectionSequence()">
+              <span>📸 Start Leaf Inspection</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- RIGHT COLUMN: Sensors, GPS, Risk Engine, XiaoZhi -->
+    <div class="rover-right-column">
+
+      <!-- System Connectivity & Hardware Diagnostics Bar -->
+      <section class="panel rover-health-panel">
+        <div class="panel-header">
+          <span class="panel-icon">⚙️</span>
+          <h2 class="panel-title">System Health & Bus Diagnostics</h2>
+          <span class="panel-badge panel-badge-manual" id="roverBusStatus">ESP32 240MHz</span>
+        </div>
+        <div class="health-chips-grid">
+          <div class="health-chip"><span class="chip-dot" id="chipDotESP"></span><span>ESP32 Master: <strong id="chipTextESP">Online</strong></span></div>
+          <div class="health-chip"><span class="chip-dot" id="chipDotArm"></span><span>PCA9685 I2C: <strong id="chipTextArm">Ready (0x40)</strong></span></div>
+          <div class="health-chip"><span class="chip-dot" id="chipDotSensors"></span><span>Ground Sensors: <strong id="chipTextSensors">Calibrated</strong></span></div>
+          <div class="health-chip"><span class="chip-dot" id="chipDotGPS"></span><span>GPS NEO-6M: <strong id="chipTextGPS">3D Fix</strong></span></div>
+          <div class="health-chip"><span class="chip-dot" id="chipDotWS"></span><span>Live Gateway: <strong id="chipTextWS">WebSocket Active</strong></span></div>
+          <div class="health-chip"><span class="chip-dot" id="chipDotN8N"></span><span>n8n Alerts: <strong id="chipTextN8N">Armed</strong></span></div>
+        </div>
+      </section>
+
+      <!-- Panel: Ground Sensors Live Group -->
+      <section class="panel rover-sensors-panel">
+        <div class="panel-header">
+          <span class="panel-icon">📡</span>
+          <h2 class="panel-title">Ground Environmental Telemetry</h2>
+          <span class="panel-badge" id="sensorsFreshnessBadge">LIVE STREAM</span>
+        </div>
+
+        <div class="sensor-cards-quad">
+          <!-- DHT11 Temp & Humidity -->
+          <div class="telemetry-card">
+            <div class="telemetry-card-title">
+              <span>🌡️ Temperature & Humidity</span>
+              <span class="badge-mini" id="telemetryDhtBadge">DHT11 VALID</span>
+            </div>
+            <div class="telemetry-val-row">
+              <div class="telemetry-primary-val"><span id="telemetryTemp">--</span><small>°C</small></div>
+              <div class="telemetry-secondary-val">💧 <span id="telemetryHum">--</span>% RH</div>
+            </div>
+            <div class="telemetry-subtext">Ambient microclimate dry-bulb & relative humidity</div>
+          </div>
+
+          <!-- Capacitive Soil Moisture v1.2 -->
+          <div class="telemetry-card">
+            <div class="telemetry-card-title">
+              <span>🌱 Soil Moisture (Capacitive v1.2)</span>
+              <span class="badge-mini badge-mini-green" id="telemetrySoilBadge">CALIBRATED</span>
+            </div>
+            <div class="telemetry-val-row">
+              <div class="telemetry-primary-val"><span id="telemetrySoil">--</span><small>%</small></div>
+              <div class="telemetry-secondary-val">ADC: <span id="telemetrySoilRaw">--</span> / 4095</div>
+            </div>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill" id="soilProgressBar" style="width: 50%;"></div>
+            </div>
+            <div class="telemetry-subtext" id="soilStatusSubtext">Optimal root-zone field hydration capacity</div>
+          </div>
+
+          <!-- Raindrop Detection Module -->
+          <div class="telemetry-card">
+            <div class="telemetry-card-title">
+              <span>🌧️ Precipitation Sensor</span>
+              <span class="badge-mini" id="telemetryRainBadge">DRY</span>
+            </div>
+            <div class="telemetry-val-row">
+              <div class="telemetry-primary-val" id="telemetryRainState">No Rain</div>
+              <div class="telemetry-secondary-val">Intensity: <span id="telemetryRainIntensity">0%</span></div>
+            </div>
+            <div class="telemetry-subtext">Dual digital DO comparator & analog AO droplet density</div>
+          </div>
+
+          <!-- Water Level Sensor (Flood / Waterlogging Depth) -->
+          <div class="telemetry-card">
+            <div class="telemetry-card-title">
+              <span>🌊 Drainage & Flood Depth</span>
+              <span class="badge-mini" id="telemetryWaterBadge">NORMAL</span>
+            </div>
+            <div class="telemetry-val-row">
+              <div class="telemetry-primary-val"><span id="telemetryWaterLevel">--</span><small>%</small></div>
+              <div class="telemetry-secondary-val">ADC: <span id="telemetryWaterRaw">--</span></div>
+            </div>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill progress-bar-blue" id="waterProgressBar" style="width: 10%;"></div>
+            </div>
+            <div class="telemetry-subtext" id="waterStatusSubtext">Standing water probe: Furrow drainage clear</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: Explainable Environmental Risk & Irrigation Advisory -->
+      <section class="panel rover-risk-panel">
+        <div class="panel-header">
+          <span class="panel-icon">⚖️</span>
+          <h2 class="panel-title">Agro-Climatic Risk & Irrigation Advisory</h2>
+          <span class="panel-badge panel-badge-warning" id="overallRiskBadge">LOW RISK (0.12)</span>
+        </div>
+
+        <div class="risk-summary-grid">
+          <div class="risk-metric-box">
+            <span class="risk-box-label">Heat Stress Index</span>
+            <strong class="risk-box-val" id="riskHeatVal">--°C</strong>
+            <span class="risk-box-sub" id="riskHeatLevel">NORMAL</span>
+          </div>
+
+          <div class="risk-metric-box">
+            <span class="risk-box-label">Root Water Stress</span>
+            <strong class="risk-box-val" id="riskWaterStressVal">Optimal</strong>
+            <span class="risk-box-sub" id="riskWaterStressSub">Capacitive ≥40%</span>
+          </div>
+
+          <div class="risk-metric-box">
+            <span class="risk-box-label">Drainage / Flood Risk</span>
+            <strong class="risk-box-val" id="riskFloodVal">Normal</strong>
+            <span class="risk-box-sub" id="riskFloodSub">Standing water &lt;25%</span>
+          </div>
+
+          <div class="risk-metric-box metric-box-highlight">
+            <span class="risk-box-label">Irrigation Recommendation</span>
+            <strong class="risk-box-val text-primary" id="advisoryActionVal">MONITOR</strong>
+            <span class="risk-box-sub" id="advisoryUrgencyVal">Low Urgency</span>
+          </div>
+        </div>
+
+        <div class="risk-rationale-card">
+          <span class="rationale-header">🌱 Agronomic Rationale & Sensor Factors:</span>
+          <p class="rationale-text" id="riskRationaleText">Telemetry indicates balanced microclimate, root-zone hydration, and clear drainage furrows.</p>
+        </div>
+      </section>
+
+      <!-- Panel: GPS Spatial Navigation -->
+      <section class="panel rover-gps-panel">
+        <div class="panel-header">
+          <span class="panel-icon">📍</span>
+          <h2 class="panel-title">GPS Spatial Navigation (NEO-6M)</h2>
+          <span class="panel-badge" id="gpsFixBadge">3D_FIX</span>
+        </div>
+
+        <div class="gps-coords-row">
+          <div class="coord-box">
+            <span class="coord-label">Latitude</span>
+            <strong class="coord-val" id="gpsLatVal">13.082700° N</strong>
+          </div>
+          <div class="coord-box">
+            <span class="coord-label">Longitude</span>
+            <strong class="coord-val" id="gpsLonVal">80.270700° E</strong>
+          </div>
+          <div class="coord-box">
+            <span class="coord-label">Altitude</span>
+            <strong class="coord-val" id="gpsAltVal">14.2 m MSL</strong>
+          </div>
+          <div class="coord-box">
+            <span class="coord-label">Satellites</span>
+            <strong class="coord-val" id="gpsSatsVal">8 Visible</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: XiaoZhi Voice Assistant & Live Event Feed -->
+      <section class="panel rover-xiaozhi-panel">
+        <div class="panel-header">
+          <span class="panel-icon">🎙️</span>
+          <h2 class="panel-title">XiaoZhi Conversational Assistant & Event Stream</h2>
+          <span class="panel-badge panel-badge-green">MCP v1 READY</span>
+        </div>
+
+        <div class="xiaozhi-chat-area">
+          <div class="quick-prompts-row">
+            <button type="button" class="prompt-chip" onclick="askXiaoZhiPrompt('What is the current soil moisture and irrigation advice?')">🌱 Soil & Irrigation</button>
+            <button type="button" class="prompt-chip" onclick="askXiaoZhiPrompt('Where is the rover located right now?')">📍 GPS Coordinates</button>
+            <button type="button" class="prompt-chip" onclick="askXiaoZhiPrompt('What is the ambient temperature and heat stress level?')">🌡️ Microclimate</button>
+            <button type="button" class="prompt-chip" onclick="askXiaoZhiPrompt('What disease was detected on the last leaf scan?')">🔬 Vision Diagnosis</button>
+          </div>
+
+          <div class="chat-input-row">
+            <input type="text" id="xiaozhiInput" class="xiaozhi-input" placeholder="Ask XiaoZhi about field telemetry, soil moisture, GPS..." onkeydown="if(event.key==='Enter')askXiaoZhi()" />
+            <button type="button" class="xiaozhi-send-btn" onclick="askXiaoZhi()">Ask XiaoZhi</button>
+          </div>
+
+          <div class="xiaozhi-response-box" id="xiaozhiResponseBox" style="display:none;">
+            <div class="response-header">🤖 XiaoZhi Grounded Answer:</div>
+            <p id="xiaozhiResponseText">Querying live telemetry...</p>
+          </div>
+
+          <!-- Live Activity Log -->
+          <div class="activity-log-wrap">
+            <div class="activity-log-header">
+              <span>📋 Unified Telemetry & Alert Stream</span>
+              <button type="button" class="btn-clear-log" onclick="clearActivityLog()">Clear</button>
+            </div>
+            <div class="activity-log-body" id="activityLogBody">
+              <div class="log-entry log-entry-system"><span class="log-time">Boot</span><span class="log-msg">AgriRover WebSocket telemetry gateway connected.</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </div>
   </main>
 

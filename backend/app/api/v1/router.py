@@ -4,7 +4,7 @@ Combines health check, models status, and vision diagnosis endpoints.
 """
 
 from fastapi import APIRouter
-from backend.app.api.v1.endpoints import health, diagnosis, crops, esp32
+from backend.app.api.v1.endpoints import health, diagnosis, crops, esp32, iot, xiaozhi
 
 api_router = APIRouter()
 
@@ -12,3 +12,5 @@ api_router.include_router(health.router, tags=["Health & Status"])
 api_router.include_router(diagnosis.router, tags=["Plant Intelligence Vision"])
 api_router.include_router(crops.router, tags=["Crop Recommendation Intelligence"])
 api_router.include_router(esp32.router, prefix="/esp32", tags=["ESP32-CAM Field Hardware"])
+api_router.include_router(iot.router, prefix="/iot", tags=["AgriRover Field IoT & Telemetry"])
+api_router.include_router(xiaozhi.router, prefix="/xiaozhi", tags=["XiaoZhi Voice Assistant & MCP"])

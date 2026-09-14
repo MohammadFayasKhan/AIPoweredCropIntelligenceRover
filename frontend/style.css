@@ -4127,12 +4127,710 @@ body.camera-modal-open {
 .btn-rover-ping:hover {
   background: rgba(255, 255, 255, 0.09);
   color: #ffffff;
-  border-color: rgba(118, 200, 147, 0.5);
+/* ── AGRIROVER CONSOLE & FIELD IOT STYLING (SIH 2026) ─────────────────── */
+.rover-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 16px;
 }
 
+@media (max-width: 1024px) {
+  .rover-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
+.rover-left-column, .rover-right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
 
+/* Teleoperation Cockpit HUD */
+.teleop-hud {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
+.teleop-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
 
+.teleop-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
 
+.teleop-stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
 
+.teleop-stat-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+
+.text-success { color: var(--green-bright) !important; }
+.text-primary { color: var(--green-primary) !important; }
+
+/* Cross D-PAD Controls */
+.dpad-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 8px auto;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.dpad-middle-row {
+  display: flex;
+  gap: 12px;
+  margin: 10px 0;
+}
+
+.dpad-btn {
+  width: 80px;
+  height: 80px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #182c18, #0f1c0f);
+  border: 1px solid var(--border-bright);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  transition: all 0.12s var(--ease-spring);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.dpad-btn span {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.dpad-btn small {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--green-primary);
+  margin-top: 4px;
+}
+
+.dpad-btn:hover {
+  background: linear-gradient(145deg, #244224, #152715);
+  border-color: var(--green-bright);
+  box-shadow: 0 0 16px var(--green-glow);
+  transform: translateY(-2px);
+}
+
+.dpad-btn:active {
+  background: var(--green-primary);
+  color: #000;
+  transform: scale(0.95);
+  box-shadow: 0 0 24px var(--green-bright);
+}
+
+.dpad-btn:active small {
+  color: #000;
+}
+
+.dpad-stop {
+  background: linear-gradient(145deg, #381a1d, #210d0f);
+  border-color: rgba(239, 35, 60, 0.4);
+}
+
+.dpad-stop small {
+  color: var(--red);
+}
+
+.dpad-stop:hover {
+  background: linear-gradient(145deg, #571e24, #330f13);
+  border-color: var(--red);
+  box-shadow: 0 0 16px rgba(239, 35, 60, 0.3);
+}
+
+.dpad-stop:active {
+  background: var(--red);
+  color: #fff;
+}
+
+/* Auxiliary Teleoperation Controls */
+.teleop-aux-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.aux-btn-row {
+  display: flex;
+  gap: 12px;
+}
+
+.aux-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all var(--transition-base);
+}
+
+.aux-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border-bright);
+}
+
+.btn-danger-pulsing {
+  background: linear-gradient(135deg, rgba(239, 35, 60, 0.2), rgba(239, 35, 60, 0.05)) !important;
+  border: 1px solid rgba(239, 35, 60, 0.5) !important;
+  color: #ff8a99 !important;
+  font-weight: 700 !important;
+  animation: pulse-danger 2s infinite ease-in-out;
+}
+
+@keyframes pulse-danger {
+  0% { box-shadow: 0 0 0 0 rgba(239, 35, 60, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(239, 35, 60, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 35, 60, 0); }
+}
+
+.btn-danger-pulsing:hover {
+  background: var(--red) !important;
+  color: #fff !important;
+}
+
+/* 4-DOF Robotic Arm Console */
+.arm-console-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.arm-sliders-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .arm-sliders-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.arm-joint-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.joint-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.joint-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.joint-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green-bright);
+}
+
+.arm-actions-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.arm-action-btn {
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(82, 183, 136, 0.08);
+  border: 1px solid rgba(82, 183, 136, 0.25);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all var(--transition-base);
+}
+
+.arm-action-btn:hover {
+  background: var(--green-primary);
+  color: #000;
+  border-color: var(--green-bright);
+}
+
+.arm-inspection-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: linear-gradient(135deg, rgba(82, 183, 136, 0.12), rgba(76, 201, 240, 0.08));
+  border: 1px solid var(--border-bright);
+  padding: 14px;
+  border-radius: var(--radius-sm);
+}
+
+.inspection-text strong {
+  font-size: 12px;
+  color: var(--green-bright);
+  display: block;
+}
+
+.inspection-text p {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.btn-inspect-trigger {
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--green-primary);
+  border: none;
+  color: #080f08;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px var(--green-glow);
+  transition: all var(--transition-base);
+}
+
+.btn-inspect-trigger:hover {
+  background: var(--green-bright);
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px var(--green-glow);
+}
+
+/* System Health Diagnostics Chips */
+.health-chips-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .health-chips-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.health-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.health-chip strong {
+  color: var(--text-primary);
+}
+
+.chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green-bright);
+  box-shadow: 0 0 6px var(--green-bright);
+  flex-shrink: 0;
+}
+
+/* Ground Sensors Quad */
+.sensor-cards-quad {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 640px) {
+  .sensor-cards-quad {
+    grid-template-columns: 1fr;
+  }
+}
+
+.telemetry-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.telemetry-card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.badge-mini {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(82, 183, 136, 0.15);
+  color: var(--green-bright);
+}
+
+.badge-mini-green {
+  background: rgba(87, 204, 153, 0.2);
+  color: #57cc99;
+}
+
+.telemetry-val-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.telemetry-primary-val {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.telemetry-primary-val small {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-left: 2px;
+}
+
+.telemetry-secondary-val {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.telemetry-subtext {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.progress-bar-wrap {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--green-bright);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.progress-bar-blue {
+  background: var(--teal) !important;
+}
+
+/* Explainable Risk Grid */
+.risk-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .risk-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.risk-metric-box {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-box-highlight {
+  border-color: var(--border-bright);
+  background: rgba(82, 183, 136, 0.07);
+}
+
+.risk-box-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.risk-box-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.risk-box-sub {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.risk-rationale-card {
+  margin-top: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+}
+
+.rationale-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--green-primary);
+}
+
+.rationale-text {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+/* GPS Spatial Row */
+.gps-coords-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .gps-coords-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.coord-box {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.coord-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.coord-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* XiaoZhi Conversational Assistant & Activity Feed */
+.xiaozhi-chat-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quick-prompts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.prompt-chip {
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.prompt-chip:hover {
+  background: var(--green-primary);
+  color: #000;
+  border-color: var(--green-bright);
+}
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.xiaozhi-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+}
+
+.xiaozhi-input:focus {
+  border-color: var(--green-bright);
+  box-shadow: 0 0 10px var(--green-glow);
+}
+
+.xiaozhi-send-btn {
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  background: var(--green-primary);
+  border: none;
+  color: #080f08;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.xiaozhi-send-btn:hover {
+  background: var(--green-bright);
+}
+
+.xiaozhi-response-box {
+  background: rgba(82, 183, 136, 0.08);
+  border: 1px solid var(--border-bright);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  animation: fadeIn 0.3s ease;
+}
+
+.response-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--green-bright);
+  margin-bottom: 4px;
+}
+
+.xiaozhi-response-box p {
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* Activity Log */
+.activity-log-wrap {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  max-height: 180px;
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.btn-clear-log {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.btn-clear-log:hover {
+  color: var(--text-primary);
+}
+
+.activity-log-body {
+  overflow-y: auto;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: monospace;
+  font-size: 10px;
+}
+
+.log-entry {
+  display: flex;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.log-time {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.log-entry-system .log-msg { color: var(--teal); }
+.log-entry-rover .log-msg  { color: var(--green-bright); }
+.log-entry-alert .log-msg  { color: var(--orange); }

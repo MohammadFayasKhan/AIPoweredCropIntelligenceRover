@@ -174,35 +174,67 @@ All endpoints return HTTP 200 with standard headers (`Cache-Control: no-cache`).
 
 ---
 
-## 💻 USB Serial Command Line (Backwards Compatibility)
-The USB Serial interface operates at **115200 baud** and accepts both text words and legacy HC-05 format commands:
-- `s1<ang>`: Set Base Angle (e.g. `s190`)
-- `s2<ang>`: Set Shoulder Angle (e.g. `s2120`)
-- `s3<ang>`: Set Elbow Angle (e.g. `s360`)
-- `s6<ang>`: Set Gripper Angle (e.g. `s6180`)
-- `ss<spd>`: Set Arm Speed (e.g. `ss80`)
-- `SAVE`: Record current pose as waypoint
-- `RUN`: Begin sequence execution
-- `PAUSE` / `RESUME` / `STOP`: Sequence control
-- `RESET`: Return to Home stance
-- `CLEAR`: Flush waypoint records
-- `POSITION`: Print current joint targets
-- `RECORDS`: Print all recorded waypoints
+## 🧭 Complete End-to-End System Architecture
+
+### 1. Inbound Telemetry & Intelligence Data Flow
+```
+Field Crop Canopy → AgriRover Mobile Chassis → ESP32 Dev Module Controller → Ground Sensors (DHT11, Capacitive Soil v1.2, Raindrop, Water Level) + GPS NEO-6M + OV2640 Camera → FastAPI IoT Gateway (/api/v1/iot/observation) → Environmental Risk Engine + Crop Intelligence Recommendation → 3-Tier Crop Vision Inference (EfficientNetV2-S + YOLO11 Nano + Mobile UNet) → Live WebSocket Broadcast (/api/v1/iot/live-ws) → SmartCropVision Dashboard + 2.4-inch TFT LCD Status HUD + n8n Automated Webhooks + XiaoZhi Conversational Assistant
+```
+
+### 2. Reverse Physical Actuation & Teleoperation Flow
+```
+Dashboard Operator / XiaoZhi Voice Command → Backend Command Gateway (/api/v1/iot/device/command) → Physical Envelope & Angular Safety Gate → ESP32 Dev Module Master Controller → Local 600ms Hardware Safety Watchdog → L293D Dual H-Bridge (Motors) / PCA9685 I2C (4-DOF Arm) → Physical Motion Execution → Hardware State Acknowledgement → Backend Gateway → Live Dashboard & 2.4-inch TFT Update
+```
 
 ---
 
-## 🛠️ Arduino IDE Setup & Libraries Required
-To compile and flash `iot/AgriRover_Innovex_SIH.ino`:
-1. **Board Manager:** Install `esp32` by Espressif Systems (v2.0.x or v3.x).
-   - Select Board: `ESP32 Dev Module`.
-2. **Required Libraries (Install via Arduino Library Manager):**
-   - `Adafruit PWM Servo Driver Library` (by Adafruit)
-   - `Wire` (built-in)
-   - `WiFi` (built-in)
-   - `WebServer` (built-in)
-   - `ESPmDNS` (built-in)
-3. **Upload Settings:**
-   - Upload Speed: `921600` or `115200`
-   - CPU Frequency: `240MHz (WiFi/BT)`
-   - Flash Frequency: `80MHz`
-   - Partition Scheme: `Default 4MB with spiffs (1.2MB APP / 1.5MB SPIFFS)` or `Huge APP (3MB No OTA)`
+## ⚡ Master Circuit Connection & Interface Table
+
+| Subsystem / Peripheral | Hardware Component | ESP32 Pin / Interface | Supply Voltage | Signal Type | Role & Electrical Notes |
+|:---|:---|:---:|:---:|:---:|:---|
+| **Chassis Motors** | L293D Left In 1 (1A) | **GPIO 5** | 5V / 7.4V Batt | Digital Out | Left tracks forward logic |
+| **Chassis Motors** | L293D Left In 2 (2A) | **GPIO 18** | 5V / 7.4V Batt | Digital Out | Left tracks reverse logic |
+| **Chassis Motors** | L293D Right In 1 (3A) | **GPIO 19** | 5V / 7.4V Batt | Digital Out | Right tracks forward logic |
+| **Chassis Motors** | L293D Right In 2 (4A) | **GPIO 21** | 5V / 7.4V Batt | Digital Out | Right tracks reverse logic |
+| **Field Illumination** | Rover White Headlight | **GPIO 2** | 3.3V Logic | Digital Out | Foliage inspection illumination |
+| **Microclimate Sensor**| DHT11 Temp & Humidity | **GPIO 4** | 3.3V / 5V | Digital Bus | Single-wire data protocol (10k pull-up) |
+| **Root Water Status** | Capacitive Soil v1.2 | **GPIO 34** | 3.3V | Analog In (ADC1) | ADC1_CH6 (Input only; Wi-Fi radio safe) |
+| **Rain Detection** | Raindrop Module (DO) | **GPIO 27** | 3.3V | Digital In | Active LOW precipitation flag |
+| **Rain Intensity** | Raindrop Module (AO) | **GPIO 32** | 3.3V | Analog In (ADC1) | ADC1_CH4 analog droplet density proxy |
+| **Drainage Probe** | Water Level Sensor | **GPIO 35** | 3.3V | Analog In (ADC1) | ADC1_CH7 standing water & flood depth |
+| **GPS Spatial Fix** | GPS NEO-6M TX | **GPIO 16 (RX2)** | 3.3V / 5V | UART2 Serial | HardwareSerial2 at 9600 baud |
+| **GPS Spatial Fix** | GPS NEO-6M RX | **GPIO 17 (TX2)** | 3.3V / 5V | UART2 Serial | HardwareSerial2 transmit to GPS |
+| **4-DOF Robotic Arm** | PCA9685 SDA | **GPIO 23** | 3.3V Logic | I2C Data | Hardware I2C Wire bus at address `0x40` |
+| **4-DOF Robotic Arm** | PCA9685 SCL | **GPIO 22** | 3.3V Logic | I2C Clock | Hardware I2C Clock at 400 kHz |
+| **2.4" TFT Display** | Color LCD Controller | **SPI / VSPI** | 3.3V Logic | SPI Bus | CS: 15, DC: 14, RST: 13, MOSI: 23, SCK: 18 |
+| **Arm Servo Power** | External Battery Pack | **V+ (PCA9685)** | **5.0V – 6.0V** | High-Current DC | **External 3A–5A supply only; NEVER from ESP32** |
+| **Common System GND**| All Boards & Drivers | **GND** | 0V | System Ground | Mandatory common ground reference |
+
+---
+
+## 🔧 Comprehensive Field Troubleshooting Guide
+
+1. **Wi-Fi & SoftAP Issues:**
+   - If the station Wi-Fi fails to connect within 8 seconds, the ESP32 automatically starts `AgriRover-Field-AP` at `192.168.9.1` (Password: `agrirover123`).
+   - Connect to the SoftAP on your mobile device or laptop and navigate to `http://192.168.9.1` or `http://agrirover.local`.
+2. **GPS NEO-6M Satellites Searching:**
+   - The NEO-6M requires clear line-of-sight to the sky. Under dense metal roofs, satellite acquisition will stay in `NO_FIX` state.
+   - Place the ceramic patch antenna facing upward outdoors. Lock typically occurs within 45 seconds (indicated by flashing blue LED on module).
+3. **Capacitive Soil Moisture Calibration:**
+   - Dry air baseline reading is approximately `3100–3300` raw ADC.
+   - Submerged in water reading is approximately `1200–1400` raw ADC.
+   - Adjust `soil_dry_ref` and `soil_wet_ref` constants in firmware configuration if custom soil type requires shifted calibration.
+4. **Water Level vs. Soil Moisture Disambiguation:**
+   - Capacitive soil moisture indicates direct root dehydration and drought.
+   - Water level sensor indicates standing drainage water, flood accumulation, or furrow pooling. Never confuse water level depth with root water stress.
+5. **Motor Watchdog Tripping:**
+   - The ESP32 enforces a local 600ms hardware watchdog. If browser heartbeats lapse (due to tab backgrounding or Wi-Fi packet drop), motors stop automatically.
+   - Re-tap any direction button on the dashboard to immediately resume motion.
+6. **PCA9685 Servo Jitter or Brownout:**
+   - Jitter occurs when servos pull high surge current from an inadequate power source. Always power servos from a dedicated 5V–6V 3A+ battery pack or step-down converter, never from the ESP32 3.3V or VIN pins.
+7. **n8n Alerts and Webhook Testing:**
+   - Set `N8N_WEBHOOK_URL` in `.env`. Test alerts using the automated test suite `pytest tests/test_iot_integration.py`.
+   - Alerts feature a built-in 5-minute cooldown to prevent notification spam across Telegram, WhatsApp, or email.
+8. **XiaoZhi Voice Assistant & MCP Queries:**
+   - XiaoZhi queries `/api/v1/xiaozhi/chat` and reads live values directly from `_latest_observation`.
+   - Actuation tools are bounded: `base` (5°–175°), `shoulder` (0°–180°), `elbow` (0°–180°), `gripper` (70°–180°), rover duration max 2500ms.

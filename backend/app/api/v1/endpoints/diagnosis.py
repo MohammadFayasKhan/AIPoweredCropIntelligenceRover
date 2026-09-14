@@ -105,6 +105,20 @@ async def diagnose_leaf_image(
             }
         )
 
+    # Enrich multimodal context with live field sensors if not explicitly provided
+    try:
+        from backend.app.api.v1.endpoints.iot import _latest_observation, ws_manager
+        if _latest_observation is not None:
+            s = _latest_observation.sensor_telemetry
+            g = _latest_observation.gps
+            if temperature_c is None:
+                temperature_c = s.temperature_c
+            if humidity_pct is None:
+                humidity_pct = s.humidity_pct
+    except Exception:
+        _latest_observation = None
+        ws_manager = None
+
     # Build optional multimodal context dict if provided
     multimodal_context = None
     if any([crop_context, temperature_c is not None, humidity_pct is not None, symptom_notes]):
@@ -129,6 +143,24 @@ async def diagnose_leaf_image(
             source=validated_source,
             camera_metadata=camera_metadata
         )
+
+        # Synchronize diagnosis into unified field observation
+        try:
+            from backend.app.api.v1.endpoints.iot import _latest_observation, ws_manager
+            if _latest_observation is not None:
+                _latest_observation.crop_vision = {
+                    "crop_name": response.crop_name,
+                    "disease_name": response.disease_name,
+                    "confidence_pct": response.confidence_pct,
+                    "is_healthy": response.is_healthy,
+                    "severity_level": response.severity_level,
+                    "treatment_plan": response.treatment_plan.dict() if response.treatment_plan else None,
+                    "detections_count": len(response.detections) if response.detections else 0,
+                    "timestamp": response.timestamp
+                }
+        except Exception:
+            pass
+
         return response
     except ImageValidationError as ive:
         return JSONResponse(

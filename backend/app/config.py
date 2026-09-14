@@ -139,6 +139,15 @@ class Settings:
     YOLO_LESIONS_CONF_THRESH: float = float(os.getenv("YOLO_LESIONS_CONF_THRESH", "0.10"))
     YOLO_IOU_THRESH: float = float(os.getenv("YOLO_IOU_THRESH", "0.45"))
 
+    # AgriRover IoT & Automation Integration (SIH 2026)
+    N8N_WEBHOOK_URL: Optional[str] = os.getenv("N8N_WEBHOOK_URL", None)
+    N8N_ALERTS_ENABLED: bool = os.getenv("N8N_ALERTS_ENABLED", "true").lower() in ("true", "1", "yes")
+    N8N_COOLDOWN_SECONDS: int = int(os.getenv("N8N_COOLDOWN_SECONDS", "300"))  # 5 min deduplication
+    XIAOZHI_API_KEY: Optional[str] = os.getenv("XIAOZHI_API_KEY", "xiaozhi-sih-token-innovex")
+    XIAOZHI_ENABLED: bool = os.getenv("XIAOZHI_ENABLED", "true").lower() in ("true", "1", "yes")
+    AGRIROVER_COMMAND_TIMEOUT_MS: int = int(os.getenv("AGRIROVER_COMMAND_TIMEOUT_MS", "2500"))
+    TELEMETRY_HISTORY_MAX_ENTRIES: int = int(os.getenv("TELEMETRY_HISTORY_MAX_ENTRIES", "500"))
+
 
 settings = Settings()
 

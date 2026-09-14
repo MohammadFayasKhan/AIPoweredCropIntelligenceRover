@@ -391,8 +391,10 @@ let _modeSwitching = false;
 function switchMode(mode, animate = true) {
   const btnCrop = document.getElementById("btnModeCrop");
   const btnVision = document.getElementById("btnModeVision");
+  const btnRover = document.getElementById("btnModeRover");
   const cropSection = document.getElementById("cropSection");
   const visionSection = document.getElementById("visionSection");
+  const roverSection = document.getElementById("roverSection");
 
   const previousMode = activeMode;
   activeMode = mode;
@@ -404,40 +406,46 @@ function switchMode(mode, animate = true) {
   }
 
   // Update button active state
-  if (mode === "crop") {
-    if (btnCrop) btnCrop.classList.add("active");
-    if (btnVision) btnVision.classList.remove("active");
-  } else {
-    if (btnVision) btnVision.classList.add("active");
-    if (btnCrop) btnCrop.classList.remove("active");
-  }
+  if (btnCrop) btnCrop.classList.toggle("active", mode === "crop");
+  if (btnVision) btnVision.classList.toggle("active", mode === "vision");
+  if (btnRover) btnRover.classList.toggle("active", mode === "rover");
 
-  const outgoing = previousMode === "crop" ? cropSection : visionSection;
-  const incoming = mode === "crop" ? cropSection : visionSection;
+  const getSection = (m) => {
+    if (m === "crop") return cropSection;
+    if (m === "vision") return visionSection;
+    if (m === "rover") return roverSection;
+    return cropSection;
+  };
+
+  const outgoing = getSection(previousMode);
+  const incoming = getSection(mode);
 
   const iotBar = document.getElementById("iotFeedBar");
-  if (iotBar) iotBar.style.display = mode === "crop" ? "flex" : "none";
+  if (iotBar) iotBar.style.display = "flex"; // Keep live feed visible across all modes
 
   const prefersReducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // Instant switch if no animation requested, same mode, or reduced motion
   if (!animate || previousMode === mode || prefersReducedMotion || _modeSwitching) {
-    if (outgoing) {
-      outgoing.style.display = "none";
-      outgoing.style.opacity = "";
-      outgoing.style.transform = "";
-    }
-    if (incoming) {
-      incoming.style.display = "grid";
-      incoming.style.opacity = "1";
-      incoming.style.transform = "none";
-    }
+    [cropSection, visionSection, roverSection].forEach(sec => {
+      if (sec) {
+        if (sec === incoming) {
+          sec.style.display = "grid";
+          sec.style.opacity = "1";
+          sec.style.transform = "none";
+        } else {
+          sec.style.display = "none";
+          sec.style.opacity = "";
+          sec.style.transform = "";
+        }
+      }
+    });
     return;
   }
 
   _modeSwitching = true;
 
-  // Phase 1: Smooth fade out + subtle scale down of outgoing tab
+  // Phase 1: Smooth fade out of outgoing tab
   if (outgoing) {
     outgoing.style.transition = "opacity 0.16s cubic-bezier(0.4, 0, 0.2, 1), transform 0.16s cubic-bezier(0.4, 0, 0.2, 1)";
     outgoing.style.opacity = "0";
@@ -445,20 +453,21 @@ function switchMode(mode, animate = true) {
   }
 
   setTimeout(() => {
-    if (outgoing) {
-      outgoing.style.display = "none";
-      outgoing.style.transition = "";
-      outgoing.style.opacity = "";
-      outgoing.style.transform = "";
-    }
+    [cropSection, visionSection, roverSection].forEach(sec => {
+      if (sec && sec !== incoming) {
+        sec.style.display = "none";
+        sec.style.transition = "";
+        sec.style.opacity = "";
+        sec.style.transform = "";
+      }
+    });
 
-    // Phase 2: Fade in + subtle slide up of incoming tab
+    // Phase 2: Fade in of incoming tab
     if (incoming) {
       incoming.style.display = "grid";
       incoming.style.opacity = "0";
       incoming.style.transform = "translateY(8px) scale(0.99)";
 
-      // Force layout calculation before applying transition
       void incoming.offsetWidth;
 
       incoming.style.transition = "opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)";
@@ -4480,68 +4489,519 @@ if (typeof window !== "undefined") {
   // ── RESTORE MODE FROM URL HASH ON PAGE LOAD ──────────────────────────────────
   (function restoreModeFromHash() {
     const hash = window.location.hash.replace("#", "");
-    if (hash === "vision" || hash === "crop") {
+    if (hash === "vision" || hash === "crop" || hash === "rover") {
       switchMode(hash, false); // instant, no animation on page load
     }
   })();
 }
 
-// ── AGRIROVER & 4-DOF ROBOTIC ARM TELEOPERATION BRIDGE ────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+// ── AGRIROVER FIELD IOT, TELEOPERATION & ROBOTIC ARM INTEGRATION (SIH 2026) ───
+// ══════════════════════════════════════════════════════════════════════════════
+
 let roverEndpoint = "http://agrirover.local";
+let roverWs = null;
+let roverHeartbeatTimer = null;
+let currentDriveDirection = "STOPPED";
+let currentSpeedPwm = 200;
+let headlightActive = false;
+let armEmergencyStopped = false;
+let latestTelemetrySnapshot = null;
 
-async function pingRover() {
-  const pill = document.getElementById("roverBridgePill");
-  const headerDot = document.getElementById("roverHeaderDot");
-  const headerText = document.getElementById("roverHeaderText");
-
-  if (pill) {
-    pill.textContent = "Probing...";
-    pill.style.color = "#e5c95d";
-  }
+// ── Real-Time WebSocket Telemetry Gateway Connection ──────────────────────────
+function initAgriRoverWebSocket() {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const wsUrl = `${protocol}//${window.location.host}/api/v1/iot/live-ws`;
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
-    const resp = await fetch(`${roverEndpoint}/status`, {
-      method: "GET",
-      signal: controller.signal
-    }).catch(() => null);
-    clearTimeout(timeout);
+    roverWs = new WebSocket(wsUrl);
 
-    if (resp && resp.ok) {
-      const data = await resp.json();
-      if (pill) {
-        const armInfo = data.arm ? `Arm: ${Math.round(data.arm.base)}°` : "Ready";
-        pill.textContent = `Online • ${armInfo}`;
-        pill.style.color = "#5fcf72";
+    roverWs.onopen = function () {
+      console.log("[AgriRover WS] Connected to live telemetry stream.");
+      updateHealthDot("chipDotWS", "chipTextWS", true, "WebSocket Active");
+      addActivityLogEntry("Live IoT WebSocket stream connected.", "system");
+    };
+
+    roverWs.onmessage = function (event) {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.event === "TELEMETRY_UPDATE" || msg.event === "INITIAL_STATE") {
+          applyUnifiedObservation(msg.data);
+        } else if (msg.event === "COMMAND_DISPATCHED") {
+          addActivityLogEntry(`Command dispatched: ${msg.data.command_type}`, "rover");
+        }
+      } catch (err) {
+        console.error("[AgriRover WS] Error parsing message:", err);
       }
-      if (headerDot) {
-        headerDot.className = "badge-dot badge-dot-online";
-      }
-      if (headerText) {
-        headerText.textContent = "AgriRover Online";
-      }
-      if (typeof showToast === "function") {
-        showToast("AgriRover & 4-DOF Arm controller online.", "success", "Hardware Link");
-      }
-    } else {
-      if (pill) {
-        pill.textContent = "Standby (Click to Open)";
-        pill.style.color = "#8ee69b";
-      }
-      if (typeof showToast === "function") {
-        showToast("Access http://agrirover.local or your ESP32 IP to control.", "info", "AgriRover Bridge");
-      }
-    }
+    };
+
+    roverWs.onclose = function () {
+      updateHealthDot("chipDotWS", "chipTextWS", false, "Reconnecting...");
+      // Reconnect with backoff
+      setTimeout(initAgriRoverWebSocket, 3000);
+    };
+
+    roverWs.onerror = function (err) {
+      console.warn("[AgriRover WS] Connection notice:", err);
+      updateHealthDot("chipDotWS", "chipTextWS", false, "Standby");
+    };
   } catch (err) {
-    if (pill) {
-      pill.textContent = "Standby • agrirover.local";
-      pill.style.color = "#849688";
+    console.warn("[AgriRover WS] WebSocket init fallback:", err);
+  }
+}
+
+// Fallback polling for live observation
+async function pollLatestTelemetry() {
+  try {
+    const res = await fetch("/api/v1/iot/observation/latest");
+    if (res.ok) {
+      const data = await res.json();
+      applyUnifiedObservation(data);
+    }
+  } catch (e) {
+    // Silent catch
+  }
+}
+
+function updateHealthDot(dotId, textId, isOnline, text) {
+  const dot = document.getElementById(dotId);
+  const elText = document.getElementById(textId);
+  if (dot) {
+    dot.style.background = isOnline ? "var(--green-bright)" : "var(--orange)";
+    dot.style.boxShadow = isOnline ? "0 0 6px var(--green-bright)" : "none";
+  }
+  if (elText) {
+    elText.textContent = text;
+  }
+}
+
+// ── Apply Incoming Observation to All Panels ──────────────────────────────────
+function applyUnifiedObservation(obs) {
+  if (!obs) return;
+  latestTelemetrySnapshot = obs;
+
+  const s = obs.sensor_telemetry || {};
+  const g = obs.gps || {};
+  const r = obs.rover_state || {};
+  const a = obs.arm_state || {};
+  const e = obs.environmental_risk || {};
+  const i = obs.irrigation_advisory || {};
+
+  // 1. Top Live Feed Bar
+  const tEl = document.getElementById("iot-t");
+  const hEl = document.getElementById("iot-h");
+  const sEl = document.getElementById("iot-s");
+  const rEl = document.getElementById("iot-r");
+  const wEl = document.getElementById("iot-w");
+  const heatEl = document.getElementById("iot-heat");
+  const gpsEl = document.getElementById("iot-gps");
+  const irrigEl = document.getElementById("iot-irrig");
+  const agoEl = document.getElementById("iotAgo");
+  const liveVals = document.getElementById("iotLiveValues");
+
+  if (tEl && s.temperature_c !== undefined) tEl.textContent = s.temperature_c.toFixed(1);
+  if (hEl && s.humidity_pct !== undefined) hEl.textContent = Math.round(s.humidity_pct);
+  if (sEl && s.soil_moisture_pct !== undefined) sEl.textContent = Math.round(s.soil_moisture_pct);
+  if (rEl && s.rain_detected !== undefined) rEl.textContent = s.rain_detected ? "Rain" : "Dry";
+  if (wEl && s.water_level_pct !== undefined) wEl.textContent = Math.round(s.water_level_pct);
+  if (heatEl && e.heat_stress_index !== undefined) heatEl.textContent = e.heat_stress_index.toFixed(1);
+  if (gpsEl) gpsEl.textContent = g.is_valid ? `${g.latitude.toFixed(2)}, ${g.longitude.toFixed(2)}` : "3D Lock";
+  if (irrigEl && i.recommendation) irrigEl.textContent = i.recommendation.replace("_", " ");
+  if (agoEl) agoEl.textContent = "Live";
+  if (liveVals) liveVals.style.display = "flex";
+
+  // Also update Crop Recommendation manual inputs if in auto/sync mode
+  const valTemp = document.getElementById("val-temperature");
+  const valHum = document.getElementById("val-humidity");
+  const valSoil = document.getElementById("val-soil_moisture");
+  const sliderTemp = document.getElementById("temperature");
+  const sliderHum = document.getElementById("humidity");
+  const sliderSoil = document.getElementById("soil_moisture");
+
+  if (valTemp && s.temperature_c) valTemp.textContent = s.temperature_c.toFixed(1);
+  if (valHum && s.humidity_pct) valHum.textContent = Math.round(s.humidity_pct);
+  if (valSoil && s.soil_moisture_pct) valSoil.textContent = Math.round(s.soil_moisture_pct);
+  if (sliderTemp && s.temperature_c) sliderTemp.value = s.temperature_c;
+  if (sliderHum && s.humidity_pct) sliderHum.value = s.humidity_pct;
+  if (sliderSoil && s.soil_moisture_pct) sliderSoil.value = s.soil_moisture_pct;
+
+  // 2. Rover Section: Ground Telemetry Quad
+  const telTemp = document.getElementById("telemetryTemp");
+  const telHum = document.getElementById("telemetryHum");
+  const telSoil = document.getElementById("telemetrySoil");
+  const telSoilRaw = document.getElementById("telemetrySoilRaw");
+  const soilBar = document.getElementById("soilProgressBar");
+  const telRainState = document.getElementById("telemetryRainState");
+  const telRainIntensity = document.getElementById("telemetryRainIntensity");
+  const telWater = document.getElementById("telemetryWaterLevel");
+  const telWaterRaw = document.getElementById("telemetryWaterRaw");
+  const waterBar = document.getElementById("waterProgressBar");
+
+  if (telTemp && s.temperature_c !== undefined) telTemp.textContent = s.temperature_c.toFixed(1);
+  if (telHum && s.humidity_pct !== undefined) telHum.textContent = s.humidity_pct.toFixed(1);
+  if (telSoil && s.soil_moisture_pct !== undefined) {
+    telSoil.textContent = s.soil_moisture_pct.toFixed(1);
+    if (soilBar) soilBar.style.width = `${Math.min(100, Math.max(0, s.soil_moisture_pct))}%`;
+  }
+  if (telSoilRaw && s.soil_moisture_raw !== undefined) telSoilRaw.textContent = s.soil_moisture_raw;
+
+  if (telRainState) telRainState.textContent = s.rain_detected ? "Precipitation Active" : "Dry";
+  if (telRainIntensity) {
+    telRainIntensity.textContent = s.rain_intensity_pct !== null && s.rain_intensity_pct !== undefined
+      ? `${s.rain_intensity_pct.toFixed(0)}%`
+      : (s.rain_detected ? "Active" : "0%");
+  }
+
+  if (telWater && s.water_level_pct !== undefined) {
+    telWater.textContent = s.water_level_pct.toFixed(1);
+    if (waterBar) waterBar.style.width = `${Math.min(100, Math.max(0, s.water_level_pct))}%`;
+  }
+  if (telWaterRaw && s.water_level_raw !== undefined) telWaterRaw.textContent = s.water_level_raw;
+
+  // 3. Environmental Risk & Irrigation Advisory
+  const rHeat = document.getElementById("riskHeatVal");
+  const rHeatLvl = document.getElementById("riskHeatLevel");
+  const rWaterStress = document.getElementById("riskWaterStressVal");
+  const rFlood = document.getElementById("riskFloodVal");
+  const advAction = document.getElementById("advisoryActionVal");
+  const advUrg = document.getElementById("advisoryUrgencyVal");
+  const rRationale = document.getElementById("riskRationaleText");
+  const riskBadge = document.getElementById("overallRiskBadge");
+
+  if (rHeat && e.heat_stress_index !== undefined) rHeat.textContent = `${e.heat_stress_index.toFixed(1)}°C`;
+  if (rHeatLvl && e.heat_risk_level) rHeatLvl.textContent = e.heat_risk_level;
+  if (rWaterStress && e.water_stress_level) rWaterStress.textContent = e.water_stress_level.replace("_", " ");
+  if (rFlood && e.flood_risk_level) rFlood.textContent = e.flood_risk_level.replace("_", " ");
+  if (advAction && i.recommendation) advAction.textContent = i.recommendation.replace("_", " ");
+  if (advUrg && i.urgency) advUrg.textContent = `${i.urgency} Urgency`;
+  if (rRationale && e.rationale) rRationale.textContent = e.rationale;
+  if (riskBadge && e.overall_risk_score !== undefined) {
+    riskBadge.textContent = `SCORE: ${e.overall_risk_score.toFixed(2)}`;
+    riskBadge.className = `panel-badge ${e.overall_risk_score > 0.6 ? "panel-badge-manual" : "panel-badge-warning"}`;
+  }
+
+  // 4. GPS Navigation
+  const latEl = document.getElementById("gpsLatVal");
+  const lonEl = document.getElementById("gpsLonVal");
+  const altEl = document.getElementById("gpsAltVal");
+  const satsEl = document.getElementById("gpsSatsVal");
+  const fixBadge = document.getElementById("gpsFixBadge");
+
+  if (latEl && g.latitude !== undefined && g.latitude !== null) latEl.textContent = `${g.latitude.toFixed(6)}° N`;
+  if (lonEl && g.longitude !== undefined && g.longitude !== null) lonEl.textContent = `${g.longitude.toFixed(6)}° E`;
+  if (altEl && g.altitude_m !== undefined && g.altitude_m !== null) altEl.textContent = `${g.altitude_m.toFixed(1)} m MSL`;
+  if (satsEl && g.satellites_tracked !== undefined) satsEl.textContent = `${g.satellites_tracked} Visible`;
+  if (fixBadge && g.fix_state) fixBadge.textContent = g.fix_state;
+
+  // 5. Rover Chassis Teleoperation State
+  const motionBadge = document.getElementById("roverMotionBadge");
+  const speedVal = document.getElementById("roverSpeedVal");
+  const watchdogVal = document.getElementById("roverWatchdogVal");
+  const rssiVal = document.getElementById("roverRssiVal");
+  const uptimeVal = document.getElementById("roverUptimeVal");
+
+  if (motionBadge && r.movement_state) motionBadge.textContent = r.movement_state;
+  if (speedVal && r.speed_pwm !== undefined) speedVal.textContent = `${r.speed_pwm} / 255`;
+  if (watchdogVal) watchdogVal.textContent = r.watchdog_active ? "ACTIVE (600ms)" : "HALTED";
+  if (rssiVal && r.wifi_rssi) rssiVal.textContent = `${r.wifi_rssi} dBm`;
+  if (uptimeVal && r.uptime_seconds !== undefined) uptimeVal.textContent = `${r.uptime_seconds}s`;
+
+  // 6. 4-DOF Robotic Arm Joint Angles
+  const armBase = document.getElementById("armBaseVal");
+  const armBaseSlider = document.getElementById("armBaseSlider");
+  const armSh = document.getElementById("armShoulderVal");
+  const armShSlider = document.getElementById("armShoulderSlider");
+  const armEl = document.getElementById("armElbowVal");
+  const armElSlider = document.getElementById("armElbowSlider");
+  const armGrip = document.getElementById("armGripperVal");
+  const armGripSlider = document.getElementById("armGripperSlider");
+  const armBadge = document.getElementById("armStatusBadge");
+
+  if (armBase && a.base_deg !== undefined) {
+    armBase.textContent = `${Math.round(a.base_deg)}°`;
+    if (armBaseSlider && !armBaseSlider.matches(":active")) armBaseSlider.value = Math.round(a.base_deg);
+  }
+  if (armSh && a.shoulder_deg !== undefined) {
+    armSh.textContent = `${Math.round(a.shoulder_deg)}°`;
+    if (armShSlider && !armShSlider.matches(":active")) armShSlider.value = Math.round(a.shoulder_deg);
+  }
+  if (armEl && a.elbow_deg !== undefined) {
+    armEl.textContent = `${Math.round(a.elbow_deg)}°`;
+    if (armElSlider && !armElSlider.matches(":active")) armElSlider.value = Math.round(a.elbow_deg);
+  }
+  if (armGrip && a.gripper_deg !== undefined) {
+    armGrip.textContent = `${Math.round(a.gripper_deg)}° (${a.gripper_state || "Open"})`;
+    if (armGripSlider && !armGripSlider.matches(":active")) armGripSlider.value = Math.round(a.gripper_deg);
+  }
+  if (armBadge) {
+    armBadge.textContent = a.emergency_stopped ? "LOCKED" : (a.is_moving ? "MOVING" : "READY");
+    armBadge.style.color = a.emergency_stopped ? "var(--red)" : "var(--green-bright)";
+  }
+}
+
+// ── Chassis Teleoperation Functions ───────────────────────────────────────────
+async function sendDeviceCommand(cmdType, params) {
+  const cmd = {
+    command_id: `cmd-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+    device_id: "agrirover-esp32-01",
+    command_type: cmdType,
+    parameters: params || {},
+    source: "DASHBOARD"
+  };
+
+  // Try WebSocket first
+  if (roverWs && roverWs.readyState === WebSocket.OPEN) {
+    roverWs.send(JSON.stringify({ event: "COMMAND", data: cmd }));
+  } else {
+    // Fallback to REST
+    try {
+      await fetch("/api/v1/iot/device/command", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cmd)
+      });
+    } catch (e) {
+      console.warn("[AgriRover] Command dispatch error:", e);
     }
   }
 }
 
+function startRoverDrive(direction) {
+  currentDriveDirection = direction;
+  const motionBadge = document.getElementById("roverMotionBadge");
+  if (motionBadge) motionBadge.textContent = direction;
+
+  // Immediate send
+  sendDeviceCommand("ROVER_MOVE", { direction: direction, speed: currentSpeedPwm });
+
+  // Continuous heartbeat every 200ms to keep 600ms safety watchdog refreshed
+  if (roverHeartbeatTimer) clearInterval(roverHeartbeatTimer);
+  roverHeartbeatTimer = setInterval(() => {
+    if (currentDriveDirection !== "STOPPED") {
+      sendDeviceCommand("ROVER_MOVE", { direction: currentDriveDirection, speed: currentSpeedPwm });
+    }
+  }, 200);
+}
+
+function stopRoverDrive() {
+  currentDriveDirection = "STOPPED";
+  if (roverHeartbeatTimer) {
+    clearInterval(roverHeartbeatTimer);
+    roverHeartbeatTimer = null;
+  }
+  const motionBadge = document.getElementById("roverMotionBadge");
+  if (motionBadge) motionBadge.textContent = "STOPPED";
+  sendDeviceCommand("ROVER_STOP", {});
+}
+
+function setRoverSpeed(val) {
+  currentSpeedPwm = parseInt(val, 10);
+  const pct = Math.round((currentSpeedPwm / 255) * 100);
+  const label = document.getElementById("roverSpeedSliderLabel");
+  if (label) label.textContent = `${currentSpeedPwm} (${pct}%)`;
+}
+
+function toggleHeadlight() {
+  headlightActive = !headlightActive;
+  const label = document.getElementById("headlightLabel");
+  if (label) label.textContent = headlightActive ? "Headlight: ON" : "Headlight: OFF";
+  sendDeviceCommand("HEADLIGHT", { state: headlightActive });
+  addActivityLogEntry(`Headlight toggled ${headlightActive ? "ON" : "OFF"}`, "rover");
+}
+
+function triggerEmergencyStop() {
+  stopRoverDrive();
+  armEmergencyStopped = true;
+  sendDeviceCommand("ROVER_STOP", {});
+  sendDeviceCommand("ARM_EMERGENCY_STOP", {});
+
+  const armBadge = document.getElementById("armStatusBadge");
+  if (armBadge) {
+    armBadge.textContent = "EMERGENCY STOP LOCKED";
+    armBadge.style.color = "var(--red)";
+  }
+  addActivityLogEntry("🚨 EMERGENCY STOP TRIGGERED! All physical actuation halted.", "alert");
+  if (typeof showToast === "function") {
+    showToast("EMERGENCY STOP: Rover and robotic arm locked!", "error", "Safety Failsafe");
+  }
+}
+
+// ── 4-DOF Robotic Arm Joint Controls ──────────────────────────────────────────
+let armDebounceTimer = null;
+
+function onArmSliderChange(joint, val) {
+  const angle = parseFloat(val);
+  const valEl = document.getElementById(`arm${joint.charAt(0).toUpperCase() + joint.slice(1)}Val`);
+  if (valEl) valEl.textContent = `${angle}°`;
+
+  clearTimeout(armDebounceTimer);
+  armDebounceTimer = setTimeout(() => {
+    const params = {};
+    params[joint] = angle;
+    sendDeviceCommand("ARM_TARGET", params);
+  }, 60);
+}
+
+function sendArmPreset(presetName) {
+  if (presetName === "home") {
+    sendDeviceCommand("ARM_HOME", { base: 90, shoulder: 90, elbow: 90, gripper: 180 });
+    addActivityLogEntry("Arm commanding to Home Stance (90°, 90°, 90°, 180°)", "rover");
+  } else if (presetName === "inspect") {
+    sendDeviceCommand("ARM_TARGET", { base: 90, shoulder: 65, elbow: 120, gripper: 140 });
+    addActivityLogEntry("Arm positioning to Foliage Inspection Angle", "rover");
+  }
+}
+
+function sendArmGripper(action) {
+  const angle = action === "open" ? 180.0 : 70.0;
+  sendDeviceCommand("ARM_GRIPPER", { gripper: angle, state: action.toUpperCase() });
+  addActivityLogEntry(`Gripper ${action === "open" ? "opened (180°)" : "closed (70°)"}`, "rover");
+}
+
+// ── Automated Foliage Inspection Sequence ─────────────────────────────────────
+async function triggerRoboticInspectionSequence() {
+  const btn = document.getElementById("btnArmInspectTrigger");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span>⏳ Positioning Arm...</span>`;
+  }
+
+  addActivityLogEntry("Starting automated robotic foliage inspection sequence...", "rover");
+  sendArmPreset("inspect");
+
+  // Allow arm kinematics to reach foliage position (1.5 seconds)
+  setTimeout(async () => {
+    if (btn) btn.innerHTML = `<span>📷 Aligning Camera...</span>`;
+    addActivityLogEntry("Arm in inspection stance. Activating camera specimen frame...", "rover");
+
+    // Open native camera modal or capture frame
+    if (typeof openCameraModal === "function") {
+      openCameraModal();
+    }
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>📸 Start Leaf Inspection</span>`;
+    }
+  }, 1600);
+}
+
+// ── XiaoZhi Conversational Assistant & Activity Feed ──────────────────────────
+async function askXiaoZhi() {
+  const input = document.getElementById("xiaozhiInput");
+  if (!input || !input.value.trim()) return;
+  const query = input.value.trim();
+  input.value = "";
+
+  const box = document.getElementById("xiaozhiResponseBox");
+  const p = document.getElementById("xiaozhiResponseText");
+  if (box) box.style.display = "block";
+  if (p) p.textContent = "Querying live field telemetry...";
+
+  addActivityLogEntry(`XiaoZhi Query: "${query}"`, "system");
+
+  try {
+    const res = await fetch("/api/v1/xiaozhi/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: query, language: "en" })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (p) p.textContent = data.response;
+      addActivityLogEntry(`XiaoZhi: ${data.response.substring(0, 70)}...`, "system");
+    } else {
+      if (p) p.textContent = "XiaoZhi service is currently processing another query.";
+    }
+  } catch (err) {
+    if (p) p.textContent = "Failed to reach XiaoZhi intelligence gateway.";
+  }
+}
+
+function askXiaoZhiPrompt(text) {
+  const input = document.getElementById("xiaozhiInput");
+  if (input) {
+    input.value = text;
+    askXiaoZhi();
+  }
+}
+
+function addActivityLogEntry(msg, type) {
+  const body = document.getElementById("activityLogBody");
+  if (!body) return;
+
+  const now = new Date();
+  const timeStr = now.toTimeString().substring(0, 8);
+
+  const entry = document.createElement("div");
+  entry.className = `log-entry log-entry-${type || "system"}`;
+  entry.innerHTML = `<span class="log-time">[${timeStr}]</span><span class="log-msg">${msg}</span>`;
+
+  body.prepend(entry);
+
+  // Cap at 40 entries
+  while (body.children.length > 40) {
+    body.removeChild(body.lastChild);
+  }
+}
+
+function clearActivityLog() {
+  const body = document.getElementById("activityLogBody");
+  if (body) body.innerHTML = "";
+}
+
+// ── Keyboard Teleoperation Shortcuts (Arrow Keys & WASD) ──────────────────────
+window.addEventListener("keydown", (e) => {
+  if (activeMode !== "rover") return;
+  if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+
+  if (["ArrowUp", "w", "W"].includes(e.key)) {
+    e.preventDefault();
+    if (currentDriveDirection !== "FORWARD") startRoverDrive("FORWARD");
+  } else if (["ArrowDown", "s", "S"].includes(e.key)) {
+    e.preventDefault();
+    if (currentDriveDirection !== "BACKWARD") startRoverDrive("BACKWARD");
+  } else if (["ArrowLeft", "a", "A"].includes(e.key)) {
+    e.preventDefault();
+    if (currentDriveDirection !== "LEFT") startRoverDrive("LEFT");
+  } else if (["ArrowRight", "d", "D"].includes(e.key)) {
+    e.preventDefault();
+    if (currentDriveDirection !== "RIGHT") startRoverDrive("RIGHT");
+  } else if (e.key === " " || e.key === "Escape") {
+    e.preventDefault();
+    stopRoverDrive();
+  }
+});
+
+window.addEventListener("keyup", (e) => {
+  if (activeMode !== "rover") return;
+  if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "W", "s", "S", "a", "A", "d", "D"].includes(e.key)) {
+    e.preventDefault();
+    stopRoverDrive();
+  }
+});
+
+// ── Startup Initialization ───────────────────────────────────────────────────
 if (typeof window !== "undefined") {
+  window.startRoverDrive = startRoverDrive;
+  window.stopRoverDrive = stopRoverDrive;
+  window.setRoverSpeed = setRoverSpeed;
+  window.toggleHeadlight = toggleHeadlight;
+  window.triggerEmergencyStop = triggerEmergencyStop;
+  window.onArmSliderChange = onArmSliderChange;
+  window.sendArmPreset = sendArmPreset;
+  window.sendArmGripper = sendArmGripper;
+  window.triggerRoboticInspectionSequence = triggerRoboticInspectionSequence;
+  window.askXiaoZhi = askXiaoZhi;
+  window.askXiaoZhiPrompt = askXiaoZhiPrompt;
+  window.clearActivityLog = clearActivityLog;
   window.pingRover = pingRover;
+
+  // Launch real-time telemetry connection
+  initAgriRoverWebSocket();
+  setInterval(pollLatestTelemetry, 3500);
 }
 
