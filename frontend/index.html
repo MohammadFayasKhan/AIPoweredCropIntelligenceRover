@@ -46,23 +46,27 @@
   <!-- ── LIVE IOT FEED BAR ────────────────────────────────────── -->
   <div class="iot-feed-bar" id="iotFeedBar">
     <div class="iot-feed-inner">
-      <span class="iot-dot" id="iotDot"></span>
-      <span id="iotFeedText">📡 ESP32 Sensor Gateway: Connected to Dual-Core ESP32 (DHT11, Soil v1.2, Rain, Water Level, GPS)</span>
-      <div class="iot-live-values" id="iotLiveValues" style="display:none">
-        <span class="iot-chip" id="chip-t">🌡️ <strong id="iot-t">--</strong>°C</span>
-        <span class="iot-chip" id="chip-h">💧 <strong id="iot-h">--</strong>%</span>
-        <span class="iot-chip" id="chip-s">🌱 <strong id="iot-s">--</strong>%</span>
-        <span class="iot-chip" id="iot-rain-chip">🌧️ <strong id="iot-r">--</strong></span>
-        <span class="iot-chip" id="chip-water">🌊 <strong id="iot-w">--</strong>%</span>
-        <span class="iot-chip" id="chip-heat">🔥 <strong id="iot-heat">--</strong>°C</span>
-        <span class="iot-chip" id="chip-gps">📍 <strong id="iot-gps">--</strong></span>
-        <span class="iot-chip" id="chip-irrig">🚜 <strong id="iot-irrig">--</strong></span>
-        <span class="iot-chip" id="iot-alerts-chip" style="display:none">🦠 <strong id="iot-ac">0</strong> alerts</span>
-        <span class="iot-ago" id="iotAgo">--</span>
+      <div class="iot-feed-left">
+        <span class="iot-dot" id="iotDot"></span>
+        <span id="iotFeedText">📡 ESP32 Sensor Gateway: Connected to Dual-Core ESP32 (DHT11, Soil v1.2, Rain, Water Level, GPS)</span>
+        <div class="iot-live-values" id="iotLiveValues" style="display:none">
+          <span class="iot-chip" id="chip-t">🌡️ <strong id="iot-t">--</strong>°C</span>
+          <span class="iot-chip" id="chip-h">💧 <strong id="iot-h">--</strong>%</span>
+          <span class="iot-chip" id="chip-s">🌱 <strong id="iot-s">--</strong>%</span>
+          <span class="iot-chip" id="iot-rain-chip">🌧️ <strong id="iot-r">--</strong></span>
+          <span class="iot-chip" id="chip-water">🌊 <strong id="iot-w">--</strong>%</span>
+          <span class="iot-chip" id="chip-heat">🔥 <strong id="iot-heat">--</strong>°C</span>
+          <span class="iot-chip" id="chip-gps">📍 <strong id="iot-gps">--</strong></span>
+          <span class="iot-chip" id="chip-irrig">🚜 <strong id="iot-irrig">--</strong></span>
+          <span class="iot-chip" id="iot-alerts-chip" style="display:none">🦠 <strong id="iot-ac">0</strong> alerts</span>
+        </div>
       </div>
-      <div class="iot-camera-chip" id="iotCameraChip" style="display:none;" title="ESP32-CAM Field Camera Hardware Status">
-        <span class="badge-dot badge-dot-offline" id="iotCameraChipDot" style="width:7px;height:7px;"></span>
-        <span>📹 ESP32-CAM: <strong id="iotCameraChipText">Offline</strong></span>
+      <div class="iot-feed-right">
+        <span class="iot-ago" id="iotAgo">--</span>
+        <div class="iot-camera-chip" id="iotCameraChip" style="display:none;" title="ESP32-CAM Field Camera Hardware Status">
+          <span class="badge-dot badge-dot-offline" id="iotCameraChipDot" style="width:7px;height:7px;"></span>
+          <span>📹 ESP32-CAM: <strong id="iotCameraChipText">Offline</strong></span>
+        </div>
       </div>
     </div>
   </div>

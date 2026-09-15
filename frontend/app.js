@@ -3655,22 +3655,31 @@ function renderVisionDiagnosis(diag) {
   const ringColor = isLowConf
     ? '#ffd166'
     : (isInfected ? '#e07a5f' : 'var(--green-primary)');
+  const ringInnerBg = isLowConf ? '#231d10' : (isInfected ? '#211010' : '#0f240f');
 
   container.innerHTML = `
     <div class="crop-result">
       ${lowConfBannerHtml}
       <div class="crop-main-card" style="background: ${mainCardBg}; border-color: ${mainCardBorder};">
-        <div class="crop-emoji">${isLowConf ? '🔍' : (isInfected ? '🍂' : '🌱')}</div>
-        <div class="crop-info">
-          <div class="crop-name" style="color: ${mainCardNameColor}; font-size: 20px;">
-            ${escapeHtml(diseaseName)} ${isLowConf ? '<span style="font-size: 12px; font-weight: 500; color: #ffd166;">(Tentative)</span>' : ''}
+        <div class="crop-card-row">
+          <div class="crop-emoji">${isLowConf ? '🔍' : (isInfected ? '🍂' : '🌱')}</div>
+          <div class="crop-info">
+            <div class="crop-name" style="color: ${mainCardNameColor}; font-size: 20px;">
+              ${escapeHtml(diseaseName)} ${isLowConf ? '<span style="font-size: 12px; font-weight: 500; color: #ffd166;">(Tentative)</span>' : ''}
+            </div>
+            <div class="crop-confidence-text">${escapeHtml(crop)} · ${confStr} Match</div>
           </div>
-          <div class="crop-confidence-text">${escapeHtml(crop)} · ${confStr} Match</div>
+          <div class="confidence-ring-wrap">
+            <div class="confidence-ring" style="--ring-inner-bg: ${ringInnerBg}; background: conic-gradient(${ringColor} ${confNum * 3.6}deg, rgba(82, 183, 136, 0.15) 0deg); box-shadow: 0 0 12px ${isLowConf ? 'rgba(255,209,102,0.2)' : (isInfected ? 'rgba(224,122,95,0.3)' : 'var(--green-glow)')};">
+              <span class="confidence-pct" style="color: ${mainCardNameColor};">${confStr}</span>
+            </div>
+          </div>
         </div>
-        <div class="confidence-ring-wrap">
-          <div class="confidence-ring" style="background: conic-gradient(${ringColor} ${confNum * 3.6}deg, rgba(82, 183, 136, 0.15) 0deg); box-shadow: 0 0 12px ${isLowConf ? 'rgba(255,209,102,0.2)' : (isInfected ? 'rgba(224,122,95,0.3)' : 'var(--green-glow)')};">
-            <span class="confidence-pct" style="color: ${mainCardNameColor};">${confStr}</span>
-          </div>
+
+        <div class="rec-env-pills" style="${isInfected ? 'border-top-color: rgba(224, 122, 95, 0.25);' : ''}">
+          <span class="env-pill" title="Foliar area compromised derived strictly from segmentation mask">📊 Damage: ${damageDisplay}</span>
+          <span class="env-pill" title="Targeted lesion spot foci verified by Mobile-UNet foliar segmentation">🎯 Foci Detected: ${diag.lesion_foci_count != null ? diag.lesion_foci_count : 0}</span>
+          <span class="env-pill">🧪 Condition: ${escapeHtml(diag.condition_type || (isInfected ? "Fungal / Pathological" : "Healthy Foliage"))}</span>
         </div>
       </div>
 
@@ -3692,12 +3701,6 @@ function renderVisionDiagnosis(diag) {
         <div style="font-size: 0.81rem; color: var(--text-secondary); line-height: 1.45;">
           ${escapeHtml(checkText)}
         </div>
-      </div>
-
-      <div class="rec-env-pills" style="margin-top: 12px;">
-        <span class="env-pill" title="Foliar area compromised derived strictly from segmentation mask">📊 Damage: ${damageDisplay}</span>
-        <span class="env-pill" title="Targeted lesion spot foci verified by Mobile-UNet foliar segmentation">🎯 Foci Detected: ${diag.lesion_foci_count != null ? diag.lesion_foci_count : 0}</span>
-        <span class="env-pill">🧪 Condition: ${escapeHtml(diag.condition_type || (isInfected ? "Fungal / Pathological" : "Healthy Foliage"))}</span>
       </div>
 
       ${top3Html}

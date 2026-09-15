@@ -33,6 +33,7 @@ from backend.app.schemas.diagnosis import (
 )
 from backend.app.services.model_registry import model_registry
 from backend.app.services.esp32_gateway import esp32_gateway
+from backend.app.services.xiaozhi_mcp_client import xiaozhi_mcp_client
 from backend.app.api.v1.router import api_router
 from backend.app.api.v1.endpoints.health import health_check, models_status, liveness_probe, readiness_probe
 from backend.app.utils.image_processing import ImageValidationError, validate_uploaded_image
@@ -70,7 +71,16 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error("Failed to preload crop recommendation service: %s", e)
 
+    try:
+        xiaozhi_mcp_client.start()
+    except Exception as e:
+        logger.error("Failed to start Xiaozhi MCP client: %s", e)
+
     yield
+    try:
+        await xiaozhi_mcp_client.stop()
+    except Exception as e:
+        logger.error("Error stopping Xiaozhi MCP client: %s", e)
     logger.info("Gracefully shutting down SmartCropVision API service.")
 
 

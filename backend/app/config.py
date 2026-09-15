@@ -145,6 +145,9 @@ class Settings:
     N8N_COOLDOWN_SECONDS: int = int(os.getenv("N8N_COOLDOWN_SECONDS", "300"))  # 5 min deduplication
     XIAOZHI_API_KEY: Optional[str] = os.getenv("XIAOZHI_API_KEY", "xiaozhi-sih-token-innovex")
     XIAOZHI_ENABLED: bool = os.getenv("XIAOZHI_ENABLED", "true").lower() in ("true", "1", "yes")
+    XIAOZHI_MCP_ENDPOINT: Optional[str] = os.getenv("XIAOZHI_MCP_ENDPOINT", None)
+    XIAOZHI_MCP_TOKEN: Optional[str] = os.getenv("XIAOZHI_MCP_TOKEN", None)
+    XIAOZHI_RECONNECT_INTERVAL_SECONDS: int = int(os.getenv("XIAOZHI_RECONNECT_INTERVAL_SECONDS", "5"))
     AGRIROVER_COMMAND_TIMEOUT_MS: int = int(os.getenv("AGRIROVER_COMMAND_TIMEOUT_MS", "2500"))
     TELEMETRY_HISTORY_MAX_ENTRIES: int = int(os.getenv("TELEMETRY_HISTORY_MAX_ENTRIES", "500"))
 

@@ -241,13 +241,36 @@ input:checked + .slider-toggle::before {
 }
 
 .iot-feed-inner {
-  display    : flex;
-  align-items: center;
-  gap        : 14px;
-  width      : 100%;
-  max-width  : 1400px;
-  margin     : 0 auto;
-  flex-wrap  : wrap;
+  display        : flex;
+  align-items    : center;
+  justify-content: space-between;
+  gap            : 14px;
+  width          : 100%;
+  max-width      : 1400px;
+  margin         : 0 auto;
+  flex-wrap      : nowrap;
+}
+
+.iot-feed-left {
+  display        : flex;
+  align-items    : center;
+  gap            : 12px;
+  min-width      : 0;
+  flex           : 1 1 auto;
+  overflow-x     : auto;
+  scrollbar-width: none;
+}
+.iot-feed-left::-webkit-scrollbar {
+  display: none;
+}
+
+.iot-feed-right {
+  display        : flex;
+  align-items    : center;
+  gap            : 12px;
+  margin-left    : auto;
+  flex-shrink    : 0;
+  white-space    : nowrap;
 }
 
 .iot-dot {
@@ -320,12 +343,12 @@ input:checked + .slider-toggle::before {
 #iot-alerts-chip strong { color: #ff6b6b; }
 
 .iot-ago {
-  font-size : 10.5px;
-  color     : var(--text-muted);
-  margin-left: auto;
-  min-width : 70px;
-  text-align: right;
-  transition: color 0.3s;
+  font-size  : 11px;
+  color      : var(--text-muted);
+  text-align : right;
+  transition : color 0.3s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .iot-feed-bar.iot-online::after {
@@ -1071,7 +1094,7 @@ input:checked + .slider-toggle::before {
   position     : absolute;
   inset        : 7px;
   border-radius: 50%;
-  background   : #0f240f;
+  background   : var(--ring-inner-bg, #0f240f);
 }
 .confidence-pct {
   position   : relative;
@@ -3699,17 +3722,17 @@ body.camera-modal-open {
 }
 
 .iot-camera-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  padding: 3px 10px;
+  display      : inline-flex;
+  align-items  : center;
+  gap          : 6px;
+  font-size    : 11px;
+  padding      : 3px 10px;
   border-radius: 12px;
-  background: rgba(82, 183, 136, 0.12);
-  border: 1px solid rgba(82, 183, 136, 0.3);
-  color: var(--green-bright);
-  margin-left: auto;
-  white-space: nowrap;
+  background   : rgba(82, 183, 136, 0.12);
+  border       : 1px solid rgba(82, 183, 136, 0.3);
+  color        : var(--green-bright);
+  white-space  : nowrap;
+  flex-shrink  : 0;
 }
 
 .badge-dot-offline {
