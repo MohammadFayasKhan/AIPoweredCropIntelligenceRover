@@ -2,73 +2,139 @@
 
 # AI Powered Crop Intelligence Rover 🌿🔬
 
-**An end to end, production grade Agricultural Computer Vision and Agro Climatic Intelligence Platform engineered for automated foliar disease diagnosis, dual layer spatial canopy localization, subpixel damage quantification, and IoT rover telemetry.**
+**An end-to-end, production-grade Agricultural Computer Vision and Agro-Climatic Intelligence Platform engineered for automated foliar disease diagnosis, dual-layer spatial canopy localization, subpixel damage quantification, and IoT rover telemetry.**
 
 [![Python](https://img.shields.io/badge/Python-3.10_to_3.14-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C?style=flat-square&logo=pytorch&logoColor=white)](https://pytorch.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![YOLO](https://img.shields.io/badge/Ultralytics-YOLO_PlantDoc-111111?style=flat-square&logo=yolo&logoColor=white)](https://ultralytics.com/)
-[![PyTest](https://img.shields.io/badge/Tests-71_Passing-22c55e?style=flat-square&logo=pytest&logoColor=white)](tests/)
-[![Frontend](https://img.shields.io/badge/Frontend_Tests-18_Passing-22c55e?style=flat-square&logo=nodedotjs&logoColor=white)](frontend/test_frontend.js)
-[![Hardware](https://img.shields.io/badge/Compute-Apple_Silicon_MPS_%7C_CUDA_%7C_CPU-blue?style=flat-square)](docs/DEPLOYMENT.md)
+[![PyTest](https://img.shields.io/badge/Tests-134_Passing-22c55e?style=flat-square&logo=pytest&logoColor=white)](tests/)
+[![Frontend](https://img.shields.io/badge/Frontend_Tests-19_Passing-22c55e?style=flat-square&logo=nodedotjs&logoColor=white)](frontend/test_frontend.js)
+[![Azure Deployed](https://img.shields.io/badge/Azure_Deployed-aipoweredcropintelligencerover.dpdns.org-0078D4?style=flat-square&logo=microsoftazure&logoColor=white)](https://aipoweredcropintelligencerover.dpdns.org)
+[![Live Video Demo](https://img.shields.io/badge/Live_Video-Google_Drive-FF0000?style=flat-square&logo=google-drive&logoColor=white)](http://tinyurl.com/projectgithubrepositorylink)
 [![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
 
 <br/>
 
-<img src="docs/assets/smartcropvision_hero_icon.png" alt="SmartCropVision Platform Hero Icon" width="220" style="border-radius: 28px; box-shadow: 0 16px 40px rgba(16, 185, 129, 0.3);" />
-<p align="center"><em>Multi tier server grade deep learning and IoT rover telemetry platform engineered by Team Innovex</em></p>
+<img src="pics/Pic1.jpeg" alt="AI Powered Crop Intelligence Rover in Field Operation" width="100%" style="border-radius: 14px; box-shadow: 0 12px 36px rgba(0,0,0,0.18); margin: 16px 0;" />
+
+<p align="center">
+  🌐 <b>Azure Deployed Link:</b> <a href="https://aipoweredcropintelligencerover.dpdns.org">aipoweredcropintelligencerover.dpdns.org</a> &nbsp;•&nbsp;
+  🎥 <b>Live Video Drive Link:</b> <a href="http://tinyurl.com/projectgithubrepositorylink">http://tinyurl.com/projectgithubrepositorylink</a> &nbsp;•&nbsp;
+  💻 <b>GitHub:</b> <a href="https://github.com/MohammadFayasKhan/AIPoweredCropIntelligenceRover">AIPoweredCropIntelligenceRover</a>
+</p>
 
 </div>
 
-***
+---
 
-## 📖 Overview
+## 🏛️ Smart India Hackathon 2026 Official Submission
 
-**SmartCropVision** is an integrated computer vision and agro climatic decision support system built to assist smallholder farmers, agronomists, and agricultural extension specialists with rapid, reliable, and truthful plant pathology diagnosis.
+| Submission Parameter | Official Specification |
+| :--- | :--- |
+| **Project Title** | **AI Powered Crop Intelligence Rover** |
+| **Hackathon Edition** | **Smart India Hackathon 2026 (SIH2026)** |
+| **Problem Statement ID** | **SIH26180** |
+| **Problem Statement Title** | **AI powered Smart Farming Rover for crop intelligence, leaf disease detection and field risk monitoring** |
+| **Lead Organization** | **Qualcomm Inc.** |
+| **Theme** | **Disaster Management** |
+| **PS Category** | **Hardware** |
+| **Team ID** | **SIH-H-B2-048** |
+| **Team Name** | **Innovex** |
+| **Azure Deployed Link** | **[`https://aipoweredcropintelligencerover.dpdns.org`](https://aipoweredcropintelligencerover.dpdns.org)** |
+| **Live Video Drive Link** | **[`http://tinyurl.com/projectgithubrepositorylink`](http://tinyurl.com/projectgithubrepositorylink)** |
+| **GitHub Repository** | **[`https://github.com/MohammadFayasKhan/AIPoweredCropIntelligenceRover`](https://github.com/MohammadFayasKhan/AIPoweredCropIntelligenceRover)** |
+| **Technical Documentation** | **[`docs/`](docs/)** |
 
-Instead of deploying fragile heuristic web apps or returning raw uncalibrated predictions that hallucinate certainty, SmartCropVision executes a multi stage server side pipeline that couples high capacity deep convolutional neural networks with spatial canopy detectors, subpixel foliar tissue segmenters, dynamic Grad CAM explainability, and real time environmental telemetry:
+---
 
-1. **Universal Plant Pathology Classification:** Analyzes foliar photographs across 38 crop condition pairs with temperature scaled calibration to eliminate overconfident false diagnoses.
-2. **Dual Layer Spatial Telemetry:** Distinguishes whole leaf canopy boundaries (emerald layer) from granular necrotic lesion spots (coral layer) without ever fabricating synthetic bounding boxes.
-3. **Subpixel Foliar Damage Quantification:** Segments active necrotic lesions against healthy foliage using Mobile UNet to calculate authentic foliar damage percentages.
-4. **9 Stage Botanical Explainability:** Dynamically extracts gradient activation maps from final convolutional layers, proving exactly which leaf regions triggered the diagnosis.
-5. **Agro Climatic Decision Engine:** Synthesizes soil nutrients (N P K), humidity, temperature, rainfall, and pH to recommend optimal crop varieties and actionable management guidance.
-6. **Hardware & Voice Integration:** Connects seamlessly with AgriRover ESP32 field rovers and XiaoZhi vernacular voice nodes without exposing heavy model weights to edge devices.
+## 🔬 In-Field Diagnostics & Results Demonstration
 
-***
+<div align="center">
+  <h3>Diagnostic Results & Explainability Telemetry</h3>
+  <table border="0" width="100%" cellspacing="12" cellpadding="0">
+    <tr>
+      <td width="50%" align="center" valign="top">
+        <img src="pics/Pic5.png" alt="SmartCropVision Foliar Disease Diagnosis & Dual-Layer Telemetry" width="100%" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+        <br/><br/>
+        <em><b>Figure 1: Production Diagnosis & Spatial Telemetry</b><br/>Calibrated 38-class foliar pathology inference (EfficientNetV2-S), dual-layer canopy localization (YOLO11n), and subpixel foliar lesion segmentation (Mobile-UNet).</em>
+      </td>
+      <td width="50%" align="center" valign="top">
+        <img src="pics/Pic6.png" alt="9-Stage Botanical Explainability & Microclimate Telemetry" width="100%" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+        <br/><br/>
+        <em><b>Figure 2: 9-Stage Explainability & Agronomic Advisory</b><br/>Dynamic botanical Grad-CAM activation heatmaps, real-time ESP32 microclimatic sensor gauges, and actionable disease risk advisories.</em>
+      </td>
+    </tr>
+  </table>
+</div>
 
-## 🌟 Core Capabilities
+<br/>
 
-### 1. Multi Tier Vision Pipeline & Dynamic Inference
-* **Perception Flow:** Follows a strict pipeline: `IMAGE UPLOAD → QUALITY & OOD SCREENING → SERVER CLASSIFICATION → CANOPY DETECTION → FOLIAR SEGMENTATION → 9 STAGE GRAD CAM → ADVISORY SYNTHESIS`.
-* **Zero Model Weights on Edge:** All neural network checkpoints remain strictly server side. Mobile browsers, AgriRover microcontrollers, and XiaoZhi voice nodes never download or execute local weight files.
-* **Dynamic Hardware Detection:** Automatically binds to Apple Silicon Metal (MPS), NVIDIA CUDA, or optimized CPU without hardcoded device assumptions.
+<div align="center">
+  <h3>Autonomous Field Rover & Microclimate Telemetry Hardware</h3>
+  <table border="0" width="100%" cellspacing="12" cellpadding="0">
+    <tr>
+      <td width="50%" align="center" valign="top">
+        <img src="pics/Pic2.jpeg" alt="AgriRover 4WD Chassis & Robotic Arm" width="100%" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+        <br/><br/>
+        <em><b>Figure 3: AgriRover Ground-Canopy Scout</b><br/>Heavy-duty 4WD aluminum chassis with skid-steer mobility, independent power rails, and 4-DOF multi-axis robotic arm manipulator.</em>
+      </td>
+      <td width="50%" align="center" valign="top">
+        <img src="pics/Pic3.jpeg" alt="Crop Intelligence ESP32 Sensor Node & 16x2 I2C LCD" width="100%" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+        <br/><br/>
+        <em><b>Figure 4: Crop Intelligence Telemetry Node</b><br/>In-field sensor package with ESP32-WROOM-32, 16x2 I2C character LCD carousel, DHT11, capacitive soil moisture, rain sensor, and NEO-6M GPS.</em>
+      </td>
+    </tr>
+  </table>
+</div>
 
-### 2. Rigorous Statistical Calibration & Metrics Algebra
-* **Expected Calibration Error (ECE):** Raw softmax scores frequently exhibit overconfidence. SmartCropVision applies post training temperature scaling ($T > 0$) to optimize calibration:
+---
 
-$$\text{Calibrated Probability:} \quad \hat{p}_i = \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}$$
+## 📖 System Overview
 
-$$\text{Expected Calibration Error (ECE)} = \sum_{m=1}^{M} \frac{|B_m|}{N} \left| \text{acc}(B_m) - \text{conf}(B_m) \right|$$
+The **AI Powered Crop Intelligence Rover** is an integrated computer vision, agro-climatic intelligence, and mobile robotic rover system built to empower smallholder farmers, agronomists, and agricultural extension specialists with rapid, reliable, and truthful plant pathology diagnosis.
 
-* **Subpixel Tissue Segmentation Metrics:** Evaluates foliar damage using authentic pixel area intersections:
+Instead of deploying fragile on-device models that drain mobile batteries or hallucinate certainty on out-of-distribution leaves, the platform executes a server-side inference pipeline that couples high-capacity deep convolutional neural networks with spatial canopy detectors, subpixel foliar tissue segmenters, dynamic 9-stage botanical explainability, and real-time environmental telemetry:
 
-$$\text{Intersection over Union (IoU)} = \frac{|X \cap Y|}{|X \cup Y|}, \qquad \text{Dice Coefficient} = \frac{2 |X \cap Y|}{|X| + |Y|}$$
+```
+[Field Leaf Photo]
+       │
+       ▼
+[Image Preflight] ──(Decompression Bomb & Quality Screening)
+       │
+       ▼
+[Tier 1: EfficientNetV2-S] ──(95.13% Top-1, Calibrated Softmax, ECE: 0.0803)
+       │
+       ▼
+[Tier 2: YOLO PlantDoc] ──(Canopy Specimen Localization & Multi-Box Preservation)
+       │
+       ▼
+[Tier 3: Mobile U-Net] ──(Subpixel Foliar Damage Segmentation, mIoU: 0.7485)
+       │
+       ▼
+[9-Stage Grad-CAM] ──(Dynamic Activation Maps from Final Conv Layer)
+       │
+       ▼
+[Environmental Synthesis] ──(Soil NPK, Moisture, Temp, Humidity, Rain vs. Visuals)
+       │
+       ▼
+[Actionable Agronomic Advisory & LCD Telemetry Output]
+```
 
-### 3. Truth in Telemetry & Zero Fabrication Guarantee
-* **Specimen Canopy vs Lesion Spots:** YOLO PlantDoc delineates whole leaf specimens. The specialized YOLOv8n lesion detector delineates granular spots. The system never renames canopy boxes as lesion spots.
-* **Absence vs Zero Damage:** A clean healthy leaf reports foliar damage as 0.0%. An unavailable segmentation model displays `Unavailable` rather than fabricating a misleading 0.0% score.
-* **Negative Controls:** Healthy leaves produce exactly 0 bounding boxes. The platform never invents synthetic boxes to satisfy user interface expectations.
+---
 
-### 4. 9 Stage Explainability Pipeline
-* **Dynamic Target Layer Backpropagation:** Computes gradients directly against final feature layers (`features.7` or `conv_head`).
-* **Zero Static Heatmaps:** Activation maps are generated dynamically per request. Heatmaps are never cached or recycled between different images.
+## 🌟 Key Engineering Advantages
 
-### 5. Multi Device Field Architecture
-* **AgriRover ESP32 Integration:** Bidirectional WebSocket telemetry provides directional motor control (Forward, Backward, Left, Right) while streaming soil and ambient microclimate readings.
-* **XiaoZhi Voice Assistant:** Vernacular natural language gateway referencing live diagnosis sessions without accessing raw internal weights.
+1. **Zero Client Weight Downloads:** Neural network weights remain strictly server-side. Edge devices, mobile web browsers, and low-cost microcontrollers never download heavy checkpoint binaries, preventing crashes and memory exhaustion.
+2. **Temperature-Calibrated Probabilities:** Raw softmax values are scaled via post-training temperature scaling ($T = 1.2847$), bringing the Expected Calibration Error down to $0.0803$ and eliminating artificial overconfidence.
+3. **Rigorous Dual-Stream Decoupling:** Visual foliar pathology is strictly separated from environmental microclimate risk. Unfavorable weather indicates disease favorability, not confirmed infection.
+4. **Authentic Spatial Telemetry:** Delineates whole leaf specimens (emerald bounding boxes) without fabricating synthetic boxes on clean foliage. Healthy leaves produce zero synthetic boxes.
+5. **Subpixel Foliar Damage Quantification:** Segments damaged tissue against healthy foliage using Mobile U-Net, returning verified damage percentages rather than heuristic estimates.
+6. **Dynamic 9-Stage Botanical Explainability:** Backpropagates gradients into final convolutional feature layers per request. Zero static or recycled heatmaps.
+7. **Physical AgriRover Mobility & 4-DOF Arm:** 4WD skid-steer chassis with L293D dual H-bridge motor driver, 4-DOF robotic arm on PCA9685 12-bit PWM servo driver, and standalone Wi-Fi teleoperation console (`http://agrirover.local`).
+8. **Resilient Crop Intelligence Sensor Node:** Autonomous ESP32 telemetry node with 16x2 I2C alphanumeric LCD, capacitive soil moisture, DHT11, rain sensors, NEO-6M GPS, and dual-mode cloud failover routing.
 
-***
+---
 
 ## 🏗️ Architecture & Execution Flow
 
@@ -93,12 +159,11 @@ $$\text{Intersection over Union (IoU)} = \frac{|X \cap Y|}{|X \cup Y|}, \qquad \
 │  Stateless • Memory Isolated • High Concurrency • Decompression Bomb Safe   │
 │                                                                             │
 │  ├─ Input Validation & Magic Byte Header Inspection                         │
-│  ├─ Image Quality & Out of Distribution Preflight (Blur, Illumination, Ratio)│
-│  ├─ Primary Classification: EfficientNetV2 S (38 classes, Calibrated)       │
+│  ├─ Image Quality & Out-of-Distribution Preflight (Blur, Illumination, Ratio)│
+│  ├─ Primary Classification: EfficientNetV2-S (38 classes, Calibrated)       │
 │  ├─ Spatial Localization: YOLO PlantDoc (29 classes, Letterbox 640x640)     │
-│  ├─ Lesion Localization: YOLOv8n Lesions (1 class, Granular Necrotic Spots) │
-│  ├─ Foliar Tissue Segmentation: Mobile UNet (3 classes, Subpixel Mask)      │
-│  ├─ 9 Stage Botanical Explainability (Grad CAM Dynamic Layer Extraction)    │
+│  ├─ Foliar Tissue Segmentation: Mobile U-Net (3 classes, Subpixel Mask)     │
+│  ├─ 9-Stage Botanical Explainability (Grad-CAM Dynamic Layer Extraction)    │
 │  └─ Agronomic Treatment Advisory Engine (Organic & Chemical Guidance)       │
 └─────────────────────────────────────┬───────────────────────────────────────┘
                                       │ Immutable Model Artifacts (Read Only)
@@ -107,143 +172,125 @@ $$\text{Intersection over Union (IoU)} = \frac{|X \cap Y|}{|X \cup Y|}, \qquad \
 │                     AUTHORITATIVE MODEL REGISTRY (cv/models/)               │
 │  Cryptographically Signed Checkpoints • 100% Immutable • Zero Retraining    │
 │                                                                             │
-│  ├─ efficientnetv2_s_best.pt (SHA 256: 07e84d39... 78.03 MB)                │
-│  ├─ efficientnetv2_s_tri_domain_best.pt (SHA 256: 7ebe13a0... 78.02 MB)     │
-│  ├─ yolo_plantdoc_best.pt (SHA 256: e9854571... 5.19 MB)                    │
-│  ├─ yolov8n_lesions_best.pt (SHA 256: f528dc7c... 5.91 MB)                  │
-│  ├─ mobile_unet_best.pt (SHA 256: 86bba6df... 1.90 MB)                      │
-│  └─ crop_recommender/crop_model.pkl (SHA 256: cb20fc59... 19.45 MB)         │
+│  ├─ efficientnetv2_s_best.pt (SHA-256: 07e84d39... 78.03 MB)                │
+│  ├─ yolo_plantdoc_best.pt (SHA-256: e9854571... 5.19 MB)                    │
+│  ├─ mobile_unet_best.pt (SHA-256: 86bba6df... 1.90 MB)                      │
+│  └─ crop_recommender/crop_model.pkl (SHA-256: cb20fc59... 19.45 MB)         │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-***
+---
 
-## 🛠 Tech Stack
+## 🛠️ Technology Stack
 
-| Category | Technology | Purpose |
+| Domain | Technology | Purpose |
 | :--- | :--- | :--- |
-| **Backend Framework** | **FastAPI 0.115**, **Uvicorn** | High performance asynchronous REST API and WebSocket gateway |
-| **Deep Learning Engine** | **PyTorch 2.0+**, **TorchVision** | Neural network execution, autograd, and GPU acceleration |
-| **Object Detection** | **Ultralytics YOLO** | Real time spatial foliage and granular lesion spot bounding |
-| **Frontend Client** | **Vanilla JavaScript**, **HTML5**, **CSS3** | Modern aesthetic dark mode single page app without heavy framework bloat |
-| **Explainability** | **Dynamic Grad CAM** | 9 stage gradient backpropagation and feature activation grids |
-| **Tabular Intelligence** | **Scikit Learn** | Random Forest agro climatic crop recommendation engine |
-| **Testing & Quality** | **PyTest 9.0**, **Node.js Test Runner** | Automated unit, parity, security, and state machine test suites |
-| **Edge Hardware** | **ESP32**, **C++ Arduino** | AgriRover motor control and environmental microclimate telemetry |
-| **Containerization** | **Docker**, **Docker Compose** | Reproducible container builds for local and cloud staging |
+| **Backend Service** | **FastAPI 0.115**, **Uvicorn** | High-performance asynchronous REST API and telemetry streaming |
+| **Deep Learning Engine** | **PyTorch 2.0+**, **TorchVision** | Model execution, automatic differentiation, and hardware acceleration |
+| **Object Detection** | **Ultralytics YOLO** | Real-time spatial foliage localization on leaf specimens |
+| **Frontend Dashboard** | **Vanilla HTML5**, **CSS3**, **JavaScript** | Lightweight aesthetic single-page dashboard with zero build-step overhead |
+| **Visual Explainability** | **Dynamic Grad-CAM** | 9-stage gradient backpropagation and feature activation grids |
+| **Tabular Intelligence** | **Scikit-Learn** | Random Forest agro-climatic crop matching engine (22 crops, 99.32% accuracy) |
+| **Testing Infrastructure**| **PyTest 8.0+**, **Node.js Test Runner** | Automated unit, integration, parity, security, and state machine test suites |
+| **Microcontrollers** | **ESP32-WROOM-32**, **C++ Arduino** | AgriRover motor control, 4-DOF arm kinematics, and sensor telemetry |
+| **Containerization** | **Docker**, **Docker Compose** | Reproducible container builds for local staging and cloud production |
 
-***
+---
 
-## 📁 Repository Layout
+## 🔐 Authoritative Model Ledger
+
+Every production checkpoint is verified against cryptographic SHA-256 digests in `RELEASE_MANIFEST.json`:
+
+| Model Task | Checkpoint Path | Architecture | Size | SHA-256 Cryptographic Signature | Empirical Score |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Foliar Classification** | `cv/models/efficientnetv2_s_best.pt` | EfficientNetV2-S (38 classes) | 78.03 MB | `07e84d39481f0757898c5088cc7fb9e9d28817fbd71e16769fa5eb056eace74` | 95.13% Top-1, ECE: 0.0803 |
+| **Canopy Detection** | `cv/models/yolo_plantdoc_best.pt` | YOLO PlantDoc (29 classes) | 5.19 MB | `e98545716c774d796a4796f620138022f6388a063bf8a9d36dfc5937372366b6` | mAP@50: 0.3362 |
+| **Foliar Segmentation** | `cv/models/mobile_unet_best.pt` | Mobile U-Net (3 classes) | 1.90 MB | `86bba6df9222b92c2d8b019fb2a10eacc2654f1a61b6e2b5996d8c8ee3cc04cc` | mIoU: 0.7485 |
+| **Crop Recommender** | `cv/models/crop_recommender/crop_model.pkl` | Random Forest (22 crops) | 19.45 MB | `cb20fc5908efe34d4e5e6e999b62e576d962ff2e1d00381db09c912bb57aa1d3` | 99.32% Accuracy |
+
+---
+
+## 📁 Repository Organization
 
 ```
 CvProject/
-├── README.md                                      # Project overview, quickstart & architecture
+├── README.md                                      # Primary project entrypoint & SIH specification
 ├── RELEASE_MANIFEST.json                          # Master cryptographic release ledger
-├── RELEASE_MANIFEST_GEN2.json                     # Gen 2 multi domain specification
-├── FINAL_PRODUCTION_RELEASE_REPORT.md             # Comprehensive production release audit
-├── FINAL_CLEANUP_REPORT.md                        # Sanitization ledger (22.67 GB freed)
-├── FINAL_VERIFICATION_REPORT.md                   # Empirical verification & test results
-├── FINAL_DEMO_CHECKLIST.md                        # Presentation protocol for Team Innovex & SIH
-├── smartcropvision_final_learning_reference.ipynb # Master 32 stage educational notebook
 ├── Dockerfile                                     # Production container build definition
 ├── docker-compose.yml                             # Container orchestration specification
 ├── requirements.txt                               # Production runtime dependencies
 ├── .env.example                                   # Safe environment configuration template
-├── .dockerignore                                  # Container build exclusion rules
-├── .gitignore                                     # Source control exclusion rules
+├── app.py                                         # Production cloud entrypoint
 │
-├── dist/                                          # Verified standalone distribution archives
-│   ├── smartcropvision_v2.2.0_production.tar.gz   # Standalone deployable package (275.27 MB)
-│   ├── smartcropvision_v2.2.0_educational.tar.gz  # Standalone educational package (92.49 KB)
-│   └── CHECKSUMS.sha256                           # SHA 256 archive checksum ledger
+├── pics/                                          # Hardware photographs & real dashboard results
+│   ├── Pic1.jpeg                                  # AgriRover hero field photograph
+│   ├── Pic2.jpeg                                  # 4WD rover chassis & robotic arm close-up
+│   ├── Pic3.jpeg                                  # Crop Intelligence ESP32 sensor package
+│   ├── Pic4.jpeg                                  # Rover chassis & electronic bay
+│   ├── Pic5.png                                   # Real-time foliar pathology inference screen
+│   └── Pic6.png                                   # 9-stage botanical Grad-CAM explainability
 │
 ├── backend/                                       # Production FastAPI Backend Service
-│   ├── run.py                                     # Server launch entry point
-│   ├── requirements.txt                           # Backend dependencies
+│   ├── run.py                                     # Server launch entrypoint
 │   └── app/
 │       ├── main.py                                # Application setup & lifespan handlers
-│       ├── config.py                              # Validated environment settings
-│       ├── api/v1/endpoints/                      # REST routers (diagnosis, crops, health)
-│       ├── schemas/                               # Pydantic request & response schemas
-│       ├── services/                              # Model registry & inference services
+│       ├── config.py                              # Validated environment configuration
+│       ├── api/v1/endpoints/                      # REST endpoints (diagnosis, crops, health, iot)
+│       ├── schemas/                               # Pydantic validation schemas
+│       ├── services/                              # Model registry, inference, & hardware gateway
 │       └── utils/                                 # Explainability, image quality, processing
 │
 ├── frontend/                                      # Production Web Client (SPA)
 │   ├── index.html                                 # Clean responsive user interface
-│   ├── app.js                                     # Dual layer canvas renderer & state machine
-│   ├── style.css                                  # Custom aesthetic dark stylesheet
-│   ├── test_frontend.js                           # Node.js frontend state machine test suite
-│   ├── assets/                                    # Platform hero icons and visual assets
+│   ├── app.js                                     # Dual-layer canvas renderer & state machine
+│   ├── style.css                                  # Custom dark theme stylesheet
+│   ├── test_frontend.js                           # Node.js state machine test suite
+│   ├── assets/                                    # Platform visual assets
 │   └── samples/                                   # Authentic demonstration leaf photographs
 │
-├── cv/                                            # Computer Vision Assets & Checkpoints
-│   ├── models/                                    # Server side neural network checkpoints
-│   │   ├── efficientnetv2_s_best.pt               # Primary classifier checkpoint
-│   │   ├── efficientnetv2_s_tri_domain_best.pt    # Gen2 multi domain classifier
-│   │   ├── yolo_plantdoc_best.pt                  # Canopy specimen detector
-│   │   ├── yolov8n_lesions_best.pt                # Granular necrotic spot detector
-│   │   ├── mobile_unet_best.pt                    # Subpixel foliar segmenter
-│   │   ├── taxonomy_38.json                       # Canonical 38 class biological taxonomy
-│   │   └── preprocessing_config.json              # Standardized RGB input parameters
-│   ├── configs/                                   # YOLO model configurations
-│   ├── test_images/                               # Authentic test fixtures for verification
-│   └── scripts/                                   # Preserved dataset sanitizers and tools
+├── cv/                                            # Computer Vision Checkpoints & Tools
+│   ├── models/                                    # Server-side neural network checkpoints
+│   ├── configs/                                   # Detection and segmentation ontologies
+│   └── scripts/                                   # Benchmark and evaluation utilities
 │
-├── data/                                          # Tabular Datasets & Manifests
+├── data/                                          # Tabular Datasets & Provenance Manifests
 │   ├── Crop_Recommendation.csv                    # 2,200 sample crop planning dataset
-│   ├── DATASET_MANIFEST.json                      # Multi domain dataset inventory
 │   └── DATASET_SOURCES.json                       # Dataset provenance records
 │
-├── docs/                                          # Technical Documentation Suite
-│   ├── ARCHITECTURE.md                            # Multi tier system architecture
-│   ├── MODEL_REGISTRY.md                          # Checkpoint ledger, checksums, and metrics
-│   ├── DATA_PROVENANCE.md                         # Multi domain datasets and leakage prevention
-│   ├── API.md                                     # REST and WebSocket API specifications
-│   ├── DEPLOYMENT.md                              # Local, container, and cloud deployment
-│   ├── IOT_XIAOZHI_INTEGRATION.md                 # ESP32 AgriRover and XiaoZhi voice protocols
-│   ├── TROUBLESHOOTING.md                         # Operational failure playbook
-│   └── PRODUCTION_READINESS_REPORT.md             # Formal QA audit with explicit statuses
+├── docs/                                          # Comprehensive Technical Documentation Suite
+│   ├── ARCHITECTURE.md                            # Multi-tier pipeline & dual-stream design
+│   ├── QUICK_OVERVIEW.md                          # 5-minute technical brief for SIH evaluators
+│   ├── SETUP.md                                   # Local setup, Docker staging, and testing
+│   ├── HARDWARE.md                                # Rover chassis, pinouts, arm, LCD, & failover
+│   ├── DEPLOYMENT.md                              # Live cloud verification & rollback protocol
+│   ├── API.md                                     # REST & WebSocket endpoint contracts
+│   ├── PROJECT_STATUS.md                          # Implementation readiness matrix
+│   ├── RESEARCH_REFERENCES.md                     # Academic citations & patent prior-art analysis
+│   ├── LIMITATIONS.md                             # Advantages, operational bounds, & mitigations
+│   ├── FUTURE_SCOPE.md                            # Strategic development horizons
+│   └── FUTURE_INTEGRATIONS.md                     # External agronomic integrations & APIs
 │
 ├── iot/                                           # Edge Hardware & Firmware
-│   ├── esp32_rover/                               # AgriRover motor control and telemetry
-│   └── xiaozhi/                                   # XiaoZhi voice assistant audio protocol
+│   ├── AgriRover_CropIntelligence_ESP32/          # Sensor node firmware (16x2 I2C LCD)
+│   ├── AgriRover_Innovex_SIH/                     # Rover chassis & 4-DOF arm controller
+│   └── ESP32_CAM_SmartCropVision/                 # Visual capture gateway
 │
-├── notebooks/                                     # Research Archives
-│   └── historical/                                # Preserved original development notebooks
+├── notebooks/                                     # Research & Educational Archives (Preserved)
+│   ├── SmartCropIntelligenceSystem.ipynb
+│   └── historical/
 │
-├── packages/                                      # Offline wheels for air gapped hosts
-└── tests/                                         # 71 test verified automated PyTest suite
+├── packages/                                      # Offline wheel packages for air-gapped hosts
+└── tests/                                         # 134 verified automated PyTest tests
 ```
 
-***
-
-## 🔐 Authoritative Model Checkpoints Ledger
-
-Every production checkpoint has been cryptographically verified against master SHA 256 digests:
-
-| Task Role | Checkpoint Path | Architecture | Size | SHA 256 Cryptographic Signature | Verification Status |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Primary Classification** | `cv/models/efficientnetv2_s_best.pt` | EfficientNetV2 S (38 classes) | 78.03 MB | `07e84d39481f0757898c5088cc7fb9e9d28817fbd71e16769fea5eb056eace74` | Verified Immutable |
-| **Tri Domain Classification** | `cv/models/efficientnetv2_s_tri_domain_best.pt` | EfficientNetV2 S (38 classes) | 78.02 MB | `7ebe13a085819231878c776092c112b2c0babf678d39e4d0f2a2e1ee258f25c7` | Verified Immutable |
-| **Canopy Specimen Detection** | `cv/models/yolo_plantdoc_best.pt` | YOLO PlantDoc (29 classes) | 5.19 MB | `e98545716c774d796a4796f620138022f6388a063bf8a9d36dfc5937372366b6` | Verified Immutable |
-| **Granular Lesion Detection** | `cv/models/yolov8n_lesions_best.pt` | YOLOv8n Lesions (1 class) | 5.91 MB | `f528dc7cf1ccafa85e63fb4f75ea3097b9197da7c89c4380b93b04fe708aacf7` | Verified Immutable |
-| **Foliar Tissue Segmentation** | `cv/models/mobile_unet_best.pt` | Mobile UNet (3 classes) | 1.90 MB | `86bba6df9222b92c2d8b019fb2a10eacc2654f1a61b6e2b5996d8c8ee3cc04cc` | Verified Immutable |
-| **Agro Climatic Recommender** | `cv/models/crop_recommender/crop_model.pkl` | Random Forest (22 crops) | 19.45 MB | `cb20fc5908efe34d4e5e6e999b62e576d962ff2e1d00381db09c912bb57aa1d3` | Verified Immutable |
-
-***
+---
 
 ## ⚙️ Installation & Local Development
 
-### Prerequisites
-* Python 3.10 through 3.14
-* Node.js v18+ (for frontend state tests)
-* Modern web browser (Chrome, Edge, Firefox, Safari)
-
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/MohammadFayasKhan/CvProject.git
-cd CvProject
+git clone https://github.com/MohammadFayasKhan/AIPoweredCropIntelligenceRover.git
+cd AIPoweredCropIntelligenceRover
 ```
 
 ### 2. Set Up Virtual Environment & Dependencies
@@ -257,98 +304,71 @@ pip install -r requirements.txt
 ```bash
 python3 backend/run.py
 ```
-The server binds to `http://127.0.0.1:8000`. Verify startup by opening interactive Swagger documentation at `http://127.0.0.1:8000/docs`.
+The server binds to `http://127.0.0.1:8000`. Interactive OpenAPI documentation is available at `http://127.0.0.1:8000/docs`.
 
 ### 4. Open User Interface
 Open your web browser and navigate to:
 ```
 http://127.0.0.1:8000/
 ```
-The client connects directly to the running backend, verifies readiness, and displays live hardware compute telemetry.
 
-### 5. (Alternative) Docker Deployment
-```bash
-docker compose up --build
-```
-
-***
+---
 
 ## 🧪 Testing & Verification Matrix
 
 The repository features comprehensive automated test coverage protecting production stability, security, and scientific honesty:
 
 ```bash
-# Run backend test suite (71 passing tests)
-python3 -m pytest tests/ -v
+# Run backend test suite (134 passing tests across all 20 modules)
+pytest tests/
 
-# Run frontend state machine suite (18 passing tests)
+# Run frontend state machine suite (19 passing tests)
 node frontend/test_frontend.js
 ```
 
-### Test Coverage Summary
+### Test Coverage Highlights
 
 | Test Module | Focus Area | Status |
 | :--- | :--- | :--- |
 | `test_api.py` | Health probes, REST contracts, crop recommendations, validation guards | Passed (15/15) |
-| `test_production_hardening.py` | Decompression bomb DOS rejection, CORS headers, concurrency safety | Passed (8/8) |
-| `test_detection_parity.py` | Multi box preservation (Strawberry, Tomato), zero synthetic boxes | Passed (6/6) |
-| `test_explainability.py` | 9 stage Grad CAM dynamic layer detection, feature grid bounds | Passed (4/4) |
-| `test_gen2_parity.py` | Tri domain parity, cryptographic checksum validation, full pipeline sync | Passed (8/8) |
-| `test_image_quality_and_ood.py` | Blur variance, illumination thresholds, foliar ratio screening | Passed (6/6) |
-| `test_inference_pipeline.py` | Truthful inference, low confidence uncertainty, dynamic device binding | Passed (6/6) |
-| `test_memory_and_stability.py` | Repeated inference memory stability, zero cross request contamination | Passed (2/2) |
-| `test_safety_and_splits.py` | Corrupted byte rejection, zero byte rejection, path portability | Passed (5/5) |
+| `test_camera_integration.py` | Real-time streaming, capture latency, and frame rate metrics | Passed (5/5) |
 | `test_dataset_sanitization.py` | XML annotation sync, whitespace filename sanitization | Passed (8/8) |
-| `test_frontend.js` | UI state machine, canvas bounding, HTML escaping, CSS brace balance | Passed (18/18) |
+| `test_detection_parity.py` | Multi-box preservation (Strawberry, Tomato), zero synthetic boxes | Passed (6/6) |
+| `test_domain_validation.py` | Pre-inference botanical suitability, non-plant image blocking | Passed (14/14) |
+| `test_e2e_pipeline.py` | End-to-end vision inference pipeline, response schema fidelity | Passed (3/3) |
+| `test_esp32_cam_gateway.py` | Ephemeral provenance tokens, TTL expiration, camera auth | Passed (5/5) |
+| `test_esp32_cam_validation_policy.py` | Source-aware sensor degradation tolerance policy | Passed (4/4) |
+| `test_explainability.py` | 9-stage Grad-CAM dynamic layer detection, feature grid bounds | Passed (4/4) |
+| `test_gen2_parity.py` | Multi-domain parity, cryptographic checksum validation, pipeline sync | Passed (8/8) |
+| `test_groq_validator.py` | Semantic multimodal gate, fallback triggers, rate limit handling | Passed (6/6) |
+| `test_image_quality_and_ood.py` | Blur variance, illumination thresholds, foliar ratio screening | Passed (6/6) |
+| `test_inference_pipeline.py` | Truthful inference, low-confidence uncertainty, dynamic device binding | Passed (6/6) |
+| `test_iot_integration.py` | In-memory telemetry ring buffer, microclimate disease risk rules | Passed (9/9) |
+| `test_memory_and_stability.py` | Repeated inference memory stability, zero cross-request contamination | Passed (2/2) |
+| `test_production_hardening.py` | Decompression bomb DOS rejection, CORS headers, concurrency safety | Passed (8/8) |
+| `test_safety_and_splits.py` | Corrupted byte rejection, zero-byte rejection, path portability | Passed (5/5) |
+| `test_xiaozhi_mcp.py` | MCP tool schemas, secure token authorization, advisory payloads | Passed (19/19) |
+| `test_frontend.js` | UI state machine, canvas bounding, HTML escaping, CSS balance | Passed (19/19) |
 
-***
+---
 
-## 🔒 Security & Scientific Integrity Disclosures
-
-* **Zero Checkpoint Weight Downloads:** Weight files are never transmitted to browser clients, AgriRover microcontrollers, or XiaoZhi nodes.
-* **Decompression Bomb DOS Protection:** Images exceeding 16 megapixels (e.g. 20.25 MP test bomb) are rejected immediately prior to neural processing.
-* **MIME & Magic Byte Verification:** File headers are validated against authentic JPEG and PNG magic bytes before model execution.
-* **Zero Synthetic Box Hallucination:** If no canopy targets or disease lesions exist, the system returns exactly 0 bounding boxes.
-* **Non Overwriting Multi Box Arrays:** Multi leaf detections (such as 3 leaves on Strawberry or 7 leaves on Tomato) preserve independent coordinates without array flattening.
-* **Calibrated Confidence:** Probabilities reflect temperature scaled values rather than raw uncalibrated softmax extremes.
-
-***
-
-## 💡 Why We Built This
-
-Smallholder farmers lose an estimated 20 to 40 percent of crop yields to foliar diseases annually. In rural settings, agricultural extension officers are scarce, and farmers often diagnose crop infections too late or misapply broad spectrum chemical fungicides.
-
-Existing mobile tools frequently present major shortcomings:
-1. They return black box classifications without explaining which visual features drove the prediction.
-2. They hallucinate high confidence on blurry, out of distribution, or completely healthy leaves.
-3. They attempt to run heavy weights on underpowered mobile devices, draining batteries and crashing apps.
-
-**Team Innovex** engineered SmartCropVision to solve these challenges with production rigor:
-* Decoupling edge user clients from server grade neural computing.
-* Enforcing dual layer spatial telemetry that separates canopy leaves from necrotic lesion spots.
-* Providing transparent 9 stage Grad CAM visual reasoning so farmers and agronomists can verify model attention.
-* Embedding real time microclimate sensing to prescribe precision organic and chemical remedies before widespread blight outbreaks.
-
-***
-
-## 👨💻 Team Innovex
+## 👥 Team Innovex & SIH2026 Credits
 
 <div align="center">
-  <h3><strong>Smart India Hackathon Team Innovex</strong></h3>
-  <p><em>Agricultural Intelligence & Deep Computer Vision Engineering</em></p>
 
-  <p>
-    <a href="https://github.com/MohammadFayasKhan" target="_blank">
-      <img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub" />
-    </a>&nbsp;
-    <a href="mailto:fayaskhanmohammad@gmail.com">
-      <img src="https://img.shields.io/badge/Email-EA4335?style=for-the-badge&logo=gmail&logoColor=white" alt="Email" />
-    </a>
-  </p>
+### **Smart India Hackathon 2026 - Team Innovex**
+**Team ID: SIH-H-B2-048 | Problem Statement: SIH26180 (Qualcomm Inc.)**
+
+Mohammad Fayas Khan & Team Innovex  
+*Agricultural Computer Vision, Embedded Robotics & Edge Intelligence*
+
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/MohammadFayasKhan/AIPoweredCropIntelligenceRover)
+[![Email](https://img.shields.io/badge/Email-EA4335?style=for-the-badge&logo=gmail&logoColor=white)](mailto:fayaskhanmohammad@gmail.com)
+
 </div>
 
-***
+---
 
 ## 📝 License
 
-SmartCropVision is open source software released under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](LICENSE).
