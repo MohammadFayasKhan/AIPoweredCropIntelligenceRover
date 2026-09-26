@@ -1,12 +1,14 @@
 /**
- * Smart Plant Intelligence System - Frontend Logic
- * Strictly handles:
- * 1. Physical ESP8266 IoT Telemetry Lifecycle (Live vs Stale vs Offline vs Manual)
- * 2. Backend Health and 4-Model Readiness Telemetry
- * 3. Crop Recommendation and Disease Risk Prediction Pipeline
- * 4. 3-Tier Foliar Computer Vision Diagnostics and Lesion Localization
- * 5. Telemetry Trend History (Hardware Data Only, Zero Synthetic Polling Records)
- * 6. Responsive Image Handling and Non-Destructive Fullscreen Inspection
+ * AI Powered Crop Intelligence Rover  -  Production Frontend Application Logic
+ *
+ * Core Subsystems & Responsibilities:
+ * 1. Physical ESP32 / Rover Telemetry State Machine (Live, Stale, Offline, Fail-safe).
+ * 2. Real-Time Teleoperation & 4-DOF Robotic Arm Inverse Kinematic Controls.
+ * 3. 3-Tier Foliar Computer Vision Diagnostics & YOLO Lesion Bounding Box Canvas Rendering.
+ * 4. Microclimatic Risk Engine Visualization (Vapor Pressure Deficit, Heat Index, Soil Water).
+ * 5. Full-Duplex WebSocket Synchronization (/api/v1/iot/live-ws) with auto-reconnect backoff.
+ * 6. XiaoZhi Voice Assistant Client & Natural Language Conversational Interface.
+ * 7. Non-Destructive High-Resolution Inspection Modal with botanical explainability overlays.
  */
 
 // ── HTML SANITIZATION UTILITY ────────────────────────────────────────────────
@@ -1489,10 +1491,8 @@ function handleDropzoneContainerClick(event) {
   triggerCvFileInput(event);
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// NATIVE DEVICE CAMERA CAPTURE CONTROLLER (SmartCropVisionCamera)
-// ═════════════════════════════════════════════════════════════════════════════
-const SmartCropVisionCamera = {
+// Native device camera capture controller for AI Powered Crop Intelligence Rover
+const CropRoverDeviceCamera = {
   activeStream: null,
   activeVideoTrack: null,
   currentFacingMode: "environment", // Automatically prefer rear camera on mobile
@@ -1981,16 +1981,19 @@ const SmartCropVisionCamera = {
   }
 };
 
+// Backward-compatible alias for camera capture controller
+const SmartCropVisionCamera = CropRoverDeviceCamera;
+
 // Global Camera Action Wrappers
 function openCameraModal(event) {
   if (event && typeof event.stopPropagation === "function") {
     event.stopPropagation();
   }
-  SmartCropVisionCamera.open();
+  CropRoverDeviceCamera.open();
 }
 
 function closeCameraModal() {
-  SmartCropVisionCamera.close();
+  CropRoverDeviceCamera.close();
 }
 
 function handleCameraBackdropClick(event) {
@@ -2000,27 +2003,27 @@ function handleCameraBackdropClick(event) {
 }
 
 function captureCameraFrame() {
-  SmartCropVisionCamera.capture();
+  CropRoverDeviceCamera.capture();
 }
 
 function retakeCameraPhoto() {
-  SmartCropVisionCamera.retake();
+  CropRoverDeviceCamera.retake();
 }
 
 async function useCapturedPhoto() {
-  await SmartCropVisionCamera.usePhoto();
+  await CropRoverDeviceCamera.usePhoto();
 }
 
 async function switchCameraFacing() {
-  await SmartCropVisionCamera.switchCamera();
+  await CropRoverDeviceCamera.switchCamera();
 }
 
 async function toggleCameraTorch() {
-  await SmartCropVisionCamera.toggleTorch();
+  await CropRoverDeviceCamera.toggleTorch();
 }
 
 function retryCameraStream() {
-  SmartCropVisionCamera.retry();
+  CropRoverDeviceCamera.retry();
 }
 
 function fallbackToUploadFromCamera() {
@@ -2031,11 +2034,11 @@ function fallbackToUploadFromCamera() {
 // Ensure camera stream is stopped if window is closed or backgrounded
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", () => {
-    SmartCropVisionCamera.stopAllStreams();
+    CropRoverDeviceCamera.stopAllStreams();
     stopEsp32Stream();
   });
   window.addEventListener("pagehide", () => {
-    SmartCropVisionCamera.stopAllStreams();
+    CropRoverDeviceCamera.stopAllStreams();
     stopEsp32Stream();
   });
 }
@@ -2321,7 +2324,7 @@ async function fetchEsp32PreviewLoop() {
             lastRenderedFrameAge = ageSec;
           }
         } else {
-          // Frame in cache is older than 8 seconds — camera is settling or disconnected
+          // Frame in cache is older than 8 seconds  -  camera is settling or disconnected
           if (overlay) {
             overlay.style.display = "flex";
             if (overlayMsg) overlayMsg.textContent = "Live frame delayed. Reconnecting to sensor...";
@@ -3617,7 +3620,7 @@ function renderVisionDiagnosis(diag) {
       <div class="low-conf-alert" style="margin-bottom: 10px; padding: 8px 12px; border-radius: var(--radius-sm); background: rgba(255, 209, 102, 0.08); border: 1px solid rgba(255, 209, 102, 0.35); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
         <div style="display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: #ffd166;">
           <span>⚠️</span>
-          <span><strong>Low confidence (${confStr})</strong> — review recommended. Tentative visual match.</span>
+          <span><strong>Low confidence (${confStr})</strong>  -  review recommended. Tentative visual match.</span>
         </div>
         <details style="font-size: 0.72rem; color: var(--text-secondary); cursor: pointer;">
           <summary style="color: #ffd166; user-select: none;">Uncertainty Metrics</summary>
@@ -4058,7 +4061,7 @@ function renderTechnicalDetails(data = {}) {
     </div>
     ${spatialAuditHtml}
     <div class="tech-notice">
-      <strong>Benchmark Transparency Notice:</strong> The performance metrics displayed above represent rigorous evaluation against held-out validation/test datasets. Real-world diagnostic accuracy depends on field capture conditions, focal distance, ambient lighting, and foliage visibility. SmartCropVision provides statistical computer vision guidance and is not a substitute for professional in-field agronomist verification.
+      <strong>Benchmark Transparency Notice:</strong> The performance metrics displayed above represent rigorous evaluation against held-out validation/test datasets. Real-world diagnostic accuracy depends on field capture conditions, focal distance, ambient lighting, and foliage visibility. The AI Powered Crop Intelligence Rover provides statistical computer vision guidance and is not a substitute for professional in-field agronomist verification.
     </div>
   `;
 }

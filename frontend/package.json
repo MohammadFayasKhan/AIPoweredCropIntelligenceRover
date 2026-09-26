@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "version": "1.0.0",
-  "description": "Smart Plant Intelligence System Frontend",
+  "description": "AI Powered Crop Intelligence Rover Frontend",
   "scripts": {
     "dev": "python3 -m http.server 3000",
     "start": "python3 -m http.server 3000",
