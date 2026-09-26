@@ -1,5 +1,5 @@
 """
-SmartCropVision ESP32-CAM Cloud Bridge Daemon.
+AI Powered Crop Intelligence Rover ESP32-CAM Cloud Bridge Daemon.
 Bridges local ESP32-CAM telemetry, live frames, and capture dispatches
 from the local gateway (http://127.0.0.1:8000) to the production Azure Cloud
 gateway (wss://aipoweredcropintelligencerover.dpdns.org).

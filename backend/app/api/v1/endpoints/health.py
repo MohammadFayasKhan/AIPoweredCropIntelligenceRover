@@ -1,5 +1,5 @@
 """
-Health, Liveness, and Readiness Diagnostic Endpoints for SmartCropVision API.
+Health, Liveness, and Readiness Diagnostic Endpoints for AI Powered Crop Intelligence Rover API.
 Provides kubernetes-style liveness/readiness probes, hardware profiling, and checkpoint audits.
 """
 

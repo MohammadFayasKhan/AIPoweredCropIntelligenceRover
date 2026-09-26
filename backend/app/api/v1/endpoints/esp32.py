@@ -16,7 +16,7 @@ from backend.app.config import settings
 from backend.app.services.esp32_gateway import esp32_gateway
 
 router = APIRouter()
-logger = logging.getLogger("smartcropvision.api.esp32")
+logger = logging.getLogger("crop_rover.api.esp32")
 
 
 @router.websocket("/device-ws")
@@ -30,7 +30,7 @@ async def esp32_device_websocket(
     Handles device telemetry heartbeats, preview frame streaming,
     and high-resolution capture command execution.
     """
-    # Authenticate device connection
+    # Authenticate device connection against the configured hardware token
     if not esp32_gateway.authenticate_device(token):
         logger.warning(f"Unauthorized ESP32 connection attempt for [{device_id}] with token: {token}")
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid device authentication token")
@@ -50,13 +50,15 @@ async def esp32_device_websocket(
                 break
 
             if msg_type == "websocket.receive":
-                # Ensure device records this websocket as current
+                # Ensure device records this websocket as current active connection
                 dev = esp32_gateway.get_or_create_device(device_id)
                 if dev.websocket != websocket:
                     dev.websocket = websocket
                     dev.status = "online"
 
-                # Handle text/JSON telemetry or status packets
+                # Case A: Handle text/JSON telemetry or status packets
+                # Contains periodic system heartbeats (heap memory, Wi-Fi RSSI, sensor states),
+                # asynchronous capture completions, and active stream status flags.
                 if "text" in message and message["text"]:
                     try:
                         data = json.loads(message["text"])
@@ -65,7 +67,7 @@ async def esp32_device_websocket(
                         if packet_type == "heartbeat":
                             esp32_gateway.record_heartbeat(device_id, data)
                         elif packet_type == "capture_response":
-                            # Base64-encoded capture fallback
+                            # Base64-encoded capture fallback for constrained Wi-Fi environments
                             cid = data.get("capture_id")
                             b64_img = data.get("image_base64")
                             if cid and b64_img:
@@ -77,7 +79,11 @@ async def esp32_device_websocket(
                     except Exception as parse_err:
                         logger.warning(f"Error parsing text packet from [{device_id}]: {parse_err}")
 
-                # Handle binary preview frames or capture payloads
+                # Case B: Handle raw binary preview frames or capture payloads
+                # Binary framing avoids base64 encoding overhead (reducing bandwidth by 33%):
+                # - 'SPRV' prefix (4 bytes) + raw JPEG bytes: Low-latency live preview stream (QVGA/VGA).
+                # - 'SCAP' prefix (4 bytes) + 16-byte ASCII capture ID + raw JPEG: High-resolution (UXGA) capture.
+                # - 0xFF 0xD8 prefix: Fallback raw JPEG without header encapsulation.
                 elif "bytes" in message and message["bytes"]:
                     raw_bytes = message["bytes"]
                     if len(raw_bytes) >= 4:

@@ -1,17 +1,14 @@
 """
-AgriRover IoT Gateway, Telemetry Ingestion, and Real-Time WebSocket Router.
-Author: Team Innovex (SIH 2026 Challenge SIH26180 - Qualcomm Inc).
+AI Powered Crop Intelligence Rover  -  IoT Gateway, Telemetry Ingestion, and Real-Time WebSocket Router.
 
-Endpoints:
-- POST /api/v1/iot/observation: Ingest ground sensor packet, calculate environmental risk,
-  query Crop Intelligence recommendation engine, trigger n8n alerts, and broadcast to live WebSockets.
-- GET /api/v1/iot/observation/latest: Return latest unified observation snapshot.
-- GET /api/v1/iot/observation/history: Return rolling buffer of past field observations.
-- GET /api/v1/iot/device/state: Consolidated hardware diagnostics, watchdog, and sensor health.
-- POST /api/v1/iot/device/command: Structured teleoperation and arm actuation gateway.
-- GET /api/v1/iot/device/commands/pending: Retrieve queued commands for ESP32 downlink.
-- POST /api/v1/iot/device/register: ESP32 hardware capability and protocol handshake.
-- WS /api/v1/iot/live-ws: Bidirectional WebSocket stream for real-time dashboard updates.
+This module provides the central hardware integration hub for field robotics:
+1. Ingests structured multi-sensor ground packets (DHT11, Capacitive Soil Moisture v1.2,
+   Optical Rain Sensor, Hydrostatic Water Level, GPS NEO-6M, Battery Voltage).
+2. Computes multi-factor environmental risk indices (Drought, Heat Index, VPD, Disease Favorability).
+3. Evaluates real-time agronomic recommendations via the 22-cultivar Random Forest intelligence engine.
+4. Enforces hardware safety envelopes for teleoperation (rover directional gates, 4-DOF servo angle limits).
+5. Dispatches automated n8n webhook notifications for anomalous or critical conditions.
+6. Streams full-duplex WebSocket telemetry to interactive field dashboards and mobile consoles.
 """
 
 from __future__ import annotations
@@ -41,7 +38,7 @@ from backend.app.services.crop_service import crop_service
 from backend.app.services.n8n_service import n8n_dispatcher
 from backend.app.services.xiaozhi_gateway import xiaozhi_gateway
 
-logger = logging.getLogger("smartcropvision.iot")
+logger = logging.getLogger("crop_rover.iot")
 router = APIRouter()
 
 # In-memory unified observation store
@@ -272,8 +269,15 @@ async def dispatch_device_command(
     """
     global _pending_commands
 
-    # 1. Physical safety & boundary verification
+    # 1. Physical Safety & Boundary Verification Gates
+    # Teleoperation commands sent over wireless or conversational channels must pass through
+    # deterministic kinematic envelopes to protect servo gear trains, prevent chassis rollover,
+    # and avoid collisions with mounted sensors or ground obstacles.
+
     if cmd.command_type == "ROVER_MOVE":
+        # Chassis directional verification:
+        # Enforces that motion matches one of the allowable discrete movement states supported
+        # by the L293D dual H-bridge motor driver.
         direction = cmd.parameters.get("direction", "").upper()
         if direction not in ("FORWARD", "BACKWARD", "LEFT", "RIGHT", "STOPPED"):
             return DeviceCommandResponse(
@@ -283,6 +287,12 @@ async def dispatch_device_command(
                 safety_validated=False,
             )
     elif cmd.command_type == "ARM_TARGET":
+        # Manipulator Kinematic Bounds:
+        # Base (5°-175°): Prevents continuous spin cable wrapping and wire fatigue.
+        # Shoulder (0°-180°): Limits elevation to avoid impacting rover battery tray.
+        # Elbow (0°-180°): Prevents self-collision with chassis chassis top plate.
+        # Gripper (70°-180°): 70° corresponds to fully closed grip without servo stalling/burnout;
+        # 180° corresponds to maximum jaw aperture for foliage/sample intake.
         base = cmd.parameters.get("base")
         shoulder = cmd.parameters.get("shoulder")
         elbow = cmd.parameters.get("elbow")
@@ -318,7 +328,9 @@ async def dispatch_device_command(
             )
 
     elif cmd.command_type == "ARM_EMERGENCY_STOP" or cmd.command_type == "ROVER_STOP":
-        # Clear all pending commands immediately on emergency stop
+        # Fail-Safe Emergency Interruption:
+        # Instantly flush pending command queue to cancel queued motion sequences immediately.
+        logger.warning(f"[Safety Gate] Emergency halt command received: {cmd.command_type}")
         _pending_commands.clear()
 
     # Enqueue command for ESP32 downlink

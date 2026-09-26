@@ -1,5 +1,5 @@
 """
-SmartCropVision Production Application Entrypoint.
+AI Powered Crop Intelligence Rover Production Application Entrypoint.
 Unified, production-grade inference service providing 3-Tier plant pathology diagnosis,
 agro-climatic crop recommendation, real-time IoT hardware telemetry, and dashboard serving.
 """
@@ -44,7 +44,7 @@ logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL, logging.INFO),
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
-logger = logging.getLogger("smartcropvision.server")
+logger = logging.getLogger("crop_rover.server")
 
 # In-memory IoT reading history (last 50 physical or verified readings)
 history: deque = deque(maxlen=50)
@@ -58,7 +58,7 @@ FRONTEND_DIR = settings.PROJECT_ROOT / "frontend"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle manager: Preloads ML vision models and crop recommendation artifacts at startup."""
-    logger.info("Initializing SmartCropVision production service...")
+    logger.info("Initializing AI Powered Crop Intelligence Rover production service...")
     try:
         inference_engine.load_models()
         logger.info("ML vision suite preloaded on compute device: %s.", inference_engine.device_name)
@@ -81,18 +81,18 @@ async def lifespan(app: FastAPI):
         await xiaozhi_mcp_client.stop()
     except Exception as e:
         logger.error("Error stopping Xiaozhi MCP client: %s", e)
-    logger.info("Gracefully shutting down SmartCropVision API service.")
+    logger.info("Gracefully shutting down AI Powered Crop Intelligence Rover API service.")
 
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description=(
-        "Production-grade agricultural intelligence API executing a 3-Tier vision cascade: "
-        "Tier 1 (Server EfficientNet-B2 / Edge MobileNetV2 38-class screening), "
-        "Tier 2 (YOLOv8-nano lesion localization), "
+        "Production-grade agricultural intelligence API for AI Powered Crop Intelligence Rover executing a 3-Tier vision cascade: "
+        "Tier 1 (Server EfficientNetV2-S / Edge MobileNetV2 38-class screening with calibrated confidence), "
+        "Tier 2 (YOLO PlantDoc specimen canopy boundary and lesion spot localization), "
         "Tier 3 (Mobile-UNet sub-pixel foliar damage segmentation), "
-        "and Crop Recommendation Intelligence (Random Forest 22-class agro-climatic matching)."
+        "and Crop Recommendation Intelligence (Random Forest 22-cultivar agro-climatic matching)."
     ),
     lifespan=lifespan,
     docs_url="/docs" if settings.ENVIRONMENT != "production" or settings.DEBUG else "/docs",

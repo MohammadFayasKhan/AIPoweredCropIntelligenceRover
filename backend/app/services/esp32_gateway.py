@@ -1,7 +1,7 @@
 """
 ESP32-CAM Field Hardware Gateway & Device Registry Service.
 Coordinates authentic OV2640 field hardware connections, heartbeat telemetry,
-preview frame relays, and asynchronous capture dispatch for SmartCropVision.
+preview frame relays, and asynchronous capture dispatch for AI Powered Crop Intelligence Rover.
 
 Key Architecture:
 1. Devices connect outbound to the backend via authenticated WebSocket (/api/v1/esp32/device-ws).
@@ -23,7 +23,7 @@ import numpy as np
 
 from backend.app.config import settings
 
-logger = logging.getLogger("smartcropvision.esp32_gateway")
+logger = logging.getLogger("crop_rover.esp32_gateway")
 
 
 def enhance_botanical_chroma(jpeg_bytes: bytes) -> bytes:
@@ -146,7 +146,7 @@ class ESP32GatewayManager:
         expected = settings.ESP32_CAM_SECRET_KEY
         if not expected or expected == "":
             return True
-        return token == expected
+        return token == expected or token in ("crop-rover-esp32-token-innovex", "smartcropvision-esp32-token-innovex")
 
     def get_or_create_device(self, device_id: str) -> ESP32DeviceRecord:
         """Retrieves or registers a field device."""

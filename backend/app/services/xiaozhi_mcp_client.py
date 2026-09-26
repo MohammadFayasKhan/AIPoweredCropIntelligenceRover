@@ -2,7 +2,7 @@
 XiaoZhi Outbound MCP WebSocket Client.
 Author: Team Innovex (SIH 2026 Challenge SIH26180 - Qualcomm Inc).
 
-Maintains a resilient, secure outbound WebSocket connection from the SmartCropVision
+Maintains a resilient, secure outbound WebSocket connection from the AI Powered Crop Intelligence Rover
 backend to the Xiaozhi AI Cloud MCP endpoint (wss://api.xiaozhi.me/mcp/?token=...).
 
 Key Features:
@@ -27,7 +27,7 @@ from websockets.exceptions import ConnectionClosed
 from backend.app.config import settings
 from backend.app.services.xiaozhi_gateway import xiaozhi_gateway
 
-logger = logging.getLogger("smartcropvision.xiaozhi_mcp_client")
+logger = logging.getLogger("crop_rover.xiaozhi_mcp_client")
 
 
 def mask_token(url_or_token: Optional[str]) -> str:
@@ -200,8 +200,8 @@ class XiaoZhiMCPClient:
                         "logging": {},
                     },
                     "serverInfo": {
-                        "name": "SmartCropVision",
-                        "version": "2.0.0",
+                        "name": "AI-Powered-Crop-Intelligence-Rover",
+                        "version": "2.2.0",
                     },
                 },
             })

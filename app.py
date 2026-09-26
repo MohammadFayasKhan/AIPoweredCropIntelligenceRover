@@ -1,14 +1,33 @@
 """
-SmartCropVision Cloud Production Entrypoint for Hugging Face Spaces.
-Unified deployment entrypoint that binds the FastAPI service and static frontend
-dashboard to the target host and port (defaulting to 7860 on Hugging Face).
+AI Powered Crop Intelligence Rover  -  Unified Production Server Entrypoint.
+
+This module serves as the primary executable entrypoint for containerized and cloud deployments:
+- Mounts the authoritative FastAPI application instance from `backend.app.main`.
+- Inspects runtime environment variables (`HOST`, `PORT`) with automatic fallbacks:
+    - Default Port: 7860 (optimized for cloud app hosts like Hugging Face Spaces and container engines).
+    - Default Host: 0.0.0.0 (enables ingress from container networks, Docker bridges, and external proxies).
+- Executes the high-performance Uvicorn ASGI server with standard access logging and signal handling.
 """
+
 import os
 import uvicorn
 from backend.app.main import app
 
 if __name__ == "__main__":
+    # Resolve host and port dynamically from container environment or default to cloud port 7860
     port = int(os.environ.get("PORT", 7860))
     host = os.environ.get("HOST", "0.0.0.0")
-    print(f"Starting SmartCropVision unified production server on http://{host}:{port}")
-    uvicorn.run(app, host=host, port=port)
+
+    print(f"================================================================================")
+    print(f" Starting AI Powered Crop Intelligence Rover Unified Production Server")
+    print(f" Bound to: http://{host}:{port}")
+    print(f"================================================================================")
+
+    # Launch production ASGI server loop
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        log_level="info",
+        access_log=True,
+    )

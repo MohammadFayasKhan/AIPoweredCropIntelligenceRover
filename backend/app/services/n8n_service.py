@@ -1,17 +1,14 @@
 """
-n8n Automation & Alert Webhook Dispatcher Service.
-Author: Team Innovex (SIH 2026 Challenge SIH26180 - Qualcomm Inc).
+AI Powered Crop Intelligence Rover  -  n8n Automation & Alert Webhook Dispatcher.
 
-Emits structured agronomic and telemetry events to n8n workflows:
-- disease_risk_detected (Pathogen outbreak / high confidence diagnosis)
-- water_stress_detected (Drought threshold reached via capacitive soil sensor)
-- excessive_water_detected (Ponding or drainage waterlogging alert)
-- heat_risk_detected (Dangerous heat index threshold exceeded)
-- rover_fault (Chassis watchdog trip or motor stall)
-- arm_fault (Actuator limit or I2C communication fault)
-- inspection_completed (Active camera inspection workflow finalized)
-
-Implements non-blocking dispatch and in-memory cooldown deduplication to prevent notification flooding.
+This service integrates the physical rover and intelligence backend with n8n workflow pipelines:
+1. Event Emission: Generates typed JSON payloads for critical agronomic events
+   (pathogen outbreaks, root zone drought, flooding/ponding, heat stress, motor stalls).
+2. Anti-Flooding Cooldown Deduplication: Maintains an in-memory TTL cache
+   (default 300 seconds / 5 minutes) keyed by event type and entity identifier. This prevents
+   alert storms across SMS, WhatsApp, and Telegram channels when sensor readings hover near thresholds.
+3. Fail-Safe Asynchronous Dispatch: Dispatches webhooks using non-blocking HTTP client calls;
+   network drops or slow external webhook receivers never block rover real-time control loops.
 """
 
 from __future__ import annotations
@@ -24,7 +21,7 @@ import httpx
 
 from backend.app.config import settings
 
-logger = logging.getLogger("smartcropvision.n8n")
+logger = logging.getLogger("crop_rover.n8n")
 
 
 class N8NAlertDispatcher:
@@ -32,11 +29,13 @@ class N8NAlertDispatcher:
 
     def __init__(self):
         # Maps event_key -> last_dispatched_timestamp
+        # Prevents alert spam by ensuring an identical condition cannot fire repeatedly
         self._cooldown_cache: Dict[str, float] = {}
         self._cooldown_seconds: int = settings.N8N_COOLDOWN_SECONDS
         self._client: Optional[httpx.AsyncClient] = None
 
     async def _get_client(self) -> httpx.AsyncClient:
+        """Lazily initialize an asynchronous HTTP client session with strict connection timeouts."""
         if self._client is None or self._client.is_closed:
             self._client = httpx.AsyncClient(timeout=4.0)
         return self._client
@@ -80,7 +79,7 @@ class N8NAlertDispatcher:
 
         # Construct comprehensive event packet
         packet = {
-            "source": "SmartCropVision-AgriRover-Gateway",
+            "source": "AI-Powered-Crop-Intelligence-Rover-Gateway",
             "event_type": event_type,
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "deduplication_key": deduplication_key,

@@ -1,11 +1,15 @@
 """
-XiaoZhi Voice Assistant & MCP Endpoint Router.
-Author: Team Innovex (SIH 2026 Challenge SIH26180 - Qualcomm Inc).
+AI Powered Crop Intelligence Rover  -  XiaoZhi Conversational Assistant & MCP Router.
 
-Endpoints:
-- GET /api/v1/xiaozhi/mcp/tools: Exposes Model Context Protocol (MCP) tool definitions.
-- POST /api/v1/xiaozhi/execute: Executes a structured read or actuation tool.
-- POST /api/v1/xiaozhi/chat: Grounded conversational Q&A prioritizing real-time field data.
+This module provides the natural language and Model Context Protocol (MCP) gateway:
+1. Exposes 18 standardized MCP tool definitions enabling multimodal LLM agents to inspect
+   live sensor observations, trigger computer vision captures, and query agronomic knowledge.
+2. Grounded Conversational Q&A: Synthesizes responses strictly from authentic sensor telemetry,
+   empirical disease risk indices, and Central Insecticides Board (CIBRC) registered chemicals.
+3. Actuation Safety Envelope: Validates voice-initiated physical commands (rover steering,
+   manipulator poses, sprayer toggles) against kinematic and duration bounds before dispatching.
+4. Multilingual Agricultural Support: Generates natural Hindi and English agronomic summaries
+   with dynamic follow-up chips to assist field farmers.
 """
 
 from __future__ import annotations
@@ -18,7 +22,7 @@ from pydantic import BaseModel, Field
 from backend.app.config import settings
 from backend.app.services.xiaozhi_gateway import xiaozhi_gateway
 
-logger = logging.getLogger("smartcropvision.xiaozhi")
+logger = logging.getLogger("crop_rover.xiaozhi")
 router = APIRouter()
 
 
@@ -245,7 +249,7 @@ async def natural_language_chat(req: ChatQueryRequest):
     suggestions = ["How is my field?", "Does my crop need water?", "Is there any disease?"]
     return {
         "response": (
-            "I can provide real-time field intelligence from SmartCropVision. Ask about current field condition, "
+            "I can provide real-time field intelligence from the AI Powered Crop Intelligence Rover. Ask about current field condition, "
             "capacitive soil moisture, irrigation advisory, disease diagnosis, pesticide recommendations, treatment budget, or weather."
         ),
         "suggestions": [{"text": s, "type": "question"} for s in suggestions],
