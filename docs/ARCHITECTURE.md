@@ -1,101 +1,156 @@
-# SmartCropVision System Architecture
+# AI Powered Crop Intelligence Rover: System Architecture & Data Engineering
 
-## 1. Architectural Overview
+> **Official Architecture Specification for Smart India Hackathon 2026**  
+> **Challenge ID:** SIH26180 | **Theme:** Disaster Management | **Category:** Hardware  
+> **Team:** Innovex (SIH-H-B2-048)  
+> **Canonical Identity:** AI Powered Crop Intelligence Rover  
 
-SmartCropVision is an end to end multi task agricultural vision and edge intelligence platform. The system operates on a client server topology where edge devices capture photographs and stream telemetry, while high capacity computer vision models remain strictly on the centralized server.
+---
 
+## 1. Architectural Philosophy & Core Advantages
+
+The **AI Powered Crop Intelligence Rover** is engineered as a cyber-physical agronomic intelligence system that combines autonomous mobile ground robotics, multi-point microclimate telemetry, and a multi-tier computer vision inference cascade.
+
+The system is built upon four fundamental design principles:
+
+1. **Strict Decoupling of Visual Pathology and Environmental Favorability:**
+   * **Optical Foliar Diagnosis:** Evaluates macro and microscopic leaf tissue symptoms (what necrotic lesions, chlorosis, or pustules currently exist on the plant).
+   * **Microclimatic Disease Risk Engine:** Continuously computes ambient fungal and bacterial incubation risks from temperature, relative humidity, rain accumulation, and soil moisture (what environmental hazards will trigger pathogen proliferation).
+   * This decoupled architecture ensures that farmers receive both immediate curative advisories for observed infections and proactive preventive warnings before airborne spores spread.
+
+2. **Server-Side Neural Network Weight Execution:**
+   * High-capacity neural networks (EfficientNetV2-S at 78 MB, YOLO-PlantDoc at 5.2 MB, and Mobile-UNet at 1.9 MB) execute strictly on accelerated servers.
+   * Edge devices (smartphones, low-power field tablets, ESP32 microcontrollers) remain ultra-lightweight and battery-efficient, communicating via lightweight REST and WebSocket protocols without downloading or running model weights locally.
+
+3. **Calibrated Confidence & Zero False Hallucination Policy:**
+   * Temperature-scaled probability calibration ($T = 1.42$, ECE: 0.0803) prevents overconfident erroneous classifications.
+   * A rigorous pre-inference domain validation gate filters out blurry imagery, non-plant items, and software screenshots before invoking compute-heavy networks.
+   * Healthy foliage produces zero synthetic bounding boxes, preserving honest diagnostic evidence.
+
+4. **Multi-Stage Botanical Explainability by Default:**
+   * Layer-by-layer Grad-CAM heatmaps verify that network activation focuses on genuine pathological lesions rather than background soil, shadows, or specular sunlight.
+
+---
+
+## 2. End-to-End System Topology
+
+```text
+                           FIELD / PHYSICAL EDGE LAYER
+      ┌─────────────────────────────────────────────────────────────────┐
+      │  AgriRover Mobile Chassis (ESP32 + L293D Dual H-Bridge)         │
+      │  Crop Intelligence Sensor Node (ESP32 + DHT11 + Capacitive Soil │
+      │  + Rain Sensor + Water Level + NEO-6M GPS + 16x2 I2C LCD)       │
+      │  OV2640 Field Camera Module (ESP32-CAM Streaming Gateway)       │
+      │  Web Teleoperation Dashboard (Vanilla JS SPA)                   │
+      └────────────────────────────────┬────────────────────────────────┘
+                                       │ HTTPS / WSS Telemetry Stream
+                                       ▼
+                      FASTAPI EDGE / CLOUD GATEWAY (backend/)
+      ┌─────────────────────────────────────────────────────────────────┐
+      │  Security Headers & Rate Limiting                               │
+      │  Image Decompression Bomb Guard (Max 16 MP)                     │
+      │  Request ID Tracing & Structured Logging                        │
+      └───────┬─────────────────────────────────────────────────┬───────┘
+              │                                                 │
+       [ Image Upload ]                                  [ IoT Telemetry ]
+              ▼                                                 ▼
+  ┌───────────────────────────┐                     ┌───────────────────────────┐
+  │ Pre-Inference Domain Gate │                     │ Environmental Risk Engine │
+  │ • Laplacian Blur Check    │                     │ • Rothfusz Heat Index     │
+  │ • Foliar Presence Ratio   │                     │ • Fungal Incubation Risk  │
+  │ • Screenshot Filter       │                     │ • Flood / Drought Bounds  │
+  └───────────┬───────────────┘                     └───────────┬───────────────┘
+              ▼ (Valid Leaf)                                    │
+  ┌──────────────────────────────────────────────────┐          │
+  │       Multi-Tier Computer Vision Cascade         │          │
+  │                                                  │          │
+  │ Tier 1: EfficientNetV2-S (38 Classes, Acc 95.1%) │          │
+  │   └── Temperature Scaled Calibration (ECE: 0.08) │          │
+  │                                                  │          │
+  │ Tier 2: YOLO PlantDoc (Canopy Detection, 29 Cls) │          │
+  │   └── Zero synthetic boxes on healthy foliage    │          │
+  │                                                  │          │
+  │ Tier 3: Mobile-UNet (Sub-pixel Segmentation)     │          │
+  │   └── Quantified Foliar Damage Index (0-100%)    │          │
+  │                                                  │          │
+  │ Explainability: 9-Stage Dynamic Grad-CAM         │          │
+  │   └── Verifiable lesion activation heatmaps      │          │
+  └───────────────────┬──────────────────────────────┘          │
+                      │                                         │
+                      ▼                                         ▼
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │             Agronomic Advisory & Decision Synthesis Engine           │
+  │  • Random Forest Cultivar Recommendation (22 Agronomic Crops)       │
+  │  • CIBRC Approved Chemical & Organic Remedies (FRAC Codes)          │
+  │  • Real-Time WebSocket Telemetry Broadcast to Web UI & 16x2 LCD     │
+  └─────────────────────────────────────────────────────────────────────┘
 ```
-[ Foliage Camera / Web Client / AgriRover / ESP8266 ]
-                     │
-                     │  (HTTP Multipart / WebSocket Telemetry)
-                     ▼
-           [ FastAPI Backend Gateway ]
-                     │
-         ┌───────────┴───────────┐
-         ▼                       ▼
- [ Preflight Audit ]     [ Model Registry ]
-   * Laplacian blur        * Artifact checksums
-   * Dynamic range         * Memory warm up
-   * Non plant check       * Concurrency locks
-         │
-         ▼
- ┌──────────────────────────────────────────────────────────┐
- │               Multi Tier Inference Pipeline               │
- │                                                          │
- │  Tier 1: EfficientNetV2 S (Universal Classification)     │
- │  Tier 2: YOLO PlantDoc (Canopy Specimen Detection)       │
- │  Tier 2b: YOLOv8n Lesions (Granular Spot Localization)   │
- │  Tier 3: Mobile UNet (Sub Pixel Foliar Segmentation)     │
- │  Tabular: Random Forest (Agro Climatic Recommender)      │
- └──────────────────────────────────────────────────────────┘
-         │
-         ▼
- [ 9 Stage Explainability Pipeline ]
-   * Grad CAM Botanical Heatmaps
-   * Activation Collages
-   * Foliar Damage Index Calculation
-         │
-         ▼
- [ Unified Diagnostic JSON Response ]
-         │
- ┌───────┴───────────────────────────────┐
- │                                       │
- ▼                                       ▼
-[ Web Client Dashboard ]    [ AgriRover & XiaoZhi Assistant ]
- * Dual layer canvas         * Precision spray actuation
- * Telemetry cards           * Speech synthesis via MCP
- * Agronomic advisory        * Preserved uncertainty
-```
 
-## 2. Server Side Execution Boundary
+---
 
-A core security and resource constraint of SmartCropVision is that production neural network weights execute exclusively on the backend server.
-* The browser never downloads PyTorch or YOLO weight files.
-* AgriRover firmware never stores convolutional checkpoints.
-* ESP8266 microcontrollers only transmit sensor telemetry and receive plain text advisory summaries.
-* XiaoZhi voice interfaces interact through the Model Context Protocol (MCP) by querying backend endpoints.
+## 3. Computer Vision Multi-Tier Cascade
 
-This design guarantees that model weights cannot be exfiltrated through client inspection, reduces edge device hardware costs, and prevents mobile browser memory exhaustion.
+### Tier 1: Universal Foliar Classification (EfficientNetV2-S)
+* **Architecture:** EfficientNetV2-S initialized with ImageNet-1k weights and fine-tuned on 38 botanical classes.
+* **Input Resolution:** $256 \times 256 \times 3$ normalized with standard ImageNet mean and variance.
+* **Accuracy:** **95.13% Top-1 Test Accuracy** | **Macro F1: 0.9354**.
+* **Confidence Calibration:** Applies post-training temperature scaling ($T = 1.42$). Uncalibrated deep networks often assign $>99\%$ probability to out-of-distribution inputs; temperature scaling flattens overconfident logits, yielding an Expected Calibration Error (ECE) of **0.0803**.
 
-## 3. The 3 Tier Vision Pipeline
+### Tier 2: Spatial Canopy Localization (YOLO PlantDoc)
+* **Architecture:** Ultralytics YOLO11 nano fine-tuned on the 2,581 Pascal VOC image-annotation pairs of the PlantDoc benchmark.
+* **Input Resolution:** $640 \times 640$ letterboxed tensor.
+* **Validation mAP@50:** **0.3362** | **Validation mAP@50:95:** **0.2361**.
+* **Zero-Hallucination Policy:** Healthy leaves produce strictly zero bounding boxes. The model never fabricates lesion boxes where no pathological target exists.
 
-Unlike conventional agricultural models that force a single network to perform diagnosis, boundary detection, and pixel segmentation simultaneously, SmartCropVision partitions computer vision into three distinct mathematical tasks:
+### Tier 3: Sub-Pixel Foliar Tissue Segmentation (Mobile-UNet)
+* **Architecture:** Custom lightweight Mobile-UNet with depthwise separable convolutions (total size: **1.90 MB**).
+* **Objective:** Segments input foliage into 3 distinct pixel classes:
+  1. Class 0: Background / Non-leaf artifacts
+  2. Class 1: Healthy foliar tissue
+  3. Class 2: Necrotic lesion / fungal chlorosis
+* **Metrics:** **0.7485 Mean IoU** | **0.8412 Dice Score**.
+* **Foliar Damage Calculation:** Automatically computes:
+  $$\text{Foliar Damage \%} = \frac{\sum \text{Lesion Pixels}}{\sum \text{Healthy Pixels} + \sum \text{Lesion Pixels}} \times 100$$
 
-### Tier 1: Universal Plant Pathology Classification
-* **Model**: EfficientNetV2 S
-* **Input**: 256x256 normalized RGB tensor
-* **Output**: Softmax probability distribution across 38 canonical classes
-* **Function**: Answers the question What is the botanical identity and pathology of this leaf?
-* **Key Evidence**: Test Top 1 Accuracy of 95.13% and Macro F1 of 0.9354 with Expected Calibration Error of 0.0803.
+### 9-Stage Explainability Pipeline (Grad-CAM)
+* Dynamically resolves the final convolutional layer of EfficientNetV2-S (`conv_head`).
+* Computes gradients of the target class score with respect to feature activation maps.
+* Renders 9 visual inspection stages: Input foliage $\rightarrow$ RGB channel distribution $\rightarrow$ Preprocessed normalized tensor $\rightarrow$ Feature activation collage $\rightarrow$ Raw gradient heatmap $\rightarrow$ Thresholded attention mask $\rightarrow$ Alpha-blended Grad-CAM overlay $\rightarrow$ Spatial bounding overlay $\rightarrow$ Diagnostic summary card.
 
-### Tier 2: Spatial Specimen & Lesion Detection
-* **Models**: YOLO PlantDoc (Specimen foliage) and YOLOv8n Lesions (Granular spots)
-* **Input**: 640x640 letterbox tensor
-* **Output**: Normalized bounding coordinates, class labels, and confidence scores
-* **Function**: Answers the question Where are the individual leaves located and where are the necrotic spots?
-* **Separation of Semantics**: Whole leaf boundaries (emerald layer) and granular necrotic foci (coral layer) are processed independently to prevent misrepresenting leaf outlines as disease spots.
+---
 
-### Tier 3: Sub Pixel Foliar Segmentation
-* **Model**: Mobile UNet
-* **Input**: 256x256 RGB tensor
-* **Output**: 3 class pixel mask (Class 0: Background, Class 1: Healthy Foliage, Class 2: Necrotic Lesions)
-* **Function**: Answers the question Exactly which pixels contain diseased tissue?
-* **Metric Formulation**: Foliar Damage Percentage = (Lesion Pixels / Leaf Pixels) * 100.0. If segmentation is unavailable, the system outputs Unavailable rather than an invented zero percentage.
+## 4. Environmental Intelligence & Agro-Climatic Recommender
 
-## 4. Nine Stage Explainability Engine
+### Multi-Point Physical Sensing
+The Crop Intelligence node continuously aggregates:
+* **Temperature & Relative Humidity (DHT11):** Computes atmospheric vapor pressure deficit and Rothfusz Heat Index.
+* **Capacitive Soil Moisture Probe (v1.2):** High-frequency analog sensing impervious to direct electrochemical corrosion.
+* **Raindrop Presence Sensor (YL-83):** Distinguishes between dry canopy, light drizzle, and heavy rainfall.
+* **Water Depth Probe:** Measures ground puddle depth to flag waterlogging.
+* **NEO-6M GPS Module:** Tags environmental observations with latitude, longitude, and altitude for geospatial field mapping.
 
-To satisfy agricultural trust requirements and prevent black box misdiagnoses, the backend executes nine distinct computational stages for explainability requests:
+### Random Forest Crop Recommendation Model
+* **Dataset:** 2,200 curated field records across 22 crop types (Rice, Maize, Chickpea, Kidney Beans, Pigeonpeas, Mothbeans, Mungbean, Blackgram, Lentil, Pomegranate, Banana, Mango, Grapes, Watermelon, Muskmelon, Apple, Orange, Papaya, Coconut, Cotton, Jute, Coffee).
+* **Features:** Nitrogen (N), Phosphorus (P), Potassium (K), Temperature, Humidity, Soil pH, and Rainfall.
+* **Accuracy:** **99.32% test accuracy** on stratified 5-fold cross-validation.
+* **Output:** Recommended primary cultivar with confidence score and ranked runner-up alternatives.
 
-1. **Stage 1: Specimen Ingestion & Quality Audit** → Decodes image bytes, assesses Laplacian focus variance, and verifies foliage greenness index.
-2. **Stage 2: Color Standardization** → Bilinear interpolation to 256x256 with RGB color space validation.
-3. **Stage 3: Tensor Formulation** → ImageNet channel normalization producing [1, 3, 256, 256] Float32 tensors.
-4. **Stage 4: Intermediate Activation Extraction** → Extracts feature maps from early convolutional layers capturing leaf venation and textures.
-5. **Stage 5: Botanical Grad CAM** → Backpropagates gradients from the top predicted logit to the final convolutional feature maps, producing saliency heatmaps.
-6. **Stage 6: Softmax Uncertainty Projection** → Calculates Shannon entropy and top 1 versus top 2 prediction margin to isolate ambiguous samples.
-7. **Stage 7: Spatial Detection Breakdown** → Renders verified YOLO bounding boxes with explicit non zero validation.
-8. **Stage 8: Foliar Damage Index** → Computes necrotic pixel ratio from clean Mobile UNet semantic masks.
-9. **Stage 9: Integrated Agronomic Decision Synthesis** → Merges multi modal telemetry with computer vision evidence into grower advisory.
+---
 
-## 5. Concurrency and Thread Safety
+## 5. Hardware Interface & Telemetry Flow
 
-Inference invocations on persistent devices (such as Apple Silicon MPS or NVIDIA CUDA) are wrapped in explicit Python threading locks. This guarantees that simultaneous user requests or asynchronous sensor streams cannot cause GPU memory allocation collisions or corrupt intermediate feature maps. Uploaded image payloads are capped at 15 MB with decompression bomb protection limiting maximum decoded pixels to 16,000,000.
+The hardware stack is partitioned into distinct modular subsystems:
+
+1. **AgriRover Chassis Controller:**
+   * Microcontroller: ESP32 NodeMCU.
+   * Motor Driver: L293D / L298N Dual H-Bridge driving four high-torque DC geared motors.
+   * Power Source: 12V 3S Li-ion battery pack with LM2596 buck converters delivering isolated 5V logic rails.
+2. **Crop Intelligence Sensor Node:**
+   * Microcontroller: ESP32 Dev Module.
+   * Display: 16x2 Character LCD driven over I2C (PCF8574 adapter at `0x27` or `0x3F`).
+   * LCD Renders 4 rotating telemetry screens with custom glyphs (degree symbol, checkmark, warning alert, and water drop).
+3. **Canopy Inspection Robotic Arm:**
+   * Microcontroller: Arduino Nano.
+   * Servo Driver: PCA9685 16-channel 12-bit PWM I2C breakout controlling 4 MG996R / SG90 servos for multi-angle under-canopy camera orientation.
+4. **Field Camera Gateway:**
+   * Camera Module: ESP32-CAM with OV2640 sensor streaming JPEG frames over authenticated WebSocket (`/api/v1/camera/ws`) or HTTP multipart upload.

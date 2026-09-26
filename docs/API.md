@@ -1,8 +1,8 @@
-# SmartCropVision REST & WebSocket API Specification
+# AI Powered Crop Intelligence Rover REST & WebSocket API Specification
 
 ## 1. Gateway Overview
 
-The SmartCropVision backend provides REST endpoints and telemetry streams built with FastAPI. All inference endpoints operate on the server side and support request tracking via unique identifiers (`request_id`).
+The AI Powered Crop Intelligence Rover backend provides REST endpoints and telemetry streams built with FastAPI. All inference endpoints operate on the server side and support request tracking via unique identifiers (`request_id`).
 
 * **Base URL**: `http://localhost:8000`
 * **API Version**: `v1` (`/api/v1`)
