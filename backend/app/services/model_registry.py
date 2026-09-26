@@ -1,5 +1,5 @@
 """
-Model Registry & Provenance Audit Service for SmartCropVision.
+Model Registry & Provenance Audit Service for AI Powered Crop Intelligence Rover.
 Maintains versioned catalog of all vision classifiers, YOLO detectors,
 segmentation backbones, and agro-climatic crop recommendation artifacts.
 
@@ -21,7 +21,7 @@ import logging
 from backend.app.config import settings
 from backend.app.schemas.diagnosis import ModelRegistryEntry, ModelRegistryResponse
 
-logger = logging.getLogger("smartcropvision.registry")
+logger = logging.getLogger("crop_rover.registry")
 
 
 class ModelRegistry:

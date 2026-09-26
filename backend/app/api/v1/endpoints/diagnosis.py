@@ -1,7 +1,15 @@
 """
-Image-Based Plant Intelligence Inference Endpoint.
-Accepts multipart leaf photograph uploads, coordinates server-side validation,
-triggers hierarchical ML vision cascade, and returns typed agronomic diagnosis.
+AI Powered Crop Intelligence Rover  -  Core Vision Inference Endpoint.
+
+This module exposes the REST API entrypoint for deep-learning plant pathology:
+1. Multipart upload ingestion with stream size bounds and MIME verification.
+2. Provenance authentication for ESP32-CAM hardware capture tokens.
+3. Multi-tier neural inference orchestration (Tier 1 Classification, Tier 2 YOLO Lesion
+   Localization, Tier 3 Mobile-UNet Segmentation).
+4. Bidirectional state synchronization: links incoming vision diagnoses with real-time
+   agronomic sensor telemetry (soil moisture, temperature, humidity, VPD).
+5. Comprehensive exception handling mapping botanical validation errors, missing model
+   weights, and runtime GPU/CPU exceptions to structured, actionable JSON error envelopes.
 """
 
 from typing import Optional
@@ -10,7 +18,7 @@ import logging
 from fastapi import APIRouter, Request, UploadFile, File, Form, HTTPException, status
 from fastapi.responses import JSONResponse
 
-logger = logging.getLogger("smartcropvision.diagnosis")
+logger = logging.getLogger("crop_rover.diagnosis")
 
 from backend.app.services.inference_service import inference_engine
 from backend.app.services.esp32_gateway import esp32_gateway
@@ -29,7 +37,7 @@ router = APIRouter()
         500: {"model": ErrorResponse, "description": "Internal model execution or inference failure"}
     },
     summary="Diagnose Plant Leaf Image",
-    description="Upload a plant leaf photograph or provide an authenticated ESP32-CAM capture ID to execute the 3-Tier SmartCropVision pipeline."
+    description="Upload a plant leaf photograph or provide an authenticated ESP32-CAM capture ID to execute the 3-Tier AI Powered Crop Intelligence Rover pipeline."
 )
 async def diagnose_leaf_image(
     request: Request,
@@ -54,11 +62,15 @@ async def diagnose_leaf_image(
     6. Incorporates optional paired multimodal context with explicit modality traceability.
     7. Formulates grounded agronomic action advisory and returns payload.
     """
+    # Generate or extract a correlation tracking ID for distributed request tracing
     request_id = getattr(request.state, "request_id", None) or uuid.uuid4().hex[:12]
     camera_metadata = None
     validated_source = source or "browser_upload"
 
-    # Authenticate ESP32 capture provenance if claimed
+    # Step 1: Hardware Provenance Authentication
+    # If an ESP32-CAM capture ID is passed, consume and verify its one-time cryptographic token
+    # from the ring-buffer cache. This prevents spoofed camera telemetry and allows relaxed
+    # exposure/blur bounds appropriate for low-cost OV2640 agricultural camera sensors.
     if esp32_capture_id:
         provenance = esp32_gateway.verify_and_consume_provenance(esp32_capture_id)
         if provenance:
@@ -71,7 +83,8 @@ async def diagnose_leaf_image(
                 "camera_source": "ESP32-CAM · OV2640"
             }
         else:
-            # Stale or unverified capture ID - do not permit esp32_cam quality policy bypass
+            # Stale or unverified capture ID - fall back to strict browser validation policy
+            logger.warning(f"Unverified or expired esp32_capture_id: {esp32_capture_id}; falling back to browser policy")
             validated_source = "browser_upload"
 
     if file is not None and file.filename:
@@ -109,7 +122,10 @@ async def diagnose_leaf_image(
             }
         )
 
-    # Enrich multimodal context with live field sensors if explicitly requested or if authentic esp32_cam capture
+    # Step 2: IoT Environmental Telemetry Injection
+    # Enrich multimodal diagnostic context with live field sensors if explicitly requested
+    # or if authentic esp32_cam capture arrives without manual ambient metrics.
+    # This correlates visual foliar symptoms with microclimatic triggers (e.g., high humidity + fungal blight).
     if attach_iot_context or (validated_source == "esp32_cam" and (temperature_c is None or humidity_pct is None)):
         try:
             from backend.app.api.v1.endpoints.iot import _latest_observation
@@ -119,10 +135,10 @@ async def diagnose_leaf_image(
                     temperature_c = s.temperature_c
                 if humidity_pct is None:
                     humidity_pct = s.humidity_pct
-        except Exception:
-            pass
+        except Exception as iot_err:
+            logger.debug(f"Telemetry auto-injection bypassed: {iot_err}")
 
-    # Build optional multimodal context dict if provided
+    # Build optional multimodal context dict if provided by client or telemetry
     multimodal_context = None
     if any([crop_context, temperature_c is not None, humidity_pct is not None, symptom_notes]):
         multimodal_context = {
@@ -135,6 +151,7 @@ async def diagnose_leaf_image(
         }
 
     try:
+        # Step 3: Trigger Multi-Tier Vision Inference Cascade
         response = inference_engine.run_inference(
             file_bytes=file_bytes,
             filename=filename,
@@ -147,7 +164,9 @@ async def diagnose_leaf_image(
             camera_metadata=camera_metadata
         )
 
-        # Synchronize diagnosis into unified field observation & enrich with disease knowledge
+        # Step 4: Synchronize Diagnosis into Unified Field Observation State & Agronomic Knowledge Engine
+        # Cross-reference the vision diagnosis with the live microclimate to calculate disease favorability
+        # indices and populate biological remediation protocols.
         try:
             from backend.app.api.v1.endpoints.iot import _latest_observation, ws_manager
             from backend.app.services.crop_service import crop_service
@@ -183,7 +202,7 @@ async def diagnose_leaf_image(
                 if dk:
                     response.disease_knowledge = dk
 
-                # Synchronize vision result into unified field observation
+                # Synchronize vision result into unified field observation ring buffer
                 _latest_observation.crop_vision = {
                     "crop_name": diag.crop if diag else "Unknown",
                     "disease_name": diag.disease_common_name if diag else "Unknown",
@@ -197,6 +216,9 @@ async def diagnose_leaf_image(
 
         return response
     except ImageValidationError as ive:
+        # Botanical and photometric validation rejections:
+        # Handles low-quality frames, severely out-of-domain textures, non-leaf inputs, or corrupted headers.
+        # Emits a 400 Bad Request with a structured recovery hint for the user.
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
@@ -208,6 +230,10 @@ async def diagnose_leaf_image(
             }
         )
     except RuntimeError as rte:
+        # Model loading or runtime availability failure:
+        # Indicates weight checkpoint files (.pt, .h5, .onnx) are absent, corrupted, or unmounted.
+        # Returns a 503 Service Unavailable so cloud ingress proxies and health monitors can route safely.
+        logger.error(f"Inference service unavailable for request {request_id}: {rte}")
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={
@@ -219,6 +245,10 @@ async def diagnose_leaf_image(
             }
         )
     except Exception as exc:
+        # Unhandled execution fault:
+        # Traps PyTorch/TensorFlow internal memory allocation or unexpected tensor shape errors.
+        # Mask internal stack traces from client exposure while logging full trace for ops debugging.
+        logger.exception(f"Unexpected inference pipeline failure for request {request_id}: {exc}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={

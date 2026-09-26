@@ -1,5 +1,5 @@
 """
-Image Quality Assessment & Foliar Preflight Module for SmartCropVision.
+Image Quality Assessment & Foliar Preflight Module for AI Powered Crop Intelligence Rover.
 Evaluates uploaded leaf photography before expensive neural inference:
   • Laplacian variance for focal and motion blur detection
   • Illumination mean and dynamic range for exposure extremes

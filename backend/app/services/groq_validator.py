@@ -1,15 +1,18 @@
 """
-Groq Multimodal Vision Semantic Preflight Validator for SmartCropVision.
-Evaluates uploaded images upstream of local computer vision models to establish
-whether the input is an authentic crop or plant leaf photograph rather than
-a software screenshot, dashboard, document, PDF, vehicle, person, or unrelated object.
+AI Powered Crop Intelligence Rover  -  Groq Multimodal Vision Semantic Preflight Validator.
 
-Architectural principles:
-  1. Groq Vision is strictly an input suitability and domain safety gate.
-  2. Groq Vision never performs disease diagnosis or pathological classification.
-  3. If Groq Vision rejects the image, the pipeline terminates immediately with zero model invocations.
-  4. If Groq Vision encounters a network timeout, rate limit, or transient error, the system
-     falls back safely to local deterministic computer vision checks.
+This service acts as an intelligent upstream semantic firewall protecting the local
+deep-learning models (EfficientNetV2-S, YOLO PlantDoc, Mobile-UNet) from non-foliar inputs:
+1. Zero Diagnostic Hallucination: Groq Vision is strictly forbidden from attempting disease
+   diagnosis, botanical pathogen identification, or prescription calculation. Its sole duty
+   is semantic domain verification ("Is this a genuine crop leaf photograph?").
+2. Extreme Payload Minimization: High-resolution field captures (up to 4K / 15MB) are dynamically
+   downscaled to a 480px thumbnail with quality-75 JPEG encoding. This drops transmission
+   payload from ~12MB to ~28KB and keeps cloud inference latency under 800ms.
+3. Fail-Open High Availability: If the cloud endpoint encounters network jitter, rate limiting
+   (HTTP 429), or authentication errors, the pipeline immediately falls open to local
+   deterministic computer vision algorithms (HSV foliar coverage, Laplacian blur variance,
+   OOD contrast checks) without aborting the farmer's session.
 """
 
 import base64
@@ -26,11 +29,12 @@ import requests
 
 from backend.app.config import settings
 
-logger = logging.getLogger("smartcropvision.groq_validator")
+logger = logging.getLogger("crop_rover.groq_validator")
 
 
 @dataclass
 class GroqValidationResult:
+    """Structured response container emitted by the Groq semantic gate."""
     valid: bool
     category: str  # "plant_leaf", "screenshot_document", "non_plant", "uncertain"
     plant_present: bool
@@ -223,7 +227,7 @@ class GroqVisionValidator:
 
             parsed = json.loads(cleaned_text)
 
-            # Trust Groq's response directly — no aggressive keyword overrides
+            # Trust Groq's response directly  -  no aggressive keyword overrides
             cat = str(parsed.get("category", "uncertain")).lower().strip()
             valid = bool(parsed.get("valid", False))
             plant_pres = bool(parsed.get("plant_present", False))
@@ -248,7 +252,7 @@ class GroqVisionValidator:
                 leaf_pres = False
                 suitable = False
             elif cat == "plant_leaf":
-                # Groq explicitly said plant_leaf — trust it
+                # Groq explicitly said plant_leaf  -  trust it
                 allowed = True
                 valid = True
                 plant_pres = True

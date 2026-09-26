@@ -366,7 +366,7 @@ def validate_plant_image(
     is_screenshot_or_doc = signals.get("is_screenshot_or_document", False)
 
     # ══════════════════════════════════════════════════════════════════════════
-    # PHASE 0: GROQ MULTIMODAL VISION — PRIMARY AUTHORITATIVE GATE
+    # PHASE 0: GROQ MULTIMODAL VISION  -  PRIMARY AUTHORITATIVE GATE
     # Groq Vision is the fast, accurate semantic gatekeeper.
     # When Groq responds, its verdict is FINAL. Local CV does NOT override it.
     # Local CV only activates when Groq is offline, rate-limited, or timed out.
@@ -405,7 +405,7 @@ def validate_plant_image(
                     else:
                         quality_desc = "Groq Vision Verified (ESP32-CAM OV2640)"
 
-                # Return VALID immediately — Groq is authoritative
+                # Return VALID immediately  -  Groq is authoritative
                 return DomainValidationResult(
                     validation_status="VALID_PLANT_IMAGE",
                     validation_reason=reason_desc,
@@ -461,7 +461,7 @@ def validate_plant_image(
             # (category == "uncertain")
 
     except Exception as groq_err:
-        pass  # Groq unavailable — fall back to local CV
+        pass  # Groq unavailable  -  fall back to local CV
 
     # 1. Hardware Object Detection Signal (YOLO PlantDoc genuine positive evidence)
     detector_leaf_boxes = 0
@@ -552,7 +552,7 @@ def validate_plant_image(
     # ── LOCAL CV FALLBACK: only reached when Groq is offline / rate-limited ──
     # Note: if groq_responded is True, execution never reaches here (returned above).
 
-    # A4. Screenshot / document — local CV tiebreaker (Groq offline fallback only)
+    # A4. Screenshot / document  -  local CV tiebreaker (Groq offline fallback only)
     if is_screenshot_or_doc:
         # Check if the screen displays a botanical leaf photo
         screen_foliage_present = bool(
@@ -583,7 +583,7 @@ def validate_plant_image(
     )
     has_esp32_foliage = bool(is_esp32 and has_botanical_foliage)
 
-    if not has_detector_confirmation and not has_esp32_foliage:
+    if not has_detector_confirmation and not has_botanical_foliage:
         if blur < 20.0 and has_botanical_foliage:
             return DomainValidationResult(
                 validation_status="LOW_QUALITY_IMAGE",
@@ -614,11 +614,11 @@ def validate_plant_image(
 
     # ══════════════════════════════════════════════════════════════════════════
     # PHASE B: LOW QUALITY OR UNCERTAIN PLANT SPECIMENS
-    # (Only reached when Groq is offline and YOLO detector confirmed a leaf or ESP32 foliage detected)
+    # (Only reached when Groq is offline and YOLO detector confirmed a leaf or botanical foliage detected)
     # ══════════════════════════════════════════════════════════════════════════
-    # Foliage presence: trust detector confirmation or authentic ESP32 foliar signature
+    # Foliage presence: trust detector confirmation or authentic foliar signature
     has_foliar_presence = bool(
-        has_detector_confirmation or has_esp32_foliage
+        has_detector_confirmation or has_botanical_foliage
     )
 
     # B1. Severe underexposure (only if image is virtually pitch black and has zero foliage)
@@ -651,14 +651,14 @@ def validate_plant_image(
             inference_allowed=False
         )
 
-    # B3. Severe motion or focal blur (only if completely unresolvable and no foliage)
-    if blur < 6.0 and not has_foliar_presence:
+    # B3. Severe motion or focal blur
+    if blur < 6.0:
         return DomainValidationResult(
             validation_status="LOW_QUALITY_IMAGE",
             validation_reason="Image quality is insufficient for crop diagnosis. Please upload a focused photograph.",
             validation_confidence=0.80,
-            plant_presence=False,
-            leaf_presence=False,
+            plant_presence=has_foliar_presence,
+            leaf_presence=has_foliar_presence,
             image_quality="Severely Blurred",
             is_inference_allowed=False,
             telemetry=signals,
@@ -667,7 +667,7 @@ def validate_plant_image(
         )
 
     # B4. Insufficient detector support (Groq offline fallback)
-    if not has_detector_confirmation and not has_esp32_foliage:
+    if not has_detector_confirmation and not has_botanical_foliage:
         return DomainValidationResult(
             validation_status="VALIDATION_UNCERTAIN",
             validation_reason="Plant presence could not be confirmed with certainty. "

@@ -1,5 +1,5 @@
 """
-Explainability and Botanical Attention Suite for SmartCropVision.
+Explainability and Botanical Attention Suite for AI Powered Crop Intelligence Rover.
 Implements:
 1. Genuine Grad-CAM Saliency Maps computed from active neural network backbones.
 2. Convolutional Feature Activation Extraction (early/mid-layer visual representations).
@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 
 from backend.app.schemas.diagnosis import ExplainabilityStage, ExplainabilityPipeline
 
-logger = logging.getLogger("smartcropvision.explainability")
+logger = logging.getLogger("crop_rover.explainability")
 
 # ── Grad-CAM Implementation ──────────────────────────────────────────────────
 class GradCAM:
