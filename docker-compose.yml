@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: smartcropvision-api
+    container_name: crop-intelligence-rover-api
     restart: unless-stopped
     ports:
       - "${PORT:-8000}:8000"

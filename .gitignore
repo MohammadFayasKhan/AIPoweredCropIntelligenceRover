@@ -1,5 +1,6 @@
 # Agent workspace configs (local only)
 .agents/
+.kilo/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

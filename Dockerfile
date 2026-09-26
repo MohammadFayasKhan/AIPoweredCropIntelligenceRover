@@ -1,5 +1,5 @@
 # ==============================================================================
-# SmartCropVision Production Inference Container
+# AI Powered Crop Intelligence Rover Production Inference Container
 # Lightweight, security-hardened container for CPU and CUDA GPU deployment
 # ==============================================================================
 

@@ -1,5 +1,5 @@
 {
-  "platform": "SmartCropVision",
+  "platform": "AI Powered Crop Intelligence Rover",
   "release_tag": "v2.2.0",
   "timestamp": "2026-09-10T19:15:00Z",
   "environment": "Kaggle Multi-GPU T4 x2 Authenticated Run + Local Production Runtime",
