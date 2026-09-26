@@ -39,10 +39,10 @@
 | **Lead Organization** | **Qualcomm Inc.** |
 | **Theme** | **Disaster Management** |
 | **PS Category** | **Hardware** |
-| **Team ID** | **SIH-H-B2-048** |
-| **Team Name** | **Innovex** |
+| **Team ID** | **173712​** |
+| **Team Name** | **Innovvex26** |
 | **Azure Deployed Link** | **[`https://aipoweredcropintelligencerover.dpdns.org`](https://aipoweredcropintelligencerover.dpdns.org)** |
-| **Live Video Drive Link** | **[`http://tinyurl.com/projectgithubrepositorylink`](http://tinyurl.com/projectgithubrepositorylink)** |
+| **Live Video Drive Link** | **[`https://tinyurl.com/projectgithubrepositorylink`](http://tinyurl.com/projectgithubrepositorylink)** |
 | **GitHub Repository** | **[`https://github.com/MohammadFayasKhan/AIPoweredCropIntelligenceRover`](https://github.com/MohammadFayasKhan/AIPoweredCropIntelligenceRover)** |
 | **Technical Documentation** | **[`docs/`](docs/)** |
 
