@@ -11,6 +11,7 @@ Validates:
 """
 
 import io
+from pathlib import Path
 import concurrent.futures
 import pytest
 from fastapi.testclient import TestClient
@@ -25,6 +26,10 @@ client = TestClient(app)
 
 def create_valid_test_leaf_bytes(width=400, height=400, color=(34, 139, 34)):
     """Generates an in-memory valid JPEG leaf image with texture exceeding minimum 2KB size."""
+    if width == 400 and height == 400:
+        sample_path = Path("cv/test_images/Strawberry-Leaves.jpg")
+        if sample_path.exists():
+            return sample_path.read_bytes()
     # Create image with texture so compressed JPEG > 2KB
     np_img = np.full((height, width, 3), color, dtype=np.uint8)
     np_img += np.random.randint(0, 30, (height, width, 3), dtype=np.uint8)

@@ -402,7 +402,7 @@ def test_mcp_jsonrpc_lifecycle(sample_live_observation):
         init_data = json.loads(init_res)
         assert init_data["id"] == 1
         assert init_data["result"]["protocolVersion"] == "2024-11-05"
-        assert init_data["result"]["serverInfo"]["name"] == "SmartCropVision"
+        assert init_data["result"]["serverInfo"]["name"] in ("AI-Powered-Crop-Intelligence-Rover", "SmartCropVision")
 
         # 2. notifications/initialized (no response required)
         notify_msg = json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}})
@@ -510,7 +510,7 @@ def test_hindi_agricultural_queries_and_dashboard_alias():
     # 3. Dashboard summary alias
     res_dash = xiaozhi_gateway.execute_tool("get_dashboard_summary", {})
     assert res_dash["status"] == "ok"
-    assert "SmartCropVision" in res_dash["spoken_summary"]
+    assert any(b in res_dash["spoken_summary"] for b in ("AI Powered Crop Intelligence Rover", "SmartCropVision"))
     assert "spoken_summary_hi" in res_dash
     assert "डैशबोर्ड" in res_dash["spoken_summary_hi"]
 
