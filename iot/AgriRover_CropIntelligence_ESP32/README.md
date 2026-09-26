@@ -1,4 +1,4 @@
-# 🌾 SmartCropVision & AgriRover — Crop Intelligence Sensor Node
+# 🌾 AI Powered Crop Intelligence Rover  -  Crop Intelligence Sensor Node
 ## 16x2 Character LCD Edition (I2C / PCF8574 Backpack)
 
 **Firmware Version:** `v3.0.0-PROD`  
@@ -48,34 +48,34 @@ The firmware creates 4 custom 5x8 characters:
 
 ### 4. Non-Blocking Screen Carousel Sequence (~4s per screen)
 
-- **Screen 0 — Canopy Atmosphere & Root Moisture:**
+- **Screen 0  -  Canopy Atmosphere & Root Moisture:**
   ```text
   Row 0: T:28.4°C H:72%
   Row 1: Soil:45% R:WET
   ```
-- **Screen 1 — Authoritative Crop Recommendation:**
+- **Screen 1  -  Authoritative Crop Recommendation:**
   ```text
   Row 0: [tick] RICE
   Row 1: Conf:94.0% [tick]OK
   ```
   *(If backend is unreachable: `[tick] NO CROP` / `AI: OFFLINE`)*
-- **Screen 2 — Disease & Pathogen Microclimate Alerts:**
+- **Screen 2  -  Disease & Pathogen Microclimate Alerts:**
   ```text
   Row 0: [alert]Anthracnose
   Row 1: HIGH        1/2
   ```
   *(If no disease risk: `[tick] ALL CLEAR` / `No disease risk`)*
-- **Screen 3 — Field Hydrology & Irrigation Advisory:**
+- **Screen 3  -  Field Hydrology & Irrigation Advisory:**
   ```text
   Row 0: Irrig: NOMINAL
   Row 1: Soil:45% W:0mm
   ```
-- **Screen 4 — GPS & Connectivity Diagnostics:**
+- **Screen 4  -  GPS & Connectivity Diagnostics:**
   ```text
   Row 0: GPS: FIX 10 SAT
   Row 1: WiFi:OK API:OK
   ```
-- **Screen 5 — Production Node & Observation Identification:**
+- **Screen 5  -  Production Node & Observation Identification:**
   ```text
   Row 0: SCV NODE v3.0
   Row 1: Obs: #OBS-12345
@@ -85,18 +85,18 @@ The firmware creates 4 custom 5x8 characters:
 
 ### 5. Backend Deployment Targets & Auto-Failover Modes
 
-- **Mode 0 (`TARGET_MODE 0` — Public Production Cloud [Default / Primary]):**
+- **Mode 0 (`TARGET_MODE 0`  -  Public Production Cloud [Default / Primary]):**
   - **Endpoint:** `https://aipoweredcropintelligencerover.dpdns.org/predict/compact`
   - **Transport:** HTTPS with DigiCert Global Root G2 certificate validation (with resilient fallback to TLS insecure if system clock unset)
   - **Use Case:** Direct outdoor/field operations connecting straight to the live public web dashboard.
 
-- **Mode 1 (`TARGET_MODE 1` — Local Mac Development):**
+- **Mode 1 (`TARGET_MODE 1`  -  Local Mac Development):**
   - **Endpoint:** `http://172.20.10.4:8000/predict/compact`
   - **Transport:** Fast plaintext HTTP
   - **Subnet Auto-Discovery:** Automatically scans `172.20.10.x` hotspot subnet to detect the Mac's IP dynamically if it changes.
   - **Use Case:** Local paired development and rapid debugging on Mac.
 
-- **Mode 2 (`TARGET_MODE 2` — Smart Dual-Mode Auto-Failover):**
+- **Mode 2 (`TARGET_MODE 2`  -  Smart Dual-Mode Auto-Failover):**
   - Routes telemetry to the **Public Production Cloud (`https://aipoweredcropintelligencerover.dpdns.org`) as PRIMARY**.
   - If the public cloud is ever unreachable (e.g., loss of cellular internet), it automatically fails over to the Local Mac dev server (`http://172.20.10.4:8000`).
   - Guarantees zero telemetry loss across network transitions.

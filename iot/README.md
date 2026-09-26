@@ -178,7 +178,7 @@ All endpoints return HTTP 200 with standard headers (`Cache-Control: no-cache`).
 
 ### 1. Inbound Telemetry & Intelligence Data Flow
 ```
-Field Crop Canopy → AgriRover Mobile Chassis → ESP32 Dev Module Controller → Ground Sensors (DHT11, Capacitive Soil v1.2, Raindrop, Water Level) + GPS NEO-6M + OV2640 Camera → FastAPI IoT Gateway (/api/v1/iot/observation) → Environmental Risk Engine + Crop Intelligence Recommendation → 3-Tier Crop Vision Inference (EfficientNetV2-S + YOLO11 Nano + Mobile UNet) → Live WebSocket Broadcast (/api/v1/iot/live-ws) → SmartCropVision Dashboard + 2.4-inch TFT LCD Status HUD + n8n Automated Webhooks + XiaoZhi Conversational Assistant
+Field Crop Canopy → AgriRover Mobile Chassis → ESP32 Dev Module Controller → Ground Sensors (DHT11, Capacitive Soil v1.2, Raindrop, Water Level) + GPS NEO-6M + OV2640 Camera → FastAPI IoT Gateway (/api/v1/iot/observation) → Environmental Risk Engine + Crop Intelligence Recommendation → 3-Tier Crop Vision Inference (EfficientNetV2-S + YOLO PlantDoc + Mobile U-Net) → Live WebSocket Broadcast (/api/v1/iot/live-ws) → AI Powered Crop Intelligence Rover Dashboard + 16x2 I2C LCD Status HUD + n8n Automated Webhooks + XiaoZhi Conversational Assistant
 ```
 
 ### 2. Reverse Physical Actuation & Teleoperation Flow

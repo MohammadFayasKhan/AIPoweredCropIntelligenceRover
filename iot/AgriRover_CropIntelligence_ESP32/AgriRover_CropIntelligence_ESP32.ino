@@ -1,6 +1,6 @@
 /*
  * ═══════════════════════════════════════════════════════════════════════
- *   Smart Plant Intelligence System — ESP32 Dev Module Firmware v3.0
+ *   Smart Plant Intelligence System  -  ESP32 Dev Module Firmware v3.0
  *   16x2 I2C Character LCD Edition (HW-61 / PCF8574 Backpack)
  *   Target Board: ESP32 Dev Module (ESP32-WROOM-32 / 30-Pin NodeMCU ESP32)
  * ═══════════════════════════════════════════════════════════════════════
@@ -56,14 +56,14 @@
  *   GND           ────────── GND
  *
  * ─────────────────────────────────────────────────────────────────────
- *   REQUIRED LIBRARIES — install via Arduino IDE Library Manager
+ *   REQUIRED LIBRARIES  -  install via Arduino IDE Library Manager
  * ─────────────────────────────────────────────────────────────────────
- *   1. WiFi               — Built-in with ESP32 board package by Espressif
- *   2. HTTPClient         — Built-in with ESP32 board package
- *   3. ArduinoJson        — v6.x or v7.x by Benoit Blanchon
- *   4. DHT sensor library — by Adafruit
- *   5. LiquidCrystal I2C  — by Frank de Brabander or Marco Schwartz
- *   6. TinyGPSPlus        — by Mikal Hart
+ *   1. WiFi                -  Built-in with ESP32 board package by Espressif
+ *   2. HTTPClient          -  Built-in with ESP32 board package
+ *   3. ArduinoJson         -  v6.x or v7.x by Benoit Blanchon
+ *   4. DHT sensor library  -  by Adafruit
+ *   5. LiquidCrystal I2C   -  by Frank de Brabander or Marco Schwartz
+ *   6. TinyGPSPlus         -  by Mikal Hart
  *
  * ═══════════════════════════════════════════════════════════════════════
  */
@@ -129,16 +129,16 @@ const char DIGICERT_ROOT_CA[] PROGMEM =
 "-----END CERTIFICATE-----\n";
 
 // ── Pin Definitions for ESP32 Dev Module ──────────────────────────────
-#define DHT_PIN 4 // GPIO 4  — DHT11 DATA
+#define DHT_PIN 4 // GPIO 4   -  DHT11 DATA
 #define DHT_TYPE DHT11
-#define SOIL_PIN 34    // GPIO 34 (ADC1_CH6) — Capacitive Soil Moisture AO
-#define WATER_PIN 35   // GPIO 35 (ADC1_CH7) — Water Level Sensor SIG
-#define RAIN_DO_PIN 39 // GPIO 39 (VN)       — Rain Sensor DO
-#define RAIN_AO_PIN 36 // GPIO 36 (VP)       — Rain Sensor AO
-#define GPS_RX_PIN 16  // GPIO 16 (RX2)      — GPS NEO-6M TX
-#define GPS_TX_PIN 17  // GPIO 17 (TX2)      — GPS NEO-6M RX
-#define I2C_SDA 21     // GPIO 21            — LCD SDA
-#define I2C_SCL 22     // GPIO 22            — LCD SCL
+#define SOIL_PIN 34    // GPIO 34 (ADC1_CH6)  -  Capacitive Soil Moisture AO
+#define WATER_PIN 35   // GPIO 35 (ADC1_CH7)  -  Water Level Sensor SIG
+#define RAIN_DO_PIN 39 // GPIO 39 (VN)        -  Rain Sensor DO
+#define RAIN_AO_PIN 36 // GPIO 36 (VP)        -  Rain Sensor AO
+#define GPS_RX_PIN 16  // GPIO 16 (RX2)       -  GPS NEO-6M TX
+#define GPS_TX_PIN 17  // GPIO 17 (TX2)       -  GPS NEO-6M RX
+#define I2C_SDA 21     // GPIO 21             -  LCD SDA
+#define I2C_SCL 22     // GPIO 22             -  LCD SCL
 
 // ── LCD I2C Configuration ─────────────────────────────────────────────
 #define LCD_I2C_ADDR 0x27 // Most HW-61 modules use 0x27. If blank, try 0x3F.
@@ -239,7 +239,7 @@ void lcdStatus(String line0, String line1);
 void setup() {
   Serial.begin(115200);
   delay(150);
-  Serial.println(F("\n\n=== Smart Plant Intelligence System — ESP32 v3.0 ==="));
+  Serial.println(F("\n\n=== Smart Plant Intelligence System  -  ESP32 v3.0 ==="));
 
   // 1. Hardware Pin & ADC Setup
   pinMode(RAIN_DO_PIN, INPUT);
@@ -628,7 +628,7 @@ void drawScreen() {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//   LCD SCREEN 0 — SENSOR READINGS
+//   LCD SCREEN 0  -  SENSOR READINGS
 // ══════════════════════════════════════════════════════════════════════
 void screenSensors() {
   /*
@@ -656,7 +656,7 @@ void screenSensors() {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//   LCD SCREEN 1 — CROP RECOMMENDATION
+//   LCD SCREEN 1  -  CROP RECOMMENDATION
 // ══════════════════════════════════════════════════════════════════════
 void screenCrop() {
   if (g_crop.length() == 0) {
@@ -695,7 +695,7 @@ void screenCrop() {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//   LCD SCREEN 2 — DISEASE ALERTS
+//   LCD SCREEN 2  -  DISEASE ALERTS
 // ══════════════════════════════════════════════════════════════════════
 void screenAlerts() {
   if (g_alertCount == 0) {
@@ -742,7 +742,7 @@ void screenAlerts() {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//   LCD SCREEN 3 — WATER LEVEL & DRAINAGE
+//   LCD SCREEN 3  -  WATER LEVEL & DRAINAGE
 // ══════════════════════════════════════════════════════════════════════
 void screenWater() {
   /*
@@ -761,7 +761,7 @@ void screenWater() {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-//   LCD SCREEN 4 — GPS LOCATION & STATUS
+//   LCD SCREEN 4  -  GPS LOCATION & STATUS
 // ══════════════════════════════════════════════════════════════════════
 void screenGps() {
   /*

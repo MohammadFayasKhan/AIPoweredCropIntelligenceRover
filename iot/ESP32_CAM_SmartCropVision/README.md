@@ -1,17 +1,17 @@
-# SmartCropVision ESP32-CAM Field Unit Firmware
+# AI Powered Crop Intelligence Rover ESP32-CAM Field Unit Firmware
 
 ## 1. Overview & System Architecture
 
-This directory contains the production Arduino firmware for the **SmartCropVision ESP32-CAM** field unit equipped with an **OV2640** camera sensor.
+This directory contains the production Arduino firmware for the **AI Powered Crop Intelligence Rover ESP32-CAM** field unit equipped with an **OV2640** camera sensor.
 
 ```
 ┌─────────────────────────┐          Outbound WSS / WS          ┌──────────────────────────┐
-│   ESP32-CAM + OV2640    │ ─────────────────────────────────>  │  SmartCropVision Backend │
-│  (Field Image Capture)  │   • Non-blocking WiFi & Backoff     │  (FastAPI + Model Hub)   │
+│   ESP32-CAM + OV2640    │ ─────────────────────────────────>  │ Crop Rover Backend       │
+│  (Field Image Capture)  │   • Non-blocking WiFi & Backoff     │ (FastAPI + Model Hub)    │
 │                         │   • Authentic Heartbeat Telemetry   │                          │
 │  [FRAMESIZE_QVGA (prev)]│   • Binary Preview Relay (SPRV)     │  • Preflight Validator   │
 │  [FRAMESIZE_VGA  (cap)] │   • High-Res Capture Dispatch (SCAP)│  • EfficientNetV2-S (T1) │
-└─────────────────────────┘                                     │  • YOLO26 PlantDoc (T2)  │
+└─────────────────────────┘                                     │  • YOLO PlantDoc (T2)    │
              ▲                                                  │  • Mobile-UNet Foliar(T3)│
              │                                                  └──────────────────────────┘
       Direct Local LAN                                                        ▲
@@ -82,7 +82,7 @@ Edit `config.h` with your environment parameters:
 #define WIFI_SSID             "Your_WiFi_Name"
 #define WIFI_PASSWORD         "Your_WiFi_Password"
 
-// SmartCropVision Backend Server
+// AI Powered Crop Intelligence Rover Backend Server
 #define BACKEND_HOST          "192.168.1.100"      // Mac/Server IP on local LAN
 #define BACKEND_PORT          8000                 // FastAPI server port
 #define BACKEND_WS_PATH       "/api/v1/esp32/device-ws"
@@ -127,7 +127,7 @@ IO0              ───────> GND  <── Jumper required for flashin
 Upon successful boot, the serial monitor will display:
 ```text
 ========================================================
-    SmartCropVision ESP32-CAM Production Firmware      
+    AI Powered Crop Intelligence Rover ESP32-CAM Firmware      
     Firmware Version : v1.0.0-prod
     Device ID        : esp32-cam-01
 ========================================================
@@ -136,7 +136,7 @@ Upon successful boot, the serial monitor will display:
 [WIFI] Connecting to configured network: Fayas
 [HTTP] Local fallback server running on port 81 (/stream, /capture, /status)
 [WS] Connecting outbound to gateway: 192.168.1.100:8000/api/v1/esp32/device-ws
-[WS] Connected to SmartCropVision gateway. Status: ONLINE
+[WS] Connected to Crop Rover gateway. Status: ONLINE
 ```
 
 ---
