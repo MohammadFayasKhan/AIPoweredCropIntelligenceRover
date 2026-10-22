@@ -202,8 +202,8 @@ async def diagnose_leaf_image(
                 if dk:
                     response.disease_knowledge = dk
 
-                # Synchronize vision result into unified field observation ring buffer
-                _latest_observation.crop_vision = {
+                # Synchronize vision result into unified field observation ring buffer & XiaoZhi
+                vision_dict = {
                     "crop_name": diag.crop if diag else "Unknown",
                     "disease_name": diag.disease_common_name if diag else "Unknown",
                     "confidence_pct": diag.confidence_pct if diag else 0.0,
@@ -211,6 +211,12 @@ async def diagnose_leaf_image(
                     "severity_level": diag.severity_level if diag else "Low",
                     "timestamp": response.timestamp
                 }
+                _latest_observation.crop_vision = vision_dict
+                try:
+                    from backend.app.services.xiaozhi_gateway import xiaozhi_gateway
+                    xiaozhi_gateway.update_crop_vision(vision_dict)
+                except Exception as xe:
+                    logger.debug(f"Failed to sync to xiaozhi_gateway: {xe}")
         except Exception as e:
             logger.warning(f"Error enriching diagnosis with field context: {e}")
 

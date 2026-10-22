@@ -321,6 +321,40 @@ async def predict(reading: SensorReading):
             "alert_count": len(alerts),
         })
 
+        # Synchronize live crop intelligence into XiaoZhi Voice Gateway
+        try:
+            from backend.app.services.xiaozhi_gateway import xiaozhi_gateway
+            crop_intel_payload = {
+                "recommended_crop": rec.recommended_crop,
+                "confidence_pct": rec.confidence_pct,
+                "crop_candidates": [
+                    {
+                        "crop": c.crop,
+                        "probability_pct": c.confidence_pct,
+                        "rank": c.rank,
+                        "suitability": c.suitability_level
+                    }
+                    for c in rec.top3_candidates
+                ],
+                "disease_alerts": alerts,
+                "environmental_features_used": {
+                    "temperature": rec.features_used.temperature,
+                    "humidity": rec.features_used.humidity,
+                    "soil_moisture": rec.features_used.soil_moisture,
+                    "rain": rec.features_used.rain,
+                    "rainfall_mm": rec.features_used.rainfall_mm,
+                }
+            }
+            telemetry_input = {
+                "temperature_c": reading.temperature,
+                "humidity_pct": reading.humidity,
+                "soil_moisture_pct": reading.soil_moisture,
+                "rain_detected": reading.rain,
+            }
+            xiaozhi_gateway.update_crop_intelligence(crop_intel_payload, telemetry_data=telemetry_input)
+        except Exception as xe:
+            logger.warning(f"Failed to synchronize crop recommendation to Xiaozhi gateway: {xe}")
+
         return response
     except Exception as e:
         logger.error("Prediction failure in /predict: %s", e, exc_info=True)
@@ -739,6 +773,23 @@ async def predict_vision(
                 "camera_capture_id": resp.camera_capture_id,
                 "camera_capture_latency_ms": resp.camera_capture_latency_ms
             }
+
+        # Synchronize live leaf disease diagnosis into XiaoZhi Voice Gateway
+        if resp.status != "rejected" and resp.diagnosis:
+            vision_entry = {
+                "crop_name": resp.diagnosis.crop or "Unknown",
+                "disease_name": resp.diagnosis.disease_common_name or "Healthy",
+                "confidence_pct": resp.diagnosis.confidence_pct or 0.0,
+                "is_healthy": not resp.diagnosis.is_infected,
+                "severity_level": resp.diagnosis.severity_level or "Low",
+                "foliar_damage_pct": getattr(resp.spatial_telemetry, "foliar_damage_pct", None) if resp.spatial_telemetry else None,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            try:
+                from backend.app.services.xiaozhi_gateway import xiaozhi_gateway
+                xiaozhi_gateway.update_crop_vision(vision_entry)
+            except Exception as xe:
+                logger.warning(f"Failed to synchronize vision diagnosis to Xiaozhi gateway: {xe}")
 
         return {
             "response_schema_version": resp.response_schema_version,

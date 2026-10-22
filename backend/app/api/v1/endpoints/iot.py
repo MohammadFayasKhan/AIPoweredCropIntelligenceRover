@@ -133,6 +133,10 @@ async def ingest_observation(
     observation.processing_latency_ms = round((time.time() - start_time) * 1000.0, 2)
 
     # 3. Update in-memory caches
+    # Preserve active foliar pathology diagnosis across sensor telemetry ticks
+    if observation.crop_vision is None and _latest_observation is not None and _latest_observation.crop_vision is not None:
+        observation.crop_vision = _latest_observation.crop_vision
+
     _latest_observation = observation
     _observation_history.append(observation)
     if len(_observation_history) > settings.TELEMETRY_HISTORY_MAX_ENTRIES:

@@ -701,11 +701,96 @@ class XiaoZhiGateway:
 
     def update_observation(self, observation: UnifiedObservation) -> None:
         """Cache incoming ground sensor observation for immediate voice assistant retrieval."""
+        # Preserve active foliar leaf pathology diagnosis across ground sensor ticks
+        if observation.crop_vision is None and self._latest_observation and self._latest_observation.crop_vision:
+            observation.crop_vision = self._latest_observation.crop_vision
+
         self._latest_observation = observation
         self._recent_observations.append(observation)
         if len(self._recent_observations) > self._max_history:
             self._recent_observations.pop(0)
         logger.debug(f"[XIAOZHI] Updated gateway observation: {observation.observation_id}")
+
+    def update_crop_vision(self, vision_data: Dict[str, Any]) -> None:
+        """
+        Updates the active visual leaf pathology diagnosis from dashboard uploads or camera scans.
+        Propagates to both the gateway observation and the IoT endpoint singleton.
+        """
+        if self._latest_observation is None:
+            self._latest_observation = self._get_dashboard_baseline_observation()
+
+        self._latest_observation.crop_vision = vision_data
+
+        try:
+            from backend.app.api.v1.endpoints import iot as iot_ep
+            if iot_ep._latest_observation is not None:
+                iot_ep._latest_observation.crop_vision = vision_data
+            else:
+                iot_ep._latest_observation = self._latest_observation
+        except Exception as e:
+            logger.debug(f"Failed to sync crop_vision to iot endpoint: {e}")
+
+        logger.info(
+            f"[XIAOZHI] Synced leaf pathology diagnosis: "
+            f"{vision_data.get('crop_name')} - {vision_data.get('disease_name')} "
+            f"({vision_data.get('confidence_pct')}%)"
+        )
+
+    def update_crop_intelligence(self, crop_data: Dict[str, Any], telemetry_data: Optional[Dict[str, Any]] = None) -> None:
+        """
+        Updates the authoritative crop recommendation intelligence from dashboard inputs or field sensors.
+        Synchronizes microclimate features so voice queries truthfully reflect the current conditions.
+        """
+        if self._latest_observation is None:
+            self._latest_observation = self._get_dashboard_baseline_observation()
+
+        self._latest_observation.crop_intelligence = crop_data
+
+        if telemetry_data:
+            s = self._latest_observation.sensor_telemetry
+            if "temperature_c" in telemetry_data and telemetry_data["temperature_c"] is not None:
+                s.temperature_c = float(telemetry_data["temperature_c"])
+            elif "temperature" in telemetry_data and telemetry_data["temperature"] is not None:
+                s.temperature_c = float(telemetry_data["temperature"])
+
+            if "humidity_pct" in telemetry_data and telemetry_data["humidity_pct"] is not None:
+                s.humidity_pct = float(telemetry_data["humidity_pct"])
+            elif "humidity" in telemetry_data and telemetry_data["humidity"] is not None:
+                s.humidity_pct = float(telemetry_data["humidity"])
+
+            if "soil_moisture_pct" in telemetry_data and telemetry_data["soil_moisture_pct"] is not None:
+                s.soil_moisture_pct = float(telemetry_data["soil_moisture_pct"])
+            elif "soil_moisture" in telemetry_data and telemetry_data["soil_moisture"] is not None:
+                s.soil_moisture_pct = float(telemetry_data["soil_moisture"])
+
+            if "rain_detected" in telemetry_data and telemetry_data["rain_detected"] is not None:
+                s.rain_detected = int(telemetry_data["rain_detected"])
+            elif "rain" in telemetry_data and telemetry_data["rain"] is not None:
+                s.rain_detected = int(telemetry_data["rain"])
+
+        try:
+            from backend.app.api.v1.endpoints import iot as iot_ep
+            if iot_ep._latest_observation is not None:
+                iot_ep._latest_observation.crop_intelligence = crop_data
+                if telemetry_data:
+                    iot_s = iot_ep._latest_observation.sensor_telemetry
+                    if s.temperature_c is not None:
+                        iot_s.temperature_c = s.temperature_c
+                    if s.humidity_pct is not None:
+                        iot_s.humidity_pct = s.humidity_pct
+                    if s.soil_moisture_pct is not None:
+                        iot_s.soil_moisture_pct = s.soil_moisture_pct
+                    if s.rain_detected is not None:
+                        iot_s.rain_detected = s.rain_detected
+            else:
+                iot_ep._latest_observation = self._latest_observation
+        except Exception as e:
+            logger.debug(f"Failed to sync crop_intelligence to iot endpoint: {e}")
+
+        logger.info(
+            f"[XIAOZHI] Synced crop intelligence: Recommended {crop_data.get('recommended_crop')} "
+            f"({crop_data.get('confidence_pct')}%)"
+        )
 
     def _get_dashboard_baseline_observation(self) -> UnifiedObservation:
         """Provides an active baseline observation representing the live AI Powered Crop Intelligence Rover dashboard state when awaiting hardware telemetry."""
@@ -773,13 +858,7 @@ class XiaoZhiGateway:
                 contributing_signals=["Normal ambient temperature and humidity"],
                 rationale="Field microclimate and soil moisture are within optimal operational ranges.",
             ),
-            crop_vision={
-                "crop_name": "Crop Field",
-                "disease_name": "Healthy",
-                "confidence_pct": 95.0,
-                "is_healthy": True,
-                "severity_level": "Normal",
-            },
+            crop_vision=None,
         )
 
     def get_latest_observation(self, allow_baseline: bool = True) -> Optional[UnifiedObservation]:
@@ -1506,12 +1585,21 @@ class XiaoZhiGateway:
             disease_str = cv.get("disease_name", "No disease detected") if cv else "No disease detected"
             rain_str = "Raining" if s.rain_detected else "Dry"
 
+            if cv and cv.get("disease_name"):
+                disease_detail = (
+                    f"Foliar pathology: {cv.get('disease_name')} diagnosed on {cv.get('crop_name', 'crop')} "
+                    f"with {cv.get('confidence_pct', 0):.0f} percent confidence."
+                )
+            else:
+                disease_detail = "Foliar pathology: No leaf photograph has been scanned yet."
+
             spoken = (
                 f"Here is your AI Powered Crop Intelligence Rover website dashboard summary. Soil moisture is currently {s.soil_moisture_pct:.0f} percent with ambient temperature of {s.temperature_c:.1f} degrees Celsius. "
                 f"Field conditions are {rain_str.lower()}. "
                 f"Irrigation recommendation is {irr.replace('_', ' ').lower()}. "
                 f"Recommended crop for these conditions is {rec_crop}. "
-                f"Environmental risk is {risk.lower()}."
+                f"Environmental risk is {risk.lower()}. "
+                f"{disease_detail}"
             )
             if freshness in ("STALE", "OFFLINE") and is_hardware:
                 spoken += f" Note that live sensor data is {int(age_sec // 60)} minutes old."
@@ -1563,9 +1651,14 @@ class XiaoZhiGateway:
             risk_hi = risk_hi_map.get(risk, risk)
 
             rain_hi = "बारिश हो रही है" if s.rain_detected else "बारिश नहीं हो रही है"
+            if cv and cv.get("disease_name"):
+                disease_detail_hi = f"पत्ती रोग जांच: {cv.get('crop_name', 'फसल')} पर {cv.get('disease_name')} ({cv.get('confidence_pct', 0):.0f}% सटीकता)।"
+            else:
+                disease_detail_hi = "पत्ती रोग जांच: अभी तक किसी पत्ती का फोटो स्कैन नहीं किया गया है।"
+
             spoken_hi = (
                 f"स्मार्टक्रॉपविज़न वेबसाइट डैशबोर्ड के अनुसार: मिट्टी में नमी {s.soil_moisture_pct:.0f} प्रतिशत है और तापमान {s.temperature_c:.1f} डिग्री सेल्सियस है। "
-                f"{rain_hi}। सिंचाई की स्थिति: {irr_hi}। सुझाई गई फसल: {rec_crop_hi}। पर्यावरणीय जोखिम: {risk_hi}।"
+                f"{rain_hi}। सिंचाई की स्थिति: {irr_hi}। सुझाई गई फसल: {rec_crop_hi}। पर्यावरणीय जोखिम: {risk_hi}। {disease_detail_hi}"
             )
 
             return {
