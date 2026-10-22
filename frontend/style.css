@@ -34,7 +34,8 @@
 
 html {
   scroll-behavior: smooth;
-  max-width      : 100vw;
+  width          : 100%;
+  max-width      : 100%;
   overflow-x     : hidden;
 }
 
@@ -43,7 +44,8 @@ body {
   background-color: var(--bg-base);
   color           : var(--text-primary);
   min-height      : 100vh;
-  max-width       : 100vw;
+  width           : 100%;
+  max-width       : 100%;
   overflow-x      : hidden;
 }
 
@@ -2098,19 +2100,34 @@ input:checked + .slider-toggle::before {
 }
 
 @media (max-width: 768px) {
-  /* ── Mobile IoT Feed / Telemetry Bar ────────────────────────────── */
+  /* ── Mobile Global Container Alignment ───────────────────────────── */
+  .header,
+  .iot-feed-bar,
+  .main-grid,
+  #cropSection,
+  #visionSection {
+    width      : 100%;
+    max-width  : 100%;
+    box-sizing : border-box;
+  }
+
+  /* ── Mobile IoT Feed / Telemetry Bar (Spacious & Breathing) ────────── */
   .iot-feed-bar {
-    padding   : 6px 12px;
-    min-height: auto;
-    font-size : 11px;
+    padding    : 10px 18px;
+    min-height : 44px;
+    font-size  : 12px;
+    overflow   : hidden;
   }
 
   .iot-feed-inner {
     display              : grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items          : center;
-    gap                  : 4px 8px;
+    gap                  : 6px 10px;
     width                : 100%;
+    max-width            : 100%;
+    min-width            : 0;
+    box-sizing           : border-box;
   }
 
   .iot-feed-left {
@@ -2120,16 +2137,18 @@ input:checked + .slider-toggle::before {
   .iot-dot {
     grid-column : 1;
     grid-row    : 1;
-    width       : 7px;
-    height      : 7px;
-    margin-right: 2px;
+    width       : 8px;
+    height      : 8px;
+    margin-right: 3px;
+    flex-shrink : 0;
   }
 
   #iotFeedText {
     grid-column  : 2;
     grid-row     : 1;
-    font-size    : 11px;
-    line-height  : 1.3;
+    font-size    : 12px;
+    font-weight  : 500;
+    line-height  : 1.35;
     white-space  : nowrap;
     overflow     : hidden;
     text-overflow: ellipsis;
@@ -2140,7 +2159,8 @@ input:checked + .slider-toggle::before {
     grid-column: 3;
     grid-row   : 1;
     margin-left: auto;
-    font-size  : 10.5px;
+    font-size  : 11.5px;
+    font-weight: 500;
     display    : flex;
     align-items: center;
     gap        : 6px;
@@ -2148,7 +2168,9 @@ input:checked + .slider-toggle::before {
   }
 
   .iot-ago {
-    font-size  : 10.5px;
+    font-size  : 11.5px;
+    font-weight: 500;
+    color      : var(--text-muted);
     white-space: nowrap;
   }
 
@@ -2160,13 +2182,17 @@ input:checked + .slider-toggle::before {
     grid-column              : 1 / -1;
     grid-row                 : 2;
     width                    : 100%;
+    max-width                : 100%;
+    min-width                : 0;
+    box-sizing               : border-box;
     display                  : flex;
     flex-direction           : row;
     flex-wrap                : nowrap !important;
     overflow-x               : auto;
     -webkit-overflow-scrolling: touch;
-    gap                      : 6px;
-    padding                  : 3px 0 2px;
+    gap                      : 8px;
+    padding                  : 4px 0 2px;
+    margin-top               : 4px;
     scrollbar-width          : none;
   }
 
@@ -2176,102 +2202,117 @@ input:checked + .slider-toggle::before {
 
   .iot-chip {
     flex-shrink  : 0;
-    padding      : 2.5px 8px;
-    font-size    : 10.5px;
-    border-radius: 14px;
+    padding      : 4px 10px;
+    font-size    : 11.5px;
+    font-weight  : 500;
+    border-radius: 18px;
     white-space  : nowrap;
   }
 
-  /* ── Mobile Navigation & Header ─────────────────────────────────── */
+  /* ── Mobile Navigation & Header (Preserved Rounded Pills) ─────────── */
   .header {
     flex-direction: column;
     align-items   : stretch;
-    gap           : 10px;
-    padding       : 10px 14px;
+    gap           : 12px;
+    padding       : 14px 18px;
+    overflow      : hidden;
   }
 
   .header-left {
     display    : flex;
     align-items: center;
-    gap        : 10px;
+    gap        : 12px;
     width      : 100%;
   }
 
   .header-icon {
-    width          : 36px;
-    height         : 36px;
-    min-width      : 36px;
-    font-size      : 20px;
+    width          : 42px;
+    height         : 42px;
+    min-width      : 42px;
+    font-size      : 22px;
     padding        : 0;
     display        : flex;
     align-items    : center;
     justify-content: center;
-    border-radius  : 9px;
+    border-radius  : 10px;
   }
 
   .header-title {
-    font-size  : 15.5px;
+    font-size  : 17px;
     line-height: 1.25;
     font-weight: 700;
   }
 
   .header-sub {
-    font-size    : 10.5px;
-    line-height  : 1.25;
-    margin-top   : 1px;
+    font-size    : 11.5px;
+    line-height  : 1.3;
+    margin-top   : 2px;
     white-space  : nowrap;
     overflow     : hidden;
     text-overflow: ellipsis;
-    max-width    : calc(100vw - 80px);
-    opacity      : 0.82;
+    max-width    : 100%;
+    opacity      : 0.85;
   }
 
   .header-right {
     width         : 100%;
+    min-width     : 0;
     display       : flex;
     flex-direction: column;
-    gap           : 8px;
-    margin-top    : 2px;
+    gap           : 10px;
+    margin-top    : 4px;
+    box-sizing    : border-box;
   }
 
   .mode-switcher {
     width                : 100%;
     display              : grid;
-    grid-template-columns: 1fr 1fr;
-    gap                  : 4px;
-    padding              : 3px;
-    border-radius        : 12px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap                  : 6px;
+    padding              : 4px;
+    border-radius        : 24px;
     box-sizing           : border-box;
+    background           : rgba(82, 183, 136, 0.08);
+    border               : 1px solid var(--border);
   }
 
   .mode-btn {
-    padding        : 7px 10px;
-    font-size      : 12px;
+    padding        : 9px 14px;
+    font-size      : 13px;
     font-weight    : 600;
     text-align     : center;
     justify-content: center;
-    border-radius  : 8px;
+    border-radius  : 20px;
     width          : 100%;
+    white-space    : nowrap;
+    overflow       : hidden;
+    text-overflow  : ellipsis;
+    min-width      : 0;
   }
 
   .header-badges-row {
     width                : 100%;
     display              : grid;
-    grid-template-columns: 1fr 1fr;
-    gap                  : 6px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap                  : 10px;
+    box-sizing           : border-box;
   }
 
   .server-badge {
     width          : 100%;
     min-width      : 0;
     box-sizing     : border-box;
-    padding        : 4px 8px;
-    font-size      : 11px;
-    min-height     : 28px;
-    height         : 28px;
-    border-radius  : 8px;
+    padding        : 7px 12px;
+    font-size      : 12px;
+    font-weight    : 500;
+    min-height     : 34px;
+    height         : 34px;
+    border-radius  : 20px;
+    display        : flex;
+    align-items    : center;
     justify-content: center;
     text-align     : center;
+    gap            : 7px;
   }
 
   .server-badge > span:not(.badge-dot):not(.badge-icon) {
@@ -2281,17 +2322,65 @@ input:checked + .slider-toggle::before {
   }
 
   .badge-dot {
-    width      : 6px;
-    height     : 6px;
+    width      : 7px;
+    height     : 7px;
     flex-shrink: 0;
+  }
+
+  /* ── Mobile Panels & Grids Centering ────────────────────────────── */
+  .main-grid {
+    padding   : 14px 16px;
+    gap       : 14px;
+    margin    : 0 auto;
+  }
+
+  .panel {
+    padding   : 16px;
+    box-sizing: border-box;
+  }
+
+  #visionInputPanel {
+    padding   : 16px;
+  }
+
+  .input-mode-segmented {
+    display              : grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap                  : 6px;
+    width                : 100%;
+    box-sizing           : border-box;
+  }
+
+  .input-mode-tab {
+    min-width      : 0;
+    padding        : 8px 6px;
+    font-size      : 0.74rem;
+    white-space    : nowrap;
+    overflow       : hidden;
+    text-overflow  : ellipsis;
+    justify-content: center;
+  }
+
+  .input-mode-tab span {
+    overflow     : hidden;
+    text-overflow: ellipsis;
+    white-space  : nowrap;
+  }
+
+  .model-tier-buttons {
+    display              : grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap                  : 6px;
+    width                : 100%;
+  }
+
+  .model-tier-btn {
+    min-width: 0;
+    padding  : 8px 4px;
   }
 }
 
 @media (max-width: 600px) {
-  .main-grid {
-    padding: 12px;
-    gap    : 12px;
-  }
   .sensor-grid {
     grid-template-columns: 1fr;
   }
@@ -2305,65 +2394,69 @@ input:checked + .slider-toggle::before {
 
 @media (max-width: 480px) {
   .header {
-    padding: 8px 12px;
-    gap    : 7px;
+    padding: 12px 14px;
+    gap    : 10px;
   }
 
   .header-icon {
-    width        : 32px;
-    height       : 32px;
-    min-width    : 32px;
-    font-size    : 18px;
-    border-radius: 8px;
+    width        : 38px;
+    height       : 38px;
+    min-width    : 38px;
+    font-size    : 20px;
+    border-radius: 9px;
   }
 
   .header-title {
-    font-size: 14px;
+    font-size: 15.5px;
   }
 
   .header-sub {
-    font-size: 10px;
-    max-width: calc(100vw - 70px);
+    font-size: 11px;
   }
 
   .mode-btn {
-    padding  : 6px 8px;
-    font-size: 11.5px;
+    padding  : 8px 10px;
+    font-size: 12px;
   }
 
   .header-badges-row {
-    gap: 5px;
+    gap: 8px;
   }
 
   .server-badge {
-    padding   : 3px 6px;
-    font-size : 10px;
-    min-height: 26px;
-    height    : 26px;
+    padding   : 6px 10px;
+    font-size : 11px;
+    min-height: 32px;
+    height    : 32px;
   }
 
   .iot-feed-bar {
-    padding: 5px 10px;
+    padding: 8px 14px;
   }
 
   #iotFeedText {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .iot-ago {
-    font-size: 9.5px;
+    font-size: 11px;
   }
 
   .iot-chip {
-    padding  : 2px 7px;
-    font-size: 9.5px;
-    gap      : 3px;
+    padding  : 3.5px 9px;
+    font-size: 11px;
+  }
+
+  .main-grid {
+    padding: 12px;
+    gap    : 12px;
+  }
+
+  .panel {
+    padding: 14px;
   }
 
   .vision-preset-grid {
-    grid-template-columns: 1fr;
-  }
-  .model-tier-buttons {
     grid-template-columns: 1fr;
   }
 }
