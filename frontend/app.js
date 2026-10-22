@@ -667,7 +667,7 @@ function updateIotFeedChips(data, ageSeconds) {
   if (iotH) iotH.textContent = data.humidity != null ? Number(data.humidity).toFixed(0) : "--";
   if (iotS) iotS.textContent = data.soil_moisture != null ? Number(data.soil_moisture).toFixed(0) : "--";
   if (iotR) iotR.textContent = data.rain === 1 ? "RAIN" : "NO RAIN";
-  if (iotW && data.water_level != null) iotW.textContent = `${Math.round(data.water_level)}%`;
+  if (iotW && data.water_level != null) iotW.textContent = Math.round(data.water_level);
   if (iotGps) {
     if (data.latitude && data.longitude) {
       iotGps.textContent = `${data.latitude.toFixed(2)}, ${data.longitude.toFixed(2)}`;
