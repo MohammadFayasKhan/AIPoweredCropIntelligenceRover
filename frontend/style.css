@@ -2105,278 +2105,306 @@ input:checked + .slider-toggle::before {
   .iot-feed-bar,
   .main-grid,
   #cropSection,
-  #visionSection {
-    width      : 100%;
-    max-width  : 100%;
-    box-sizing : border-box;
+  #visionSection,
+  .panel,
+  #visionInputPanel,
+  #cropResultPanel,
+  #visionIntelligencePanel {
+    width      : 100% !important;
+    max-width  : 100% !important;
+    box-sizing : border-box !important;
   }
 
-  /* ── Mobile IoT Feed / Telemetry Bar (Spacious & Breathing) ────────── */
+  .main-grid {
+    padding   : 14px !important;
+    gap       : 14px !important;
+    margin    : 0 auto !important;
+  }
+
+  .panel,
+  #visionInputPanel {
+    padding   : 16px !important;
+    overflow  : hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  /* ── Plant Vision Tab Switcher: 2 Rows to Prevent Edge Cutoff ─────── */
+  .input-mode-segmented {
+    display              : grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap                  : 6px !important;
+    width                : 100% !important;
+    max-width            : 100% !important;
+    box-sizing           : border-box !important;
+    margin               : 10px 0 14px 0 !important;
+    padding              : 4px !important;
+  }
+
+  .input-mode-tab {
+    min-width      : 0 !important;
+    padding        : 9px 8px !important;
+    font-size      : 0.8rem !important;
+    white-space    : nowrap !important;
+    display        : flex !important;
+    align-items    : center !important;
+    justify-content: center !important;
+    gap            : 6px !important;
+    box-sizing     : border-box !important;
+  }
+
+  .input-mode-tab:last-child {
+    grid-column: 1 / -1 !important;
+  }
+
+  .input-mode-tab span {
+    overflow     : hidden !important;
+    text-overflow: ellipsis !important;
+    white-space  : nowrap !important;
+  }
+
+  .model-selector-box {
+    width     : 100% !important;
+    max-width : 100% !important;
+    box-sizing: border-box !important;
+    overflow  : hidden !important;
+  }
+
+  .model-tier-buttons {
+    display              : grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap                  : 6px !important;
+    width                : 100% !important;
+  }
+
+  .model-tier-btn {
+    min-width: 0 !important;
+    padding  : 8px 4px !important;
+  }
+
+  /* ── Mobile Navigation Header: Spacious, Rounded Pills, Full Text ─── */
+  .header {
+    flex-direction: column !important;
+    align-items   : stretch !important;
+    gap           : 12px !important;
+    padding       : 14px 18px !important;
+    overflow      : hidden !important;
+  }
+
+  .header-left {
+    display    : flex !important;
+    align-items: center !important;
+    gap        : 12px !important;
+    width      : 100% !important;
+  }
+
+  .header-icon {
+    width          : 42px !important;
+    height         : 42px !important;
+    min-width      : 42px !important;
+    font-size      : 22px !important;
+    padding        : 0 !important;
+    display        : flex !important;
+    align-items    : center !important;
+    justify-content: center !important;
+    border-radius  : 10px !important;
+  }
+
+  .header-title {
+    font-size  : 17px !important;
+    line-height: 1.25 !important;
+    font-weight: 700 !important;
+  }
+
+  .header-sub {
+    font-size    : 11.5px !important;
+    line-height  : 1.3 !important;
+    margin-top   : 2px !important;
+    white-space  : normal !important;
+    opacity      : 0.85 !important;
+  }
+
+  .header-right {
+    width         : 100% !important;
+    min-width     : 0 !important;
+    display       : flex !important;
+    flex-direction: column !important;
+    gap           : 10px !important;
+    margin-top    : 4px !important;
+    box-sizing    : border-box !important;
+  }
+
+  .mode-switcher {
+    width                : 100% !important;
+    display              : grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap                  : 6px !important;
+    padding              : 4px !important;
+    border-radius        : 24px !important;
+    box-sizing           : border-box !important;
+    background           : rgba(82, 183, 136, 0.08) !important;
+    border               : 1px solid var(--border) !important;
+  }
+
+  .mode-btn {
+    padding        : 9px 14px !important;
+    font-size      : 13px !important;
+    font-weight    : 600 !important;
+    text-align     : center !important;
+    justify-content: center !important;
+    border-radius  : 20px !important;
+    width          : 100% !important;
+    white-space    : nowrap !important;
+    min-width      : 0 !important;
+  }
+
+  /* Full-width stacked status badges: Displays full text without "..." cuts */
+  .header-badges-row {
+    width         : 100% !important;
+    display       : flex !important;
+    flex-direction: column !important;
+    gap           : 8px !important;
+    box-sizing    : border-box !important;
+  }
+
+  .server-badge,
+  .server-badge.esp32-header-badge,
+  .esp32-header-badge {
+    width          : 100% !important;
+    min-width      : 0 !important;
+    box-sizing     : border-box !important;
+    padding        : 8px 16px !important;
+    font-size      : 12.5px !important;
+    font-weight    : 500 !important;
+    min-height     : 36px !important;
+    border-radius  : 20px !important;
+    display        : flex !important;
+    align-items    : center !important;
+    justify-content: center !important;
+    text-align     : center !important;
+    gap            : 8px !important;
+    white-space    : normal !important;
+  }
+
+  .server-badge > span:not(.badge-dot):not(.badge-icon) {
+    overflow     : visible !important;
+    text-overflow: clip !important;
+    white-space  : normal !important;
+  }
+
+  .badge-dot {
+    width      : 7px !important;
+    height     : 7px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* ── Mobile IoT Feed Bar: Full Text & 4-Column Grid for ALL Telemetry Stats ── */
   .iot-feed-bar {
-    padding    : 10px 18px;
-    min-height : 44px;
-    font-size  : 12px;
-    overflow   : hidden;
+    padding    : 10px 16px !important;
+    min-height : 48px !important;
+    font-size  : 12px !important;
+    overflow   : hidden !important;
+    width      : 100% !important;
+    box-sizing : border-box !important;
   }
 
   .iot-feed-inner {
-    display              : grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items          : center;
-    gap                  : 6px 10px;
-    width                : 100%;
-    max-width            : 100%;
-    min-width            : 0;
-    box-sizing           : border-box;
+    display              : grid !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    align-items          : center !important;
+    gap                  : 8px 8px !important;
+    width                : 100% !important;
+    max-width            : 100% !important;
+    min-width            : 0 !important;
+    box-sizing           : border-box !important;
   }
 
   .iot-feed-left {
-    display: contents;
+    display: contents !important;
   }
 
   .iot-dot {
-    grid-column : 1;
-    grid-row    : 1;
-    width       : 8px;
-    height      : 8px;
-    margin-right: 3px;
-    flex-shrink : 0;
+    grid-column : 1 !important;
+    grid-row    : 1 !important;
+    width       : 8px !important;
+    height      : 8px !important;
+    margin-right: 3px !important;
+    flex-shrink : 0 !important;
+    align-self  : center !important;
   }
 
   #iotFeedText {
-    grid-column  : 2;
-    grid-row     : 1;
-    font-size    : 12px;
-    font-weight  : 500;
-    line-height  : 1.35;
-    white-space  : nowrap;
-    overflow     : hidden;
-    text-overflow: ellipsis;
-    min-width    : 0;
+    grid-column  : 2 !important;
+    grid-row     : 1 !important;
+    font-size    : 12px !important;
+    font-weight  : 500 !important;
+    line-height  : 1.4 !important;
+    white-space  : normal !important;
+    overflow     : visible !important;
+    text-overflow: clip !important;
+    min-width    : 0 !important;
   }
 
   .iot-feed-right {
-    grid-column: 3;
-    grid-row   : 1;
-    margin-left: auto;
-    font-size  : 11.5px;
-    font-weight: 500;
-    display    : flex;
-    align-items: center;
-    gap        : 6px;
-    flex-shrink: 0;
+    grid-column: 3 !important;
+    grid-row   : 1 !important;
+    margin-left: auto !important;
+    font-size  : 11.5px !important;
+    font-weight: 500 !important;
+    display    : flex !important;
+    align-items: center !important;
+    gap        : 6px !important;
+    flex-shrink: 0 !important;
+    align-self : center !important;
   }
 
   .iot-ago {
-    font-size  : 11.5px;
-    font-weight: 500;
-    color      : var(--text-muted);
-    white-space: nowrap;
+    font-size  : 11.5px !important;
+    font-weight: 500 !important;
+    color      : var(--text-muted) !important;
+    white-space: nowrap !important;
   }
 
   #iotCameraChip {
     display: none !important;
   }
 
-  .iot-live-values {
-    grid-column              : 1 / -1;
-    grid-row                 : 2;
-    width                    : 100%;
-    max-width                : 100%;
-    min-width                : 0;
-    box-sizing               : border-box;
-    display                  : flex;
-    flex-direction           : row;
-    flex-wrap                : nowrap !important;
-    overflow-x               : auto;
-    -webkit-overflow-scrolling: touch;
-    gap                      : 8px;
-    padding                  : 4px 0 2px;
-    margin-top               : 4px;
-    scrollbar-width          : none;
+  /* All telemetry chips presented in a balanced 4-column grid: ZERO stats hidden! */
+  .iot-live-values:not([style*="display: none"]) {
+    grid-column              : 1 / -1 !important;
+    grid-row                 : 2 !important;
+    width                    : 100% !important;
+    max-width                : 100% !important;
+    min-width                : 0 !important;
+    box-sizing               : border-box !important;
+    display                  : grid !important;
+    grid-template-columns    : repeat(4, 1fr) !important;
+    gap                      : 6px !important;
+    padding                  : 4px 0 2px !important;
+    margin-top               : 4px !important;
+    overflow                 : visible !important;
   }
 
-  .iot-live-values::-webkit-scrollbar {
-    display: none;
+  .iot-live-values[style*="display: none"] {
+    display: none !important;
   }
 
   .iot-chip {
-    flex-shrink  : 0;
-    padding      : 4px 10px;
-    font-size    : 11.5px;
-    font-weight  : 500;
-    border-radius: 18px;
-    white-space  : nowrap;
+    width          : 100% !important;
+    box-sizing     : border-box !important;
+    padding        : 6px 4px !important;
+    font-size      : 11px !important;
+    font-weight    : 500 !important;
+    border-radius  : 18px !important;
+    display        : flex !important;
+    align-items    : center !important;
+    justify-content: center !important;
+    text-align     : center !important;
+    white-space    : nowrap !important;
+    flex-shrink    : 0 !important;
   }
 
-  /* ── Mobile Navigation & Header (Preserved Rounded Pills) ─────────── */
-  .header {
-    flex-direction: column;
-    align-items   : stretch;
-    gap           : 12px;
-    padding       : 14px 18px;
-    overflow      : hidden;
-  }
-
-  .header-left {
-    display    : flex;
-    align-items: center;
-    gap        : 12px;
-    width      : 100%;
-  }
-
-  .header-icon {
-    width          : 42px;
-    height         : 42px;
-    min-width      : 42px;
-    font-size      : 22px;
-    padding        : 0;
-    display        : flex;
-    align-items    : center;
-    justify-content: center;
-    border-radius  : 10px;
-  }
-
-  .header-title {
-    font-size  : 17px;
-    line-height: 1.25;
-    font-weight: 700;
-  }
-
-  .header-sub {
-    font-size    : 11.5px;
-    line-height  : 1.3;
-    margin-top   : 2px;
-    white-space  : nowrap;
-    overflow     : hidden;
-    text-overflow: ellipsis;
-    max-width    : 100%;
-    opacity      : 0.85;
-  }
-
-  .header-right {
-    width         : 100%;
-    min-width     : 0;
-    display       : flex;
-    flex-direction: column;
-    gap           : 10px;
-    margin-top    : 4px;
-    box-sizing    : border-box;
-  }
-
-  .mode-switcher {
-    width                : 100%;
-    display              : grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap                  : 6px;
-    padding              : 4px;
-    border-radius        : 24px;
-    box-sizing           : border-box;
-    background           : rgba(82, 183, 136, 0.08);
-    border               : 1px solid var(--border);
-  }
-
-  .mode-btn {
-    padding        : 9px 14px;
-    font-size      : 13px;
-    font-weight    : 600;
-    text-align     : center;
-    justify-content: center;
-    border-radius  : 20px;
-    width          : 100%;
-    white-space    : nowrap;
-    overflow       : hidden;
-    text-overflow  : ellipsis;
-    min-width      : 0;
-  }
-
-  .header-badges-row {
-    width                : 100%;
-    display              : grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap                  : 10px;
-    box-sizing           : border-box;
-  }
-
-  .server-badge {
-    width          : 100%;
-    min-width      : 0;
-    box-sizing     : border-box;
-    padding        : 7px 12px;
-    font-size      : 12px;
-    font-weight    : 500;
-    min-height     : 34px;
-    height         : 34px;
-    border-radius  : 20px;
-    display        : flex;
-    align-items    : center;
-    justify-content: center;
-    text-align     : center;
-    gap            : 7px;
-  }
-
-  .server-badge > span:not(.badge-dot):not(.badge-icon) {
-    overflow     : hidden;
-    text-overflow: ellipsis;
-    white-space  : nowrap;
-  }
-
-  .badge-dot {
-    width      : 7px;
-    height     : 7px;
-    flex-shrink: 0;
-  }
-
-  /* ── Mobile Panels & Grids Centering ────────────────────────────── */
-  .main-grid {
-    padding   : 14px 16px;
-    gap       : 14px;
-    margin    : 0 auto;
-  }
-
-  .panel {
-    padding   : 16px;
-    box-sizing: border-box;
-  }
-
-  #visionInputPanel {
-    padding   : 16px;
-  }
-
-  .input-mode-segmented {
-    display              : grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap                  : 6px;
-    width                : 100%;
-    box-sizing           : border-box;
-  }
-
-  .input-mode-tab {
-    min-width      : 0;
-    padding        : 8px 6px;
-    font-size      : 0.74rem;
-    white-space    : nowrap;
-    overflow       : hidden;
-    text-overflow  : ellipsis;
-    justify-content: center;
-  }
-
-  .input-mode-tab span {
-    overflow     : hidden;
-    text-overflow: ellipsis;
-    white-space  : nowrap;
-  }
-
-  .model-tier-buttons {
-    display              : grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap                  : 6px;
-    width                : 100%;
-  }
-
-  .model-tier-btn {
-    min-width: 0;
-    padding  : 8px 4px;
+  #iot-alerts-chip {
+    grid-column: 1 / -1 !important;
   }
 }
 
@@ -2394,70 +2422,67 @@ input:checked + .slider-toggle::before {
 
 @media (max-width: 480px) {
   .header {
-    padding: 12px 14px;
-    gap    : 10px;
+    padding: 12px 14px !important;
+    gap    : 10px !important;
   }
 
   .header-icon {
-    width        : 38px;
-    height       : 38px;
-    min-width    : 38px;
-    font-size    : 20px;
-    border-radius: 9px;
+    width        : 38px !important;
+    height       : 38px !important;
+    min-width    : 38px !important;
+    font-size    : 20px !important;
+    border-radius: 9px !important;
   }
 
   .header-title {
-    font-size: 15.5px;
+    font-size: 15.5px !important;
   }
 
   .header-sub {
-    font-size: 11px;
+    font-size: 11px !important;
   }
 
   .mode-btn {
-    padding  : 8px 10px;
-    font-size: 12px;
+    padding  : 8px 10px !important;
+    font-size: 12px !important;
   }
 
-  .header-badges-row {
-    gap: 8px;
-  }
-
-  .server-badge {
-    padding   : 6px 10px;
-    font-size : 11px;
-    min-height: 32px;
-    height    : 32px;
+  .server-badge,
+  .server-badge.esp32-header-badge,
+  .esp32-header-badge {
+    padding   : 7px 12px !important;
+    font-size : 11.5px !important;
+    min-height: 34px !important;
   }
 
   .iot-feed-bar {
-    padding: 8px 14px;
+    padding: 9px 12px !important;
   }
 
   #iotFeedText {
-    font-size: 11px;
+    font-size: 11.5px !important;
   }
 
   .iot-ago {
-    font-size: 11px;
+    font-size: 11px !important;
   }
 
   .iot-chip {
-    padding  : 3.5px 9px;
-    font-size: 11px;
+    padding  : 5px 2px !important;
+    font-size: 10px !important;
   }
 
   .main-grid {
-    padding: 12px;
-    gap    : 12px;
+    padding: 12px !important;
+    gap    : 12px !important;
   }
 
   .panel {
-    padding: 14px;
+    padding: 14px !important;
   }
 
   .vision-preset-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
 }
 
@@ -4090,8 +4115,6 @@ body.camera-modal-open {
 
 /* ── Segmented Input Mode Tabs ──────────────────────────────────────── */
 .input-mode-segmented {
-  display: flex;
-  gap: 4px;
   background: rgba(13, 26, 13, 0.6);
   padding: 4px;
   border-radius: var(--radius-sm);
@@ -4101,12 +4124,6 @@ body.camera-modal-open {
 }
 
 .input-mode-tab {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 10px;
   border-radius: calc(var(--radius-sm) - 2px);
   border: 1px solid transparent;
   background: transparent;
@@ -4116,6 +4133,21 @@ body.camera-modal-open {
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
+}
+
+@media (min-width: 769px) {
+  .input-mode-segmented {
+    display: flex;
+    gap: 4px;
+  }
+  .input-mode-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+  }
 }
 
 .input-mode-tab:hover {
