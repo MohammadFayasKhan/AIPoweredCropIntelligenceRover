@@ -335,3 +335,34 @@ def test_multimodal_vision_enrichment_with_iot_context():
     assert data["environmental_context"]["gps_fix"] is True
     assert data["environmental_context"]["observation_id"] == "obs-test-enrichment-01"
 
+
+def test_unconnected_esp32_latest_returns_no_data():
+    """Verify that when no authentic hardware telemetry packet has arrived, /latest returns status: no_data."""
+    from backend.app import main as app_main
+    from backend.app.api.v1.endpoints import iot as iot_ep
+
+    saved_latest_iot = app_main.latest_iot
+    saved_iot_ep_obs = iot_ep._latest_observation
+
+    try:
+        app_main.latest_iot = None
+        iot_ep._latest_observation = None
+
+        res = client.get("/latest")
+        assert res.status_code == 200
+        data = res.json()
+        assert data.get("status") == "no_data"
+        assert data.get("temperature") is None
+
+        # Verify that get_latest_observation does not mutate singleton into fake connected hardware
+        obs_fallback = client.get("/api/v1/iot/observation/latest").json()
+        assert obs_fallback.get("is_simulated") is True
+        assert iot_ep._latest_observation is None
+
+        res_after = client.get("/latest")
+        assert res_after.json().get("status") == "no_data"
+    finally:
+        app_main.latest_iot = saved_latest_iot
+        iot_ep._latest_observation = saved_iot_ep_obs
+
+

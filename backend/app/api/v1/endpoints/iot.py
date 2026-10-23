@@ -197,46 +197,46 @@ async def ingest_observation(
 async def get_latest_observation():
     """Retrieve the most recent unified field observation snapshot."""
     global _latest_observation
-    if _latest_observation is None:
-        # Generate initial default baseline observation so UI never crashes
-        default_telemetry = SensorTelemetry(
-            temperature_c=28.5,
-            humidity_pct=65.0,
-            dht_status="VALID",
-            soil_moisture_raw=2200,
-            soil_moisture_pct=52.0,
-            soil_calibration_status="CALIBRATED",
-            rain_detected=0,
-            rain_intensity_raw=4095,
-            rain_intensity_pct=0.0,
-            water_level_raw=420,
-            water_level_pct=10.2,
-            water_state="NORMAL",
-        )
-        risk = environmental_risk_engine.analyze(default_telemetry)
-        advisory = environmental_risk_engine.generate_irrigation_advisory(default_telemetry, risk)
+    if _latest_observation is not None:
+        return _latest_observation
 
-        _latest_observation = UnifiedObservation(
-            observation_id=f"obs-init-{uuid.uuid4().hex[:8]}",
-            device_id="agrirover-esp32-01",
-            sensor_telemetry=default_telemetry,
-            gps=GPSData(
-                latitude=13.0827,
-                longitude=80.2707,
-                altitude_m=12.4,
-                satellites_tracked=8,
-                hdop=1.1,
-                fix_state="3D_FIX",
-                is_valid=True,
-            ),
-            rover_state=RoverState(),
-            arm_state=ArmState(),
-            environmental_risk=risk,
-            irrigation_advisory=advisory,
-            is_simulated=True,
-        )
+    # Return baseline fallback without overwriting global _latest_observation singleton
+    default_telemetry = SensorTelemetry(
+        temperature_c=28.5,
+        humidity_pct=65.0,
+        dht_status="VALID",
+        soil_moisture_raw=2200,
+        soil_moisture_pct=52.0,
+        soil_calibration_status="CALIBRATED",
+        rain_detected=0,
+        rain_intensity_raw=4095,
+        rain_intensity_pct=0.0,
+        water_level_raw=420,
+        water_level_pct=10.2,
+        water_state="NORMAL",
+    )
+    risk = environmental_risk_engine.analyze(default_telemetry)
+    advisory = environmental_risk_engine.generate_irrigation_advisory(default_telemetry, risk)
 
-    return _latest_observation
+    return UnifiedObservation(
+        observation_id=f"obs-init-{uuid.uuid4().hex[:8]}",
+        device_id="crop-rover-dashboard-node",
+        sensor_telemetry=default_telemetry,
+        gps=GPSData(
+            latitude=13.0827,
+            longitude=80.2707,
+            altitude_m=12.4,
+            satellites_tracked=8,
+            hdop=1.1,
+            fix_state="SEARCHING",
+            is_valid=False,
+        ),
+        rover_state=RoverState(),
+        arm_state=ArmState(),
+        environmental_risk=risk,
+        irrigation_advisory=advisory,
+        is_simulated=True,
+    )
 
 
 @router.get("/observation/history", response_model=List[UnifiedObservation])

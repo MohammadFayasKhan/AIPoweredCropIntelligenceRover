@@ -526,6 +526,8 @@ async def predict_compact(reading: SensorReading):
                 "data": {
                     "timestamp": iot_entry["timestamp"],
                     "device_id": "ESP32-WROOM-32",
+                    "source": "esp32_gateway",
+                    "is_simulated": False,
                     "sensor_telemetry": {
                         "temperature_c": reading.temperature,
                         "humidity_pct": reading.humidity,
@@ -612,27 +614,40 @@ async def get_latest():
     Returns status: no_data if no physical hardware packet has been recorded.
     """
     if latest_iot is not None:
-        return latest_iot
+        is_sim = latest_iot.get("is_simulated", False) or latest_iot.get("source") == "simulated"
+        if not is_sim:
+            return latest_iot
 
     # Check IoT gateway unified store
     try:
         from backend.app.api.v1.endpoints import iot as iot_ep
         if iot_ep._latest_observation is not None:
             obs = iot_ep._latest_observation
-            t = obs.sensor_telemetry
-            c = obs.crop_intelligence or {}
-            return {
-                "timestamp": obs.timestamp,
-                "source": "esp32_gateway",
-                "temperature": t.temperature_c,
-                "humidity": t.humidity_pct,
-                "soil_moisture": t.soil_moisture_pct,
-                "rain": t.rain_detected,
-                "water_level": t.water_level_pct,
-                "recommended_crop": c.get("recommended_crop", "Pending"),
-                "confidence": c.get("confidence_pct", 0.0),
-                "alert_count": len(c.get("disease_alerts", [])),
-            }
+            is_sim = getattr(obs, "is_simulated", False)
+            dev_id = getattr(obs, "device_id", "")
+            obs_id = getattr(obs, "observation_id", "")
+            if (
+                not is_sim
+                and dev_id != "crop-rover-dashboard-node"
+                and not obs_id.startswith("obs-init-")
+                and not obs_id.startswith("dashboard-live-")
+            ):
+                t = obs.sensor_telemetry
+                c = obs.crop_intelligence or {}
+                return {
+                    "timestamp": obs.timestamp,
+                    "source": "esp32_gateway",
+                    "device_id": dev_id,
+                    "is_simulated": False,
+                    "temperature": t.temperature_c,
+                    "humidity": t.humidity_pct,
+                    "soil_moisture": t.soil_moisture_pct,
+                    "rain": t.rain_detected,
+                    "water_level": t.water_level_pct,
+                    "recommended_crop": c.get("recommended_crop", "Pending"),
+                    "confidence": c.get("confidence_pct", 0.0),
+                    "alert_count": len(c.get("disease_alerts", [])),
+                }
     except Exception:
         pass
 
@@ -642,6 +657,8 @@ async def get_latest():
         "humidity": None,
         "soil_moisture": None,
         "rain": None,
+        "water_level": None,
+        "is_simulated": True,
         "message": "No IoT reading received yet. Waiting for ESP32 gateway transmission..."
     }
 
@@ -649,25 +666,35 @@ async def get_latest():
 @app.get("/history", summary="Telemetry & Prediction History")
 async def get_history(limit: int = 20):
     """Returns the last N sensor readings and their model predictions."""
-    items = list(history)[-limit:]
+    items = [
+        item for item in history
+        if not item.get("is_simulated", False) and item.get("source") != "simulated"
+    ][-limit:]
     if not items:
         try:
             from backend.app.api.v1.endpoints import iot as iot_ep
             for obs in iot_ep._observation_history[-limit:]:
-                t = obs.sensor_telemetry
-                c = obs.crop_intelligence or {}
-                items.append({
-                    "timestamp": obs.timestamp,
-                    "source": "esp32_gateway",
-                    "temperature": t.temperature_c,
-                    "humidity": t.humidity_pct,
-                    "soil_moisture": t.soil_moisture_pct,
-                    "rain": t.rain_detected,
-                    "water_level": t.water_level_pct,
-                    "recommended_crop": c.get("recommended_crop", "Pending"),
-                    "confidence": c.get("confidence_pct", 0.0),
-                    "alert_count": len(c.get("disease_alerts", [])),
-                })
+                if (
+                    not getattr(obs, "is_simulated", False)
+                    and getattr(obs, "device_id", "") != "crop-rover-dashboard-node"
+                    and not getattr(obs, "observation_id", "").startswith("obs-init-")
+                    and not getattr(obs, "observation_id", "").startswith("dashboard-live-")
+                ):
+                    t = obs.sensor_telemetry
+                    c = obs.crop_intelligence or {}
+                    items.append({
+                        "timestamp": obs.timestamp,
+                        "source": "esp32_gateway",
+                        "device_id": getattr(obs, "device_id", "agrirover-esp32-01"),
+                        "temperature": t.temperature_c,
+                        "humidity": t.humidity_pct,
+                        "soil_moisture": t.soil_moisture_pct,
+                        "rain": t.rain_detected,
+                        "water_level": t.water_level_pct,
+                        "recommended_crop": c.get("recommended_crop", "Pending"),
+                        "confidence": c.get("confidence_pct", 0.0),
+                        "alert_count": len(c.get("disease_alerts", [])),
+                    })
         except Exception:
             pass
 

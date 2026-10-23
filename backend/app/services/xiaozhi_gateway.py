@@ -721,15 +721,11 @@ class XiaoZhiGateway:
             self._latest_observation = self._get_dashboard_baseline_observation()
 
         self._latest_observation.crop_vision = vision_data
-        self._latest_observation.timestamp = now_iso
 
         try:
             from backend.app.api.v1.endpoints import iot as iot_ep
             if iot_ep._latest_observation is not None:
                 iot_ep._latest_observation.crop_vision = vision_data
-                iot_ep._latest_observation.timestamp = now_iso
-            else:
-                iot_ep._latest_observation = self._latest_observation
         except Exception as e:
             logger.debug(f"Failed to sync crop_vision to iot endpoint: {e}")
 
@@ -744,12 +740,10 @@ class XiaoZhiGateway:
         Updates the authoritative crop recommendation intelligence from dashboard inputs or field sensors.
         Synchronizes microclimate features so voice queries truthfully reflect the current conditions.
         """
-        now_iso = datetime.now(timezone.utc).isoformat()
         if self._latest_observation is None:
             self._latest_observation = self._get_dashboard_baseline_observation()
 
         self._latest_observation.crop_intelligence = crop_data
-        self._latest_observation.timestamp = now_iso
 
         if telemetry_data:
             s = self._latest_observation.sensor_telemetry
@@ -777,7 +771,6 @@ class XiaoZhiGateway:
             from backend.app.api.v1.endpoints import iot as iot_ep
             if iot_ep._latest_observation is not None:
                 iot_ep._latest_observation.crop_intelligence = crop_data
-                iot_ep._latest_observation.timestamp = now_iso
                 if telemetry_data:
                     iot_s = iot_ep._latest_observation.sensor_telemetry
                     if s.temperature_c is not None:
@@ -788,8 +781,6 @@ class XiaoZhiGateway:
                         iot_s.soil_moisture_pct = s.soil_moisture_pct
                     if s.rain_detected is not None:
                         iot_s.rain_detected = s.rain_detected
-            else:
-                iot_ep._latest_observation = self._latest_observation
         except Exception as e:
             logger.debug(f"Failed to sync crop_intelligence to iot endpoint: {e}")
 
@@ -965,6 +956,7 @@ class XiaoZhiGateway:
                 rationale="Field microclimate and soil moisture are within optimal operational ranges.",
             ),
             crop_vision=None,
+            is_simulated=True,
         )
 
     def get_latest_observation(self, allow_baseline: bool = True) -> Optional[UnifiedObservation]:
