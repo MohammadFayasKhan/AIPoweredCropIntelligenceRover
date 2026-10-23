@@ -208,7 +208,7 @@ async def diagnose_leaf_image(
                     "disease_name": diag.disease_common_name if diag else "Unknown",
                     "confidence_pct": diag.confidence_pct if diag else 0.0,
                     "is_healthy": not diag.is_infected if diag else True,
-                    "severity_level": diag.severity_level if diag else "Low",
+                    "severity_level": getattr(diag, "severity_level", None) or getattr(diag, "triage_stage", None) or ("High" if diag and diag.is_infected else "Healthy"),
                     "timestamp": response.timestamp
                 }
                 _latest_observation.crop_vision = vision_dict

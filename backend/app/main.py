@@ -868,16 +868,21 @@ async def predict_vision(
 
         # Synchronize live leaf disease diagnosis into XiaoZhi Voice Gateway
         if resp.status != "rejected" and resp.diagnosis:
-            vision_entry = {
-                "crop_name": resp.diagnosis.crop or "Unknown",
-                "disease_name": resp.diagnosis.disease_common_name or "Healthy",
-                "confidence_pct": resp.diagnosis.confidence_pct or 0.0,
-                "is_healthy": not resp.diagnosis.is_infected,
-                "severity_level": resp.diagnosis.severity_level or "Low",
-                "foliar_damage_pct": getattr(resp.spatial_telemetry, "foliar_damage_pct", None) if resp.spatial_telemetry else None,
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            }
             try:
+                severity = (
+                    getattr(resp.diagnosis, "severity_level", None)
+                    or getattr(resp.diagnosis, "triage_stage", None)
+                    or ("High" if resp.diagnosis.is_infected else "Healthy")
+                )
+                vision_entry = {
+                    "crop_name": resp.diagnosis.crop or "Unknown",
+                    "disease_name": resp.diagnosis.disease_common_name or "Healthy",
+                    "confidence_pct": resp.diagnosis.confidence_pct or 0.0,
+                    "is_healthy": not resp.diagnosis.is_infected,
+                    "severity_level": severity,
+                    "foliar_damage_pct": getattr(resp.spatial_telemetry, "foliar_damage_pct", None) if resp.spatial_telemetry else None,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
                 from backend.app.services.xiaozhi_gateway import xiaozhi_gateway
                 xiaozhi_gateway.update_crop_vision(vision_entry)
             except Exception as xe:

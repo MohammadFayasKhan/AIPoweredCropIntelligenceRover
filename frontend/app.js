@@ -3363,6 +3363,11 @@ async function runVisionPrediction(overrideForce = false, includeExplainability 
       return;
     }
     setVisionUIState(VisionUIState.ERROR, err.message);
+    const resultContent = document.getElementById("visionResultContent");
+    const advisoryContent = document.getElementById("visionAdvisoryContent");
+    if (advisoryContent) {
+      advisoryContent.innerHTML = "";
+    }
     if (resultContent) {
       resultContent.innerHTML = `
         <div style="padding: 20px; border: 1px solid rgba(239, 35, 60, 0.4); border-radius: 8px; background: rgba(239, 35, 60, 0.08);">
@@ -3371,7 +3376,7 @@ async function runVisionPrediction(overrideForce = false, includeExplainability 
           </div>
           <p style="margin-top: 8px; font-size: 0.85rem; color: var(--text-primary);">${escapeHTML(err.message)}</p>
           <div style="margin-top: 12px; display: flex; gap: 10px;">
-            <button type="button" class="change-img-btn" onclick="runVisionPrediction()">Retry Analysis</button>
+            <button type="button" class="change-img-btn" onclick="runVisionPrediction(true)">Retry Analysis</button>
             <button type="button" class="change-img-btn btn-reset-specimen" onclick="resetVisionToNewSpecimen()">Choose Another Image</button>
           </div>
         </div>
