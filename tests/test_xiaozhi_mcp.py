@@ -515,3 +515,40 @@ def test_hindi_agricultural_queries_and_dashboard_alias():
     assert "डैशबोर्ड" in res_dash["spoken_summary_hi"]
 
 
+def test_predict_compact_synchronizes_xiaozhi_live():
+    """Verify ESP32 compact telemetry (/predict/compact) immediately refreshes Xiaozhi MCP gateway with LIVE status."""
+    client = TestClient(app)
+    packet = {
+        "temperature": 27.4,
+        "humidity": 65.0,
+        "soil_moisture": 42.0,
+        "rain": 0,
+        "water_level": 12.0,
+        "water_level_mm": 5.0,
+        "latitude": 12.9716,
+        "longitude": 77.5946,
+        "satellites": 6,
+        "gps_valid": True,
+    }
+    response = client.post("/predict/compact", json=packet)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] == 1
+
+    # Verify Xiaozhi Gateway was immediately updated with LIVE hardware reading
+    field_status = xiaozhi_gateway.execute_tool("get_current_field_status", {})
+    assert field_status["status"] == "ok"
+    assert field_status["freshness"] == "LIVE"
+    assert field_status["age_seconds"] < 5.0
+    assert field_status["temperature_c"] == 27.4
+    assert field_status["soil_moisture_pct"] == 42.0
+    assert "stale" not in field_status["spoken_summary"].lower()
+
+    device_status = xiaozhi_gateway.execute_tool("get_device_status", {})
+    assert device_status["status"] == "ONLINE"
+    assert device_status["freshness"] == "LIVE"
+    assert "online" in device_status["spoken_summary"].lower()
+    assert "seconds ago" in device_status["spoken_summary"].lower()
+
+
+

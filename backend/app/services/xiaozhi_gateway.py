@@ -716,15 +716,18 @@ class XiaoZhiGateway:
         Updates the active visual leaf pathology diagnosis from dashboard uploads or camera scans.
         Propagates to both the gateway observation and the IoT endpoint singleton.
         """
+        now_iso = datetime.now(timezone.utc).isoformat()
         if self._latest_observation is None:
             self._latest_observation = self._get_dashboard_baseline_observation()
 
         self._latest_observation.crop_vision = vision_data
+        self._latest_observation.timestamp = now_iso
 
         try:
             from backend.app.api.v1.endpoints import iot as iot_ep
             if iot_ep._latest_observation is not None:
                 iot_ep._latest_observation.crop_vision = vision_data
+                iot_ep._latest_observation.timestamp = now_iso
             else:
                 iot_ep._latest_observation = self._latest_observation
         except Exception as e:
@@ -741,10 +744,12 @@ class XiaoZhiGateway:
         Updates the authoritative crop recommendation intelligence from dashboard inputs or field sensors.
         Synchronizes microclimate features so voice queries truthfully reflect the current conditions.
         """
+        now_iso = datetime.now(timezone.utc).isoformat()
         if self._latest_observation is None:
             self._latest_observation = self._get_dashboard_baseline_observation()
 
         self._latest_observation.crop_intelligence = crop_data
+        self._latest_observation.timestamp = now_iso
 
         if telemetry_data:
             s = self._latest_observation.sensor_telemetry
@@ -772,6 +777,7 @@ class XiaoZhiGateway:
             from backend.app.api.v1.endpoints import iot as iot_ep
             if iot_ep._latest_observation is not None:
                 iot_ep._latest_observation.crop_intelligence = crop_data
+                iot_ep._latest_observation.timestamp = now_iso
                 if telemetry_data:
                     iot_s = iot_ep._latest_observation.sensor_telemetry
                     if s.temperature_c is not None:
@@ -791,6 +797,106 @@ class XiaoZhiGateway:
             f"[XIAOZHI] Synced crop intelligence: Recommended {crop_data.get('recommended_crop')} "
             f"({crop_data.get('confidence_pct')}%)"
         )
+
+    def sync_from_legacy_iot(self, iot_dict: Dict[str, Any]) -> Optional[UnifiedObservation]:
+        """
+        Synthesizes an authentic UnifiedObservation from legacy main.latest_iot or ESP32 packets.
+        Ensures Xiaozhi AI tools immediately reflect live hardware telemetry without latency.
+        """
+        try:
+            from backend.app.schemas.iot import (
+                UnifiedObservation,
+                SensorTelemetry,
+                GPSData,
+            )
+            from backend.app.services.environmental_risk_service import environmental_risk_engine
+
+            ts = iot_dict.get("timestamp") or datetime.now(timezone.utc).isoformat()
+            temp = float(iot_dict.get("temperature", 25.0))
+            hum = float(iot_dict.get("humidity", 60.0))
+            soil = float(iot_dict.get("soil_moisture", 40.0))
+            rain = int(iot_dict.get("rain", 0))
+            water_lvl = float(iot_dict.get("water_level") or 0.0)
+            water_mm = float(iot_dict.get("water_level_mm") or 0.0)
+            lat = iot_dict.get("latitude")
+            lon = iot_dict.get("longitude")
+            sats = int(iot_dict.get("satellites") or 0)
+
+            s_telemetry = SensorTelemetry(
+                temperature_c=temp,
+                humidity_pct=hum,
+                soil_moisture_pct=soil,
+                soil_moisture_raw=int(soil * 40.95),
+                rain_detected=rain,
+                rain_intensity_pct=0.0,
+                water_level_pct=water_lvl,
+                water_level_raw=int(water_lvl * 40.95),
+                water_state="WATERLOGGED" if water_mm >= 25.0 else "NORMAL",
+                dht_status="VALID",
+                soil_calibration_status="CALIBRATED",
+            )
+            gps_info = GPSData(
+                latitude=float(lat) if lat is not None and lat != 0.0 else None,
+                longitude=float(lon) if lon is not None and lon != 0.0 else None,
+                satellites_tracked=sats,
+                fix_state="3D_FIX" if sats >= 3 else "SEARCHING",
+                is_valid=(sats >= 3),
+            )
+            env_risk = environmental_risk_engine.analyze(s_telemetry)
+            irr_advisory = environmental_risk_engine.generate_irrigation_advisory(s_telemetry, env_risk)
+
+            rec_crop = iot_dict.get("recommended_crop", "Pending")
+            conf = float(iot_dict.get("confidence") or iot_dict.get("confidence_pct") or 0.0)
+            top3 = iot_dict.get("top3", [])
+            alerts = iot_dict.get("disease_alerts", [])
+
+            crop_intel_dict = {
+                "recommended_crop": rec_crop,
+                "confidence_pct": conf,
+                "crop_candidates": [
+                    {
+                        "crop": c.get("crop", "Unknown"),
+                        "probability_pct": c.get("confidence_pct", c.get("confidence", 0.0)),
+                        "suitability": c.get("suitability_level", "Viable"),
+                        "rank": c.get("rank", idx + 1),
+                    }
+                    for idx, c in enumerate(top3)
+                ] if top3 else [{"crop": rec_crop, "probability_pct": conf, "suitability": "Optimal", "rank": 1}],
+                "disease_alerts": alerts,
+            }
+
+            unified_obs = UnifiedObservation(
+                observation_id=f"iot-synced-{int(time.time()*1000)}",
+                device_id="ESP32-WROOM-32",
+                timestamp=ts,
+                sensor_telemetry=s_telemetry,
+                gps=gps_info,
+                environmental_risk=env_risk,
+                irrigation_advisory=irr_advisory,
+                crop_intelligence=crop_intel_dict,
+                is_simulated=False,
+            )
+
+            # Preserve active leaf pathology diagnosis
+            if self._latest_observation and self._latest_observation.crop_vision:
+                unified_obs.crop_vision = self._latest_observation.crop_vision
+
+            self._latest_observation = unified_obs
+            self._recent_observations.append(unified_obs)
+            if len(self._recent_observations) > self._max_history:
+                self._recent_observations.pop(0)
+
+            # Sync to iot_ep as well
+            try:
+                from backend.app.api.v1.endpoints import iot as iot_ep
+                iot_ep._latest_observation = unified_obs
+            except Exception:
+                pass
+
+            return unified_obs
+        except Exception as e:
+            logger.warning(f"Error syncing from legacy iot entry: {e}")
+            return None
 
     def _get_dashboard_baseline_observation(self) -> UnifiedObservation:
         """Provides an active baseline observation representing the live AI Powered Crop Intelligence Rover dashboard state when awaiting hardware telemetry."""
@@ -862,14 +968,39 @@ class XiaoZhiGateway:
         )
 
     def get_latest_observation(self, allow_baseline: bool = True) -> Optional[UnifiedObservation]:
+        # 1. Prioritize live telemetry from main.latest_iot if present and newer
+        try:
+            from backend.app import main as app_main
+            if app_main.latest_iot is not None:
+                iot_ts = app_main.latest_iot.get("timestamp")
+                should_sync = False
+                if self._latest_observation is None:
+                    should_sync = True
+                elif iot_ts:
+                    curr_ts = self._latest_observation.timestamp
+                    if curr_ts is None or str(iot_ts) > str(curr_ts):
+                        should_sync = True
+                if should_sync:
+                    synced = self.sync_from_legacy_iot(app_main.latest_iot)
+                    if synced:
+                        return synced
+        except Exception as e:
+            logger.debug(f"Failed to check app_main.latest_iot: {e}")
+
+        # 2. Check self._latest_observation
         if self._latest_observation is not None:
             return self._latest_observation
+
+        # 3. Check iot endpoint latest observation
         try:
             from backend.app.api.v1.endpoints import iot as iot_ep
             if iot_ep._latest_observation is not None:
-                return iot_ep._latest_observation
+                self._latest_observation = iot_ep._latest_observation
+                return self._latest_observation
         except Exception:
             pass
+
+        # 4. Fallback to active live dashboard baseline
         if allow_baseline:
             return self._get_dashboard_baseline_observation()
         return None
@@ -1218,12 +1349,19 @@ class XiaoZhiGateway:
 
     def _execute_tool_inner(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Core tool dispatch logic returning structured dictionary results."""
-        is_hardware = self._latest_observation is not None
         obs = self.get_latest_observation(allow_baseline=True)
 
-        # Freshness evaluation
-        if is_hardware:
-            freshness, age_sec = compute_freshness(obs.timestamp if obs else None)
+        # Determine if this observation is from genuine physical hardware vs live dashboard baseline
+        is_hardware = (
+            obs is not None
+            and obs.device_id not in ("crop-rover-dashboard-node", "unknown", "")
+            and not obs.observation_id.startswith("dashboard-live-")
+            and not getattr(obs, "is_simulated", False)
+        )
+
+        # Freshness evaluation: If physical hardware, compute true age; if dashboard, mark LIVE
+        if is_hardware and obs and obs.timestamp:
+            freshness, age_sec = compute_freshness(obs.timestamp)
         else:
             freshness, age_sec = "LIVE", 2.0
 
@@ -1240,7 +1378,11 @@ class XiaoZhiGateway:
                 f"Soil moisture is at {s.soil_moisture_pct:.0f} percent, and field conditions are currently {rain_str.lower()}."
             )
             if freshness in ("STALE", "OFFLINE") and is_hardware:
-                spoken += f" Note that this reading was recorded {int(age_sec // 60)} minutes ago and may be stale."
+                if age_sec < 3600:
+                    spoken += f" Note that this reading was recorded {int(age_sec // 60)} minutes ago and may be stale."
+                else:
+                    hours = round(age_sec / 3600, 1)
+                    spoken += f" Note that this reading was recorded {hours} hours ago and may be stale."
 
             # Hindi spoken summary
             rain_hi = "बारिश हो रही है" if s.rain_detected else "बारिश नहीं हो रही है"
@@ -1334,12 +1476,19 @@ class XiaoZhiGateway:
             is_online = freshness in ("LIVE", "RECENT")
             device_status = "ONLINE" if is_online else ("STALE" if freshness == "STALE" else "OFFLINE")
 
-            spoken = (
-                f"The field sensor node is {device_status.lower()}. "
-                f"The latest reading was received {int(age_sec)} seconds ago."
-                if age_sec < 60
-                else f"The field sensor appears {device_status.lower()}. The last reading was {int(age_sec // 60)} minutes ago."
-            )
+            if not is_hardware:
+                spoken = (
+                    "The SmartCropVision system is online in active dashboard mode. "
+                    "Current microclimate data and agronomic recommendations are live and fully operational."
+                )
+            else:
+                if age_sec < 60:
+                    spoken = f"The field sensor node is online. The latest reading was received {int(age_sec)} seconds ago."
+                elif age_sec < 3600:
+                    spoken = f"The field sensor appears {device_status.lower()}. The last reading was {int(age_sec // 60)} minutes ago."
+                else:
+                    hours = round(age_sec / 3600, 1)
+                    spoken = f"The field sensor appears {device_status.lower()}. The last reading was received {hours} hours ago."
 
             return {
                 "status": device_status,
@@ -1602,7 +1751,11 @@ class XiaoZhiGateway:
                 f"{disease_detail}"
             )
             if freshness in ("STALE", "OFFLINE") and is_hardware:
-                spoken += f" Note that live sensor data is {int(age_sec // 60)} minutes old."
+                if age_sec < 3600:
+                    spoken += f" Note that live sensor data is {int(age_sec // 60)} minutes old."
+                else:
+                    hours = round(age_sec / 3600, 1)
+                    spoken += f" Note that live sensor data is {hours} hours old."
 
             # Hindi spoken summary with natural agricultural vocabulary
             rec_crop_hi_map = {

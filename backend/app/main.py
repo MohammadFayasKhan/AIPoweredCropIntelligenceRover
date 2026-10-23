@@ -425,6 +425,98 @@ async def predict_compact(reading: SensorReading):
         global latest_iot
         latest_iot = iot_entry
 
+        # Synchronize live ESP32 compact telemetry into unified IoT store and XiaoZhi Gateway
+        try:
+            from backend.app.schemas.iot import UnifiedObservation, SensorTelemetry, GPSData
+            from backend.app.services.environmental_risk_service import environmental_risk_engine
+            from backend.app.services.xiaozhi_gateway import xiaozhi_gateway
+            from backend.app.api.v1.endpoints import iot as iot_ep
+
+            s_telemetry = SensorTelemetry(
+                temperature_c=reading.temperature,
+                humidity_pct=reading.humidity,
+                soil_moisture_pct=reading.soil_moisture,
+                soil_moisture_raw=int(reading.soil_moisture * 40.95),
+                rain_detected=reading.rain,
+                rain_intensity_pct=float(eff_rain_mm or 0.0),
+                water_level_pct=reading.water_level if reading.water_level is not None else 0.0,
+                water_level_raw=int((reading.water_level or 0.0) * 40.95),
+                water_state="WATERLOGGED" if (reading.water_level_mm or 0) >= 25.0 else "NORMAL",
+                dht_status="VALID",
+                soil_calibration_status="CALIBRATED",
+            )
+            gps_info = GPSData(
+                latitude=reading.latitude if reading.latitude is not None else None,
+                longitude=reading.longitude if reading.longitude is not None else None,
+                altitude_m=reading.altitude_m,
+                satellites_tracked=reading.satellites if reading.satellites is not None else 0,
+                fix_state="3D_FIX" if (reading.gps_valid or (reading.satellites or 0) >= 3) else "SEARCHING",
+                is_valid=bool(reading.gps_valid or (reading.satellites or 0) >= 3),
+            )
+            env_risk = environmental_risk_engine.analyze(s_telemetry)
+            irr_advisory = environmental_risk_engine.generate_irrigation_advisory(s_telemetry, env_risk)
+
+            crop_intel_dict = {
+                "recommended_crop": rec.recommended_crop,
+                "confidence_pct": rec.confidence_pct,
+                "confidence": rec.confidence_pct,
+                "crop_candidates": [
+                    {
+                        "crop": c["crop"],
+                        "probability_pct": c["confidence_pct"],
+                        "confidence_pct": c["confidence_pct"],
+                        "suitability": c.get("suitability_level", "Viable"),
+                        "rank": c.get("rank", 1),
+                    }
+                    for c in top3
+                ],
+                "disease_alerts": [
+                    {
+                        "name": a.name,
+                        "severity": a.severity,
+                        "trigger": a.trigger,
+                        "symptoms": a.symptoms,
+                        "technique": a.technique,
+                        "pesticide": a.pesticide,
+                    }
+                    for a in alerts
+                ],
+                "environmental_features_used": {
+                    "temperature": reading.temperature,
+                    "humidity": reading.humidity,
+                    "soil_moisture": reading.soil_moisture,
+                    "rain": reading.rain,
+                    "rainfall_mm": eff_rain_mm,
+                },
+            }
+
+            unified_obs = UnifiedObservation(
+                observation_id=f"esp32-compact-{int(time.time()*1000)}",
+                device_id="ESP32-WROOM-32",
+                timestamp=iot_entry["timestamp"],
+                sensor_telemetry=s_telemetry,
+                gps=gps_info,
+                environmental_risk=env_risk,
+                irrigation_advisory=irr_advisory,
+                crop_intelligence=crop_intel_dict,
+                is_simulated=False,
+            )
+
+            # Preserve active leaf pathology diagnosis if already present
+            if iot_ep._latest_observation and iot_ep._latest_observation.crop_vision:
+                unified_obs.crop_vision = iot_ep._latest_observation.crop_vision
+            elif xiaozhi_gateway._latest_observation and xiaozhi_gateway._latest_observation.crop_vision:
+                unified_obs.crop_vision = xiaozhi_gateway._latest_observation.crop_vision
+
+            iot_ep._latest_observation = unified_obs
+            iot_ep._observation_history.append(unified_obs)
+            if len(iot_ep._observation_history) > 100:
+                iot_ep._observation_history.pop(0)
+
+            xiaozhi_gateway.update_observation(unified_obs)
+        except Exception as e:
+            logger.warning("Failed to bridge compact telemetry to unified observation store: %s", e)
+
         # Broadcast live telemetry over WebSocket to instantly refresh dashboard
         try:
             import asyncio
