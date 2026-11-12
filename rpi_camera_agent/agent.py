@@ -580,6 +580,8 @@ class RPiCameraAgent:
         parsed = urllib.parse.urlparse(self.config.backend_ws_url)
         q = urllib.parse.parse_qs(parsed.query)
         q["device_id"] = [self.config.device_id]
+        if self.config.device_token:
+            q["token"] = [self.config.device_token]
         new_query = urllib.parse.urlencode({k: v[0] for k, v in q.items()})
         return urllib.parse.urlunparse(parsed._replace(query=new_query))
 
