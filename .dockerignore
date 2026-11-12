@@ -17,3 +17,14 @@ results/
 results2/
 notebooks/
 tests/
+yolo26_v1_release_bundle/
+yolo26_lesion_v1_release_bundle/
+artifacts/*/pretrained/
+artifacts/*/evaluation/
+artifacts/*/visual_comparisons/
+artifacts/*/datasets/
+artifacts/yolo26_v1/checkpoints/yolo26n_plantdoc_640_best.pt
+artifacts/yolo26_lesion_v1/checkpoints/yolo26n_lesion_640_best.pt
+artifacts/yolo26_lesion_v1/checkpoints/yolo26s_lesion_768_best.pt
+.vscode/
+.kaggleignore

@@ -150,7 +150,7 @@ class Settings:
     )
     YOLO26_INFERENCE_MODE: str = os.getenv("YOLO26_INFERENCE_MODE", "one2many")
     YOLO26_CONF_THRESH: float = float(os.getenv("YOLO26_CONF_THRESH", "0.25"))
-    YOLO26_SEG_CONF_THRESH: float = float(os.getenv("YOLO26_SEG_CONF_THRESH", "0.30"))
+    YOLO26_SEG_CONF_THRESH: float = float(os.getenv("YOLO26_SEG_CONF_THRESH", "0.20"))
     YOLO26_IOU_THRESH: float = float(os.getenv("YOLO26_IOU_THRESH", "0.45"))
 
     # AgriRover IoT & Automation Integration (SIH 2026)

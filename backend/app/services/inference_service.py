@@ -1481,11 +1481,7 @@ class InferenceEngine:
                             coordinate_space=best_conf_box.coordinate_space
                         )
 
-                    # When optional YOLO26-Seg lesion mask is present, fuse verified lesion pixels cleanly
-                    if yolo26_lesion_mask_256 is not None and is_infected:
-                        pred_mask_256[yolo26_lesion_mask_256 > 0] = 2
-
-                    # Filter out non-plant background (wood, floor, hands, soil) from segmentation mask
+                    # Filter out non-plant background (wood, floor, tables, hands, soil) from Mobile-UNet mask
                     pred_mask_256 = clean_foliar_segmentation_mask(
                         pred_mask_256=pred_mask_256,
                         img_bgr=img_bgr,
@@ -1493,8 +1489,28 @@ class InferenceEngine:
                         specimen_boxes=target_leaf_boxes,
                     )
 
+                    # Fuse already canopy-contained & filtered YOLO26s-Seg lesion polygons after Mobile-UNet
+                    # cleanup so authentic lesions on sunlit/outdoor foliage are never stripped.
+                    if yolo26_lesion_mask_256 is not None and is_infected:
+                        pred_mask_256[yolo26_lesion_mask_256 > 0] = 2
+
                     leaf_pixels = int(np.sum(pred_mask_256 >= 1))
                     lesion_pixels = int(np.sum(pred_mask_256 == 2))
+
+                    # If Mobile-UNet predicted sparse canopy inside detected leaf boxes despite valid lesions,
+                    # supplement leaf canopy mask from green pixels inside detected specimen bounding boxes.
+                    if leaf_pixels <= 50 and target_leaf_boxes:
+                        img_256_tmp = cv2.resize(img_bgr, (256, 256), interpolation=cv2.INTER_AREA).astype(np.float32)
+                        exg_tmp = 2.0 * img_256_tmp[:, :, 1] - img_256_tmp[:, :, 2] - img_256_tmp[:, :, 0]
+                        for s_box in target_leaf_boxes:
+                            bx1 = max(0, int(s_box.bbox_xyxy[0] * 256.0 / orig_w))
+                            by1 = max(0, int(s_box.bbox_xyxy[1] * 256.0 / orig_h))
+                            bx2 = min(256, int(s_box.bbox_xyxy[2] * 256.0 / orig_w))
+                            by2 = min(256, int(s_box.bbox_xyxy[3] * 256.0 / orig_h))
+                            sub_canopy = (pred_mask_256[by1:by2, bx1:bx2] == 0) & (exg_tmp[by1:by2, bx1:bx2] > 6.0)
+                            pred_mask_256[by1:by2, bx1:bx2][sub_canopy] = 1
+                        leaf_pixels = int(np.sum(pred_mask_256 >= 1))
+                        lesion_pixels = int(np.sum(pred_mask_256 == 2))
 
                     if leaf_pixels > 50:
                         raw_damage_pct = round((lesion_pixels / float(leaf_pixels)) * 100.0, 2)

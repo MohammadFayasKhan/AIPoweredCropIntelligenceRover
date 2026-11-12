@@ -28,12 +28,12 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy production code, models, configs, and frontend
+# Copy production code, models, configs, artifacts, and frontend
 COPY backend/ ./backend/
 COPY cv/ ./cv/
+COPY artifacts/ ./artifacts/
 COPY frontend/ ./frontend/
-COPY RELEASE_MANIFEST.json ./
-COPY RELEASE_MANIFEST_GEN2.json ./
+COPY RELEASE_MANIFEST*.json ./
 
 # Create unprivileged system user and prepare writable directories
 RUN useradd -u 1001 -m -s /bin/bash smartcrop && \
