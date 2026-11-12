@@ -33,6 +33,7 @@ from backend.app.schemas.diagnosis import (
 )
 from backend.app.services.model_registry import model_registry
 from backend.app.services.esp32_gateway import esp32_gateway
+from backend.app.services.camera_provenance import resolve_camera_provenance, verify_uploaded_matches_provenance
 from backend.app.services.xiaozhi_mcp_client import xiaozhi_mcp_client
 from backend.app.api.v1.router import api_router
 from backend.app.api.v1.endpoints.health import health_check, models_status, liveness_probe, readiness_probe
@@ -709,31 +710,29 @@ async def validate_vision(
     file: UploadFile = File(...),
     request_id: Optional[str] = Form(None),
     source: str = Form("browser_upload"),
-    esp32_capture_id: Optional[str] = Form(None)
+    esp32_capture_id: Optional[str] = Form(None),
+    rpi_capture_id: Optional[str] = Form(None),
+    capture_id: Optional[str] = Form(None),
 ):
     """
     Dedicated pre inference validation gate:
     Evaluates whether an uploaded image is a valid plant leaf photograph before
     any disease classification or diagnostic inference is permitted.
-    Includes source-aware technical tolerance for authenticated ESP32-CAM captures.
+    Includes source-aware technical tolerance for authenticated ESP32-CAM and Raspberry Pi captures.
     """
     if isinstance(request_id, str) and request_id.strip():
         req_id = request_id.strip()
     else:
         req_id = request.headers.get("X-Request-ID") or getattr(request.state, "request_id", None) or uuid.uuid4().hex[:12]
 
-    # Verify provenance for esp32_cam to prevent unauthenticated client spoofing
-    trusted_source = "browser_upload"
-    camera_meta = None
-    if source == "esp32_cam" and esp32_capture_id:
-        provenance = esp32_gateway.verify_and_consume_provenance(esp32_capture_id, consume=False)
-        if provenance:
-            trusted_source = "esp32_cam"
-            camera_meta = provenance
-        else:
-            trusted_source = "browser_upload"
-    elif source in ("browser_camera", "browser_upload"):
-        trusted_source = source
+    # Verify provenance for esp32_cam / rpi_cam to prevent unauthenticated client spoofing
+    trusted_source, camera_meta, _ = resolve_camera_provenance(
+        source=source,
+        esp32_capture_id=esp32_capture_id,
+        rpi_capture_id=rpi_capture_id,
+        capture_id=capture_id,
+        consume=False,
+    )
 
     if not file or not file.filename:
         raise HTTPException(status_code=400, detail="No image file received.")
@@ -805,7 +804,9 @@ async def predict_vision(
     request_id: Optional[str] = Form(None),
     force_inference: Optional[bool] = Form(False),
     source: Optional[str] = Form("browser_upload"),
-    esp32_capture_id: Optional[str] = Form(None)
+    esp32_capture_id: Optional[str] = Form(None),
+    rpi_capture_id: Optional[str] = Form(None),
+    capture_id: Optional[str] = Form(None),
 ):
     """
     Executes the 3-Tier Computer Vision Cascade on uploaded leaf photography:
@@ -813,29 +814,20 @@ async def predict_vision(
       • Tier 2: YOLO PlantDoc / YOLO26 spatial necrotic lesion localization
       • Tier 3: Mobile-UNet sub-pixel pathology segmentation
       • Explainability: Controlled 9-Stage Pipeline when include_explainability is true
-      • Source-Aware Technical Policy: Authentic ESP32-CAM captures receive sensor-tuned thresholds
+      • Source-Aware Technical Policy: Authentic ESP32-CAM and Raspberry Pi captures receive sensor-tuned thresholds
     """
     if isinstance(request_id, str) and request_id.strip():
         req_id = request_id.strip()
     else:
         req_id = request.headers.get("X-Request-ID") or getattr(request.state, "request_id", None) or uuid.uuid4().hex[:12]
 
-    camera_metadata = None
-    validated_source = source or "browser_upload"
-
-    if esp32_capture_id:
-        provenance = esp32_gateway.verify_and_consume_provenance(esp32_capture_id)
-        if provenance:
-            validated_source = "esp32_cam"
-            camera_metadata = {
-                "device_id": provenance["device_id"],
-                "capture_id": esp32_capture_id,
-                "capture_latency_ms": provenance.get("capture_latency_ms"),
-                "camera_model": provenance.get("camera_model", "OV2640"),
-                "camera_source": "ESP32-CAM · OV2640"
-            }
-        else:
-            validated_source = "browser_upload"
+    validated_source, camera_metadata, stored_frame_bytes = resolve_camera_provenance(
+        source=source,
+        esp32_capture_id=esp32_capture_id,
+        rpi_capture_id=rpi_capture_id,
+        capture_id=capture_id,
+        consume=True,
+    )
 
     if file and file.filename:
         filename = file.filename or "uploaded_leaf.jpg"
@@ -847,12 +839,15 @@ async def predict_vision(
             raise HTTPException(status_code=400, detail=f"Failed to read file: {e}")
         finally:
             await file.close()
-    elif camera_metadata and "frame_bytes" in provenance:
-        file_bytes = provenance["frame_bytes"]
-        filename = f"{esp32_capture_id}.jpg"
+
+        if not verify_uploaded_matches_provenance(file_bytes, camera_metadata):
+            raise HTTPException(status_code=400, detail="Uploaded image bytes do not match verified hardware capture checksum.")
+    elif camera_metadata and stored_frame_bytes:
+        file_bytes = stored_frame_bytes
+        filename = f"{camera_metadata['capture_id']}.jpg"
         content_type = "image/jpeg"
     else:
-        raise HTTPException(status_code=400, detail="No image file or authentic ESP32 capture received.")
+        raise HTTPException(status_code=400, detail="No image file or authentic hardware capture received.")
 
     try:
         resp = inference_engine.run_inference(

@@ -1,0 +1,25 @@
+[Unit]
+Description=AI Powered Crop Intelligence Rover - Raspberry Pi OV5647 Camera Agent
+After=network-online.target NetworkManager-wait-online.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+SupplementaryGroups=video
+WorkingDirectory=/opt/crop-rover-rpi
+EnvironmentFile=/etc/crop-rover-rpi/agent.env
+ExecStart=/usr/bin/python3 /opt/crop-rover-rpi/agent.py --env-file /etc/crop-rover-rpi/agent.env
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=0
+MemoryMax=256M
+CPUQuota=150%
+StandardOutput=journal
+StandardError=journal
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+

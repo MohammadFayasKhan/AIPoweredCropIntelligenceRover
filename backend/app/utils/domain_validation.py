@@ -136,24 +136,30 @@ def extract_botanical_signals(img_bgr: np.ndarray) -> Dict[str, Any]:
 
     rgb = cv2.cvtColor(probe, cv2.COLOR_BGR2RGB).astype(np.float32)
     r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
-    # Excess Green Index: ExG = 2G - R - B
+    # Excess Green Index: ExG = 2G - R - B, Excess Red: ExR = 1.4R - G, ExGR = ExG - ExR
+    # ExGR eliminates warm indoor lighting, grey/cool walls, human skin, and brown wood where G <= R.
     exg = 2.0 * g - r - b
+    exr = 1.4 * r - g
+    exgr = exg - exr
 
-    # Green foliage mask: typical leaf hue range 20 to 102 with moderate saturation or positive ExG
-    green_foliage_mask = ((hue >= 20) & (hue <= 102) & (sat >= 20) & (val >= 20)) | (exg > 6.0)
+    # Green foliage mask: genuine botanical chlorophyll hue with positive ExGR & saturation
+    green_foliage_mask = (
+        ((hue >= 24) & (hue <= 92) & (sat >= 36) & (val >= 22) & (exgr > 10.0) & (g > b + 5.0))
+        | ((exgr > 18.0) & (g > r + 5.0) & (g > b + 5.0) & (sat >= 28))
+    )
     green_presence_ratio = float(np.sum(green_foliage_mask) / total_pixels)
 
     # Necrotic / chlorotic / rust lesion tissue on leaves:
     # Yellow brown foliar tissue spans hue 8 to 24, with G > B and ExG > -18.0
     # Crucially, genuine foliar lesions co occur with botanical foliage.
-    # If green foliage presence is near zero (< 0.035), non green surfaces represent
+    # If green foliage presence is low (< 0.045), non green surfaces represent
     # skin, fur, cardboard, or building materials rather than leaf lesions.
     necrotic_foliar_mask = (
         (hue >= 8) & (hue <= 24) & (sat >= 35) & (val >= 25) &
         (g > b) & (exg > -18.0)
     )
 
-    if green_presence_ratio >= 0.035:
+    if green_presence_ratio >= 0.045:
         combined_foliar_mask = green_foliage_mask | necrotic_foliar_mask
     else:
         combined_foliar_mask = green_foliage_mask
@@ -342,6 +348,7 @@ def validate_plant_image(
       - 'browser_upload': Strict technical thresholds (clear lab/field photos)
       - 'browser_camera': Standard browser camera thresholds
       - 'esp32_cam': Authenticated field hardware (OV2640 sensor tolerance, mild blur, lower resolution)
+      - 'rpi_cam': Authenticated Raspberry Pi 3 B+ OV5647 field camera hardware
 
     Returns:
       DomainValidationResult with validation_status in:
@@ -356,6 +363,8 @@ def validate_plant_image(
         signals["camera_metadata"] = {k: v for k, v in camera_metadata.items() if k != "frame_bytes"}
 
     is_esp32 = (source == "esp32_cam")
+    is_rpi = (source == "rpi_cam")
+    is_field_cam = is_esp32 or is_rpi
     blur = signals["blur_variance"]
     bright = signals["mean_brightness"]
     contrast = signals["contrast_std"]
@@ -406,6 +415,12 @@ def validate_plant_image(
                         reason_desc = "Plant leaf verified by Groq Vision AI. Field ESP32-CAM capture accepted under source-aware quality policy."
                     else:
                         quality_desc = "Groq Vision Verified (ESP32-CAM OV2640)"
+                elif is_rpi:
+                    if blur < 80.0 or contrast < 22.0 or bright < 30.0 or bright > 225.0:
+                        quality_desc = "Camera Quality Degraded (Raspberry Pi OV5647)"
+                        reason_desc = "Plant leaf verified by Groq Vision AI. Field Raspberry Pi OV5647 capture accepted under source-aware quality policy."
+                    else:
+                        quality_desc = "Groq Vision Verified (Raspberry Pi OV5647)"
 
                 # Return VALID immediately  -  Groq is authoritative
                 return DomainValidationResult(
@@ -515,6 +530,11 @@ def validate_plant_image(
     signals["detector_leaf_labels"] = detector_leaf_labels
 
     has_detector_confirmation = bool(detector_leaf_boxes >= 1 and detector_top_conf >= 0.10)
+    has_strong_detector = bool(detector_leaf_boxes >= 1 and detector_top_conf >= 0.35)
+    has_corroborated_detector = bool(
+        detector_leaf_boxes >= 1
+        and (detector_top_conf >= 0.35 or (detector_top_conf >= 0.10 and (foliar_ratio >= 0.035 or green_ratio >= 0.035)))
+    )
 
     # ══════════════════════════════════════════════════════════════════════════
     # PHASE A: DEFINITIVE REJECTION OF NON PLANT DOMAINS
@@ -540,9 +560,12 @@ def validate_plant_image(
         )
 
     # A2. Human photograph / portrait / selfie
-    # Only reject pure human portraits if there is virtually zero botanical foliage!
-    # If a farmer or tester holds a leaf or phone in their hand, it is accepted!
-    if skin_ratio > 0.45 and (foliar_ratio < 0.008 and green_ratio < 0.008) and not has_detector_confirmation:
+    # Reject both dense skin portraits and indoor human selfies lacking botanical foliage,
+    # while still accepting farmers holding a genuine leaf in front of the camera.
+    if (
+        (skin_ratio > 0.45 and foliar_ratio < 0.008 and green_ratio < 0.008 and not has_strong_detector)
+        or (skin_ratio >= 0.12 and green_ratio < 0.045 and not has_strong_detector)
+    ):
         return DomainValidationResult(
             validation_status="INVALID_NON_PLANT_IMAGE",
             validation_reason="Invalid image. A person or skin surface was detected without any plant foliage. Please upload a clear image of a plant leaf for crop health analysis.",
@@ -580,7 +603,7 @@ def validate_plant_image(
         screen_foliage_present = bool(
             (foliar_ratio >= 0.04 or green_ratio >= 0.05) and skin_ratio < 0.35
         )
-        if has_detector_confirmation or (is_esp32 and screen_foliage_present):
+        if (has_detector_confirmation or is_field_cam) and screen_foliage_present:
             signals["phone_or_secondary_display_specimen"] = True
             is_screenshot_or_doc = False
         else:
@@ -600,12 +623,12 @@ def validate_plant_image(
 
     # A5. General non-plant objects (Groq offline fallback only)
     has_botanical_foliage = bool(
-        (foliar_ratio >= 0.04 or green_ratio >= 0.05) and
+        (foliar_ratio >= 0.045 or green_ratio >= 0.05) and
         not is_doc and skin_ratio < 0.35
     )
     has_esp32_foliage = bool(is_esp32 and has_botanical_foliage)
 
-    if not has_detector_confirmation and not has_botanical_foliage:
+    if not has_corroborated_detector and not has_botanical_foliage:
         if blur < 20.0 and has_botanical_foliage:
             return DomainValidationResult(
                 validation_status="LOW_QUALITY_IMAGE",
@@ -638,9 +661,9 @@ def validate_plant_image(
     # PHASE B: LOW QUALITY OR UNCERTAIN PLANT SPECIMENS
     # (Only reached when Groq is offline and YOLO detector confirmed a leaf or botanical foliage detected)
     # ══════════════════════════════════════════════════════════════════════════
-    # Foliage presence: trust detector confirmation or authentic foliar signature
+    # Foliage presence: trust corroborated detector confirmation or authentic foliar signature
     has_foliar_presence = bool(
-        has_detector_confirmation or has_botanical_foliage
+        has_corroborated_detector or has_botanical_foliage
     )
 
     # B1. Severe underexposure (only if image is virtually pitch black and has zero foliage)
@@ -689,7 +712,7 @@ def validate_plant_image(
         )
 
     # B4. Insufficient detector support (Groq offline fallback)
-    if not has_detector_confirmation and not has_botanical_foliage:
+    if not has_corroborated_detector and not has_botanical_foliage:
         return DomainValidationResult(
             validation_status="VALIDATION_UNCERTAIN",
             validation_reason="Plant presence could not be confirmed with certainty. "
@@ -728,6 +751,12 @@ def validate_plant_image(
             reason_desc = "Foliage verified under adjusted ESP32-CAM camera policy. Mild sensor degradation accepted."
         else:
             quality_desc = "Good / Diagnostic Ready (ESP32-CAM OV2640)"
+    elif is_rpi:
+        if blur < 80.0 or contrast < 22.0 or bright < 30.0:
+            quality_desc = "Camera Quality Degraded (Raspberry Pi OV5647)"
+            reason_desc = "Foliage verified under Raspberry Pi OV5647 field camera policy. Mild optical variance accepted."
+        else:
+            quality_desc = "Good / Diagnostic Ready (Raspberry Pi OV5647)"
 
     return DomainValidationResult(
         validation_status="VALID_PLANT_IMAGE",

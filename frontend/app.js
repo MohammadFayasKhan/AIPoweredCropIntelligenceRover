@@ -240,9 +240,9 @@ let showBoundingBoxes = true;
 let showSpecimenBoxes = true;
 let showLesionBoxes = true;
 
-// ESP32-CAM (OV2640) Field Hardware State
-let currentVisionInputMode = "upload"; // 'upload' | 'camera' | 'esp32'
-let currentVisionImageSource = "browser_upload"; // 'browser_upload' | 'browser_camera' | 'esp32_cam'
+// ESP32-CAM (OV2640) & Raspberry Pi (OV5647) Field Hardware State
+let currentVisionInputMode = "upload"; // 'upload' | 'camera' | 'esp32' | 'rpi'
+let currentVisionImageSource = "browser_upload"; // 'browser_upload' | 'browser_camera' | 'esp32_cam' | 'rpi_cam'
 let currentEsp32CaptureId = null;
 let currentEsp32CaptureMeta = null;
 let esp32StatusPollTimer = null;
@@ -252,6 +252,18 @@ let esp32FrameCount = 0;
 let esp32FpsTimer = null;
 let esp32DeviceOnline = false;
 let isFetchingEsp32Frame = false;
+
+let currentRpiCaptureId = null;
+let currentRpiCaptureMeta = null;
+let rpiStreamActive = false;
+let rpiStreamAbortController = null;
+let rpiFrameCount = 0;
+let rpiFpsTimer = null;
+let rpiDeviceOnline = false;
+let rpiDeviceStatus = "offline";
+let rpiWasOnline = false;
+let isFetchingRpiFrame = false;
+let isCapturingRpi = false;
 
 // Presets for Quick Scenarios
 const SENSOR_PRESETS = {
@@ -313,6 +325,10 @@ if (typeof document !== "undefined") {
     // Poll for genuine physical ESP32-CAM field hardware (fast 3.5s cycle for immediate hotspot link)
     pollEsp32Status();
     setInterval(pollEsp32Status, 3500);
+
+    // Poll for genuine physical Raspberry Pi OV5647 camera hardware
+    pollRpiStatus();
+    setInterval(pollRpiStatus, 3000);
 
     // High-resolution 1-second ticker to detect stale physical hardware immediately
     setInterval(updateIotAgeTicker, 1000);
@@ -1472,6 +1488,13 @@ function initDragAndDrop() {
     const dt = e.dataTransfer;
     const files = dt.files;
     if (files && files.length > 0) {
+      currentVisionImageSource = "browser_upload";
+      currentEsp32CaptureId = null;
+      currentEsp32CaptureMeta = null;
+      currentRpiCaptureId = null;
+      currentRpiCaptureMeta = null;
+      const provTag = document.getElementById("cvProvenanceTag");
+      if (provTag) provTag.style.display = "none";
       processSelectedImageFile(files[0]);
     }
   });
@@ -1874,6 +1897,8 @@ const CropRoverDeviceCamera = {
     currentVisionImageSource = "browser_camera";
     currentEsp32CaptureId = null;
     currentEsp32CaptureMeta = null;
+    currentRpiCaptureId = null;
+    currentRpiCaptureMeta = null;
     const provTag = document.getElementById("cvProvenanceTag");
     if (provTag) {
       provTag.style.display = "inline-flex";
@@ -2053,25 +2078,72 @@ if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", () => {
     CropRoverDeviceCamera.stopAllStreams();
     stopEsp32Stream();
+    stopRpiStream();
   });
   window.addEventListener("pagehide", () => {
     CropRoverDeviceCamera.stopAllStreams();
     stopEsp32Stream();
+    stopRpiStream();
   });
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// ESP32-CAM (OV2640) FIELD HARDWARE CONTROLLER & 3-MODE INPUT SWITCHER
+// FIELD HARDWARE CAMERA CONTROLLERS (ESP32-CAM OV2640 & RASPBERRY PI OV5647)
 // ═════════════════════════════════════════════════════════════════════════════
 
+function clearStaleCapturedSpecimen() {
+  activeVisionRequestId = null;
+  if (validationAbortController) {
+    validationAbortController.abort();
+    validationAbortController = null;
+  }
+  if (visionAbortController) {
+    visionAbortController.abort();
+    visionAbortController = null;
+  }
+  isVisionAnalyzing = false;
+  selectedVisionFile = null;
+  lastVisionResult = null;
+  originalVisionImageObj = null;
+  currentEsp32CaptureId = null;
+  currentEsp32CaptureMeta = null;
+  currentRpiCaptureId = null;
+  currentRpiCaptureMeta = null;
+
+  if (currentPreviewObjectUrl) {
+    URL.revokeObjectURL(currentPreviewObjectUrl);
+    currentPreviewObjectUrl = null;
+  }
+
+  const previewImg = document.getElementById("cvPreviewImg");
+  const previewWrap = document.getElementById("dropzonePreviewWrap");
+  const dropzonePrompt = document.getElementById("dropzonePrompt");
+  const provTag = document.getElementById("cvProvenanceTag");
+  if (previewImg) previewImg.src = "";
+  if (previewWrap) previewWrap.style.display = "none";
+  if (dropzonePrompt) dropzonePrompt.style.display = "flex";
+  if (provTag) {
+    provTag.style.display = "none";
+    provTag.innerHTML = "";
+  }
+  clearPreviousVisionResults();
+  setVisionUIState(VisionUIState.EMPTY);
+}
+
 function setVisionInputMode(mode) {
+  const prevMode = currentVisionInputMode;
   currentVisionInputMode = mode;
 
   const tabUpload = document.getElementById("tabModeUpload");
   const tabCamera = document.getElementById("tabModeCamera");
   const tabEsp32 = document.getElementById("tabModeEsp32");
+  const tabRpi = document.getElementById("tabModeRpi");
+  const sourceBar = document.getElementById("fieldCameraSourceBar");
+  const btnSrcEsp32 = document.getElementById("btnSourceEsp32");
+  const btnSrcRpi = document.getElementById("btnSourceRpi");
   const dropzone = document.getElementById("cvDropzone");
   const esp32Panel = document.getElementById("esp32CamPanel");
+  const rpiPanel = document.getElementById("rpiCamPanel");
 
   if (tabUpload) {
     tabUpload.classList.toggle("active", mode === "upload");
@@ -2085,21 +2157,51 @@ function setVisionInputMode(mode) {
     tabEsp32.classList.toggle("active", mode === "esp32");
     tabEsp32.setAttribute("aria-selected", mode === "esp32" ? "true" : "false");
   }
+  if (tabRpi) {
+    tabRpi.classList.toggle("active", mode === "rpi");
+    tabRpi.setAttribute("aria-selected", mode === "rpi" ? "true" : "false");
+  }
+
+  const isFieldCam = mode === "esp32" || mode === "rpi";
+  if (sourceBar) sourceBar.style.display = isFieldCam ? "grid" : "none";
+  if (btnSrcEsp32) btnSrcEsp32.classList.toggle("active", mode === "esp32");
+  if (btnSrcRpi) btnSrcRpi.classList.toggle("active", mode === "rpi");
 
   if (mode === "upload") {
     stopEsp32Stream();
+    stopRpiStream();
     if (esp32Panel) esp32Panel.style.display = "none";
+    if (rpiPanel) rpiPanel.style.display = "none";
     if (dropzone) dropzone.style.display = "block";
   } else if (mode === "camera") {
     stopEsp32Stream();
+    stopRpiStream();
     if (esp32Panel) esp32Panel.style.display = "none";
+    if (rpiPanel) rpiPanel.style.display = "none";
     if (dropzone) dropzone.style.display = "block";
     openCameraModal();
   } else if (mode === "esp32") {
+    // Switching away from RPi only stops browser preview polling for RPi; RPi device remains uninterrupted
+    stopRpiStream();
+    if (prevMode !== "esp32" && (currentVisionImageSource === "rpi_cam" || currentRpiCaptureId)) {
+      clearStaleCapturedSpecimen();
+    }
+    if (rpiPanel) rpiPanel.style.display = "none";
     if (dropzone) dropzone.style.display = "none";
     if (esp32Panel) esp32Panel.style.display = "block";
     pollEsp32Status();
     startEsp32Stream();
+  } else if (mode === "rpi") {
+    // Switching away from ESP32 only stops browser preview polling for ESP32; ESP32 device remains uninterrupted
+    stopEsp32Stream();
+    if (prevMode !== "rpi" && (currentVisionImageSource === "esp32_cam" || currentEsp32CaptureId)) {
+      clearStaleCapturedSpecimen();
+    }
+    if (esp32Panel) esp32Panel.style.display = "none";
+    if (dropzone) dropzone.style.display = "none";
+    if (rpiPanel) rpiPanel.style.display = "block";
+    pollRpiStatus();
+    startRpiStream();
   }
 }
 
@@ -2138,10 +2240,14 @@ async function pollEsp32Status() {
     esp32DeviceOnline = isOnline;
 
     if (isOnline && dev) {
-      // Seamless auto-reconnect: if ESP32 CAM tab is active and not currently viewing an analysis result, start stream
-      if (currentVisionInputMode === "esp32" && !esp32StreamActive && !currentVisionResult) {
+      // Seamless auto-reconnect: if ESP32 CAM tab is active and not currently viewing a captured specimen, start stream
+      if (currentVisionInputMode === "esp32" && !esp32StreamActive && !selectedVisionFile && !lastVisionResult) {
         startEsp32Stream();
       }
+      const srcDotEsp = document.getElementById("srcDotEsp32");
+      const srcStateEsp = document.getElementById("srcStateEsp32");
+      if (srcDotEsp) srcDotEsp.className = "cam-src-dot badge-dot-online";
+      if (srcStateEsp) srcStateEsp.textContent = "Connected";
       if (headerBadge) {
         headerBadge.style.display = "inline-flex";
         headerBadge.className = "server-badge esp32-header-badge online";
@@ -2215,9 +2321,17 @@ async function pollEsp32Status() {
       if (rssiEl) rssiEl.textContent = "--";
       if (heapEl) heapEl.textContent = "--";
       if (diagCaptures) diagCaptures.textContent = "0";
+      const srcDotEsp = document.getElementById("srcDotEsp32");
+      const srcStateEsp = document.getElementById("srcStateEsp32");
+      if (srcDotEsp) srcDotEsp.className = "cam-src-dot badge-dot-offline";
+      if (srcStateEsp) srcStateEsp.textContent = "Disconnected";
     }
   } catch (err) {
     esp32DeviceOnline = false;
+    const srcDotEsp = document.getElementById("srcDotEsp32");
+    const srcStateEsp = document.getElementById("srcStateEsp32");
+    if (srcDotEsp) srcDotEsp.className = "cam-src-dot badge-dot-offline";
+    if (srcStateEsp) srcStateEsp.textContent = "Disconnected";
     if (headerBadge) {
       headerBadge.style.display = "inline-flex";
       headerBadge.className = "server-badge esp32-header-badge offline";
@@ -2248,6 +2362,471 @@ function refreshEsp32State() {
   pollEsp32Status();
   if (currentVisionInputMode === "esp32") {
     startEsp32Stream();
+  }
+}
+
+// ── RASPBERRY PI 3 B+ (OV5647) CONTROLLER ─────────────────────────────────────
+function getRpiStatePresentation(rawStatus, dev) {
+  const st = (rawStatus || "offline").toLowerCase();
+  if (st === "online" && dev && dev.authenticated && dev.is_online) {
+    return {
+      key: "online",
+      label: "Connected",
+      headerText: `Pi CAM Connected · ${dev.camera_model || "OV5647"}`,
+      tabText: "Connected",
+      dotClass: "badge-dot-online",
+      headerClass: "server-badge esp32-header-badge online",
+      badgeClass: "esp32-conn-badge badge-online",
+      pillClass: "esp32-tab-pill-badge badge-online",
+    };
+  }
+  if (st === "connecting") {
+    return {
+      key: "connecting",
+      label: "Connecting",
+      headerText: "Pi CAM Connecting...",
+      tabText: "Connecting",
+      dotClass: "badge-dot-connecting",
+      headerClass: "server-badge esp32-header-badge connecting",
+      badgeClass: "esp32-conn-badge badge-connecting",
+      pillClass: "esp32-tab-pill-badge badge-connecting",
+    };
+  }
+  if (st === "reconnecting") {
+    return {
+      key: "reconnecting",
+      label: "Reconnecting",
+      headerText: "Pi CAM Reconnecting...",
+      tabText: "Reconnecting",
+      dotClass: "badge-dot-connecting",
+      headerClass: "server-badge esp32-header-badge reconnecting",
+      badgeClass: "esp32-conn-badge badge-reconnecting",
+      pillClass: "esp32-tab-pill-badge badge-connecting",
+    };
+  }
+  if (st === "camera_error") {
+    return {
+      key: "camera_error",
+      label: "Camera Error",
+      headerText: "Pi CAM Error · OV5647",
+      tabText: "Error",
+      dotClass: "badge-dot-error",
+      headerClass: "server-badge esp32-header-badge camera-error",
+      badgeClass: "esp32-conn-badge badge-error",
+      pillClass: "esp32-tab-pill-badge badge-error",
+    };
+  }
+  return {
+    key: "offline",
+    label: "Disconnected",
+    headerText: "Pi CAM Disconnected",
+    tabText: "Offline",
+    dotClass: "badge-dot-offline",
+    headerClass: "server-badge esp32-header-badge offline",
+    badgeClass: "esp32-conn-badge badge-offline",
+    pillClass: "esp32-tab-pill-badge badge-offline",
+  };
+}
+
+async function pollRpiStatus() {
+  const headerBadge = document.getElementById("rpiHeaderBadge");
+  const headerDot = document.getElementById("rpiHeaderDot");
+  const headerText = document.getElementById("rpiHeaderText");
+  const tabBadge = document.getElementById("rpiTabBadge");
+  const connBadge = document.getElementById("rpiConnBadge");
+  const connText = document.getElementById("rpiConnText");
+  const subText = document.getElementById("rpiSubText");
+  const captureBtn = document.getElementById("btnRpiCapture");
+  const srcDot = document.getElementById("srcDotRpi");
+  const srcState = document.getElementById("srcStateRpi");
+
+  const camChip = document.getElementById("iotRpiCameraChip");
+  const camChipDot = document.getElementById("iotRpiCameraChipDot");
+  const camChipText = document.getElementById("iotRpiCameraChipText");
+
+  const rssiEl = document.getElementById("rpiRssi");
+  const cpuTempEl = document.getElementById("rpiCpuTemp");
+  const resEl = document.getElementById("rpiRes");
+  const droppedEl = document.getElementById("rpiDropped");
+
+  const diagName = document.getElementById("rpiDiagDeviceName");
+  const diagId = document.getElementById("rpiDiagDeviceId");
+  const diagReady = document.getElementById("rpiDiagCamReady");
+  const diagStream = document.getElementById("rpiDiagStreamState");
+  const diagStill = document.getElementById("rpiDiagStillRes");
+  const diagNet = document.getElementById("rpiDiagNetwork");
+  const diagMem = document.getElementById("rpiDiagMem");
+  const diagCaptures = document.getElementById("rpiDiagCaptures");
+  const diagHb = document.getElementById("rpiDiagHeartbeat");
+  const diagUptime = document.getElementById("rpiDiagUptime");
+
+  const overlay = document.getElementById("rpiStreamOverlay");
+  const overlayMsg = document.getElementById("rpiOverlayMessage");
+  const overlayHint = document.getElementById("rpiOverlayHint");
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/rpi/status`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+    const dev = data.active_device || (data.devices && data.devices.length > 0 ? data.devices[0] : null);
+    let rawStatus = dev ? dev.status : "offline";
+    if (rawStatus === "offline" && rpiWasOnline && dev && dev.last_heartbeat_ago_s != null && dev.last_heartbeat_ago_s < 45) {
+      rawStatus = "reconnecting";
+    }
+
+    const ui = getRpiStatePresentation(rawStatus, dev);
+    const isOnline = ui.key === "online";
+    if (isOnline) rpiWasOnline = true;
+    else if (ui.key === "offline") rpiWasOnline = false;
+
+    rpiDeviceOnline = isOnline;
+    rpiDeviceStatus = ui.key;
+
+    if (headerBadge) {
+      headerBadge.style.display = "inline-flex";
+      headerBadge.className = ui.headerClass;
+    }
+    if (headerDot) headerDot.className = `badge-dot ${ui.dotClass}`;
+    if (headerText) headerText.textContent = ui.headerText;
+    if (tabBadge) {
+      tabBadge.className = ui.pillClass;
+      tabBadge.textContent = ui.tabText;
+    }
+    if (connBadge) connBadge.className = ui.badgeClass;
+    if (connText) connText.textContent = ui.label;
+    if (srcDot) srcDot.className = `cam-src-dot ${ui.dotClass}`;
+    if (srcState) srcState.textContent = ui.label;
+
+    if (camChip) {
+      if (isOnline || ui.key === "camera_error" || ui.key === "reconnecting") {
+        camChip.style.display = "inline-flex";
+        if (camChipDot) camChipDot.className = `badge-dot ${ui.dotClass}`;
+        if (camChipText) camChipText.textContent = ui.label;
+      } else {
+        camChip.style.display = "none";
+      }
+    }
+
+    if (captureBtn) {
+      captureBtn.disabled = !isOnline || isCapturingRpi;
+    }
+
+    if (dev && (isOnline || ui.key === "camera_error" || ui.key === "connecting" || ui.key === "reconnecting")) {
+      if (subText) {
+        const netLabel = dev.wifi_ssid ? ` · Wi-Fi: ${dev.wifi_ssid}` : "";
+        subText.textContent = `${dev.device_name || dev.device_id} · ${ui.label}${netLabel}`;
+      }
+      if (rssiEl) rssiEl.textContent = dev.wifi_signal_dbm != null ? dev.wifi_signal_dbm : "--";
+      if (cpuTempEl) cpuTempEl.textContent = dev.cpu_temp_c != null ? dev.cpu_temp_c.toFixed(1) : "--";
+      if (resEl) resEl.textContent = dev.preview_resolution || "640x480";
+      if (droppedEl) droppedEl.textContent = dev.frames_dropped != null ? dev.frames_dropped : "0";
+
+      if (diagName) diagName.textContent = dev.device_name || "--";
+      if (diagId) diagId.textContent = dev.device_id || "rpi-ov5647-01";
+      if (diagReady) diagReady.textContent = dev.camera_ready ? "Ready (OV5647)" : (dev.camera_error || "Not Ready");
+      if (diagStream) diagStream.textContent = dev.stream_active ? `Streaming (${dev.preview_resolution})` : "Standby";
+      if (diagStill) diagStill.textContent = dev.still_resolution || "2592x1944";
+      if (diagNet) {
+        const ssidPart = dev.wifi_ssid ? `${dev.wifi_ssid} ` : "";
+        diagNet.textContent = `${ssidPart}${dev.ip_address || "--"}`.trim();
+      }
+      if (diagMem) {
+        diagMem.textContent = (dev.memory_used_mb != null && dev.memory_total_mb != null)
+          ? `${Math.round(dev.memory_used_mb)} / ${Math.round(dev.memory_total_mb)} MB`
+          : "--";
+      }
+      if (diagCaptures) diagCaptures.textContent = dev.total_captures != null ? dev.total_captures : "0";
+      if (diagHb) diagHb.textContent = dev.last_heartbeat_ago_s != null ? `${dev.last_heartbeat_ago_s}s ago` : "Active";
+      if (diagUptime) {
+        const u = dev.uptime_seconds || 0;
+        diagUptime.textContent = `${Math.floor(u / 60)}m ${u % 60}s`;
+      }
+
+      if (ui.key === "camera_error" && overlay) {
+        overlay.style.display = "flex";
+        if (overlayMsg) overlayMsg.textContent = "Raspberry Pi OV5647 Camera Error";
+        if (overlayHint) overlayHint.textContent = dev.camera_error || "Check ribbon cable seating or camera hardware.";
+      } else if (ui.key === "connecting" && overlay) {
+        overlay.style.display = "flex";
+        if (overlayMsg) overlayMsg.textContent = "Connecting & registering Raspberry Pi...";
+      } else if (ui.key === "reconnecting" && overlay) {
+        overlay.style.display = "flex";
+        if (overlayMsg) overlayMsg.textContent = "Reconnecting to Raspberry Pi Camera...";
+      } else if (isOnline && currentVisionInputMode === "rpi" && !rpiStreamActive && !selectedVisionFile && !lastVisionResult) {
+        startRpiStream();
+      }
+    } else {
+      if (subText) subText.textContent = "Picamera2 / libcamera · Disconnected";
+      if (rssiEl) rssiEl.textContent = "--";
+      if (cpuTempEl) cpuTempEl.textContent = "--";
+      if (droppedEl) droppedEl.textContent = "0";
+      if (diagReady) diagReady.textContent = "No (Disconnected)";
+      if (diagStream) diagStream.textContent = "Standby";
+      if (diagHb) diagHb.textContent = "--";
+      if (currentVisionInputMode === "rpi" && overlay) {
+        const liveImg = document.getElementById("rpiLiveImg");
+        if (liveImg) liveImg.style.display = "none";
+        overlay.style.display = "flex";
+        if (overlayMsg) overlayMsg.textContent = "Raspberry Pi Camera Disconnected";
+        if (overlayHint) overlayHint.textContent = "Power on the Raspberry Pi 3 B+ unit; it connects automatically over Wi-Fi.";
+      }
+    }
+  } catch (err) {
+    rpiDeviceOnline = false;
+    rpiDeviceStatus = "offline";
+    const ui = getRpiStatePresentation("offline", null);
+    if (headerBadge) {
+      headerBadge.style.display = "inline-flex";
+      headerBadge.className = ui.headerClass;
+    }
+    if (headerDot) headerDot.className = `badge-dot ${ui.dotClass}`;
+    if (headerText) headerText.textContent = ui.headerText;
+    if (tabBadge) {
+      tabBadge.className = ui.pillClass;
+      tabBadge.textContent = ui.tabText;
+    }
+    if (connBadge) connBadge.className = ui.badgeClass;
+    if (connText) connText.textContent = ui.label;
+    if (srcDot) srcDot.className = `cam-src-dot ${ui.dotClass}`;
+    if (srcState) srcState.textContent = ui.label;
+    if (captureBtn) captureBtn.disabled = true;
+  }
+}
+
+function refreshRpiState() {
+  pollRpiStatus();
+  if (currentVisionInputMode === "rpi") {
+    startRpiStream();
+  }
+}
+
+function startRpiStream() {
+  if (rpiStreamActive) return;
+  rpiStreamActive = true;
+  rpiFrameCount = 0;
+
+  const overlay = document.getElementById("rpiStreamOverlay");
+  const overlayMsg = document.getElementById("rpiOverlayMessage");
+  const liveImg = document.getElementById("rpiLiveImg");
+  const fpsEl = document.getElementById("rpiFps");
+
+  // Clear any old frame before fetching fresh frames from the Raspberry Pi
+  if (liveImg) {
+    if (liveImg.dataset.blobUrl) {
+      URL.revokeObjectURL(liveImg.dataset.blobUrl);
+      delete liveImg.dataset.blobUrl;
+    }
+    liveImg.style.display = "none";
+    liveImg.src = "";
+  }
+
+  if (overlay) overlay.style.display = "flex";
+  if (overlayMsg) {
+    overlayMsg.textContent = rpiDeviceOnline
+      ? "Loading Raspberry Pi live preview..."
+      : "Waiting for Raspberry Pi Camera...";
+  }
+
+  fetch(`${API_BASE}/api/v1/rpi/stream-control`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ active: true })
+  }).catch(() => {});
+
+  if (rpiFpsTimer) clearInterval(rpiFpsTimer);
+  rpiFpsTimer = setInterval(() => {
+    if (fpsEl) fpsEl.textContent = rpiFrameCount;
+    rpiFrameCount = 0;
+  }, 1000);
+
+  rpiStreamAbortController = new AbortController();
+  fetchRpiPreviewLoop();
+}
+
+function stopRpiStream() {
+  rpiStreamActive = false;
+  if (rpiFpsTimer) {
+    clearInterval(rpiFpsTimer);
+    rpiFpsTimer = null;
+  }
+  const fpsEl = document.getElementById("rpiFps");
+  if (fpsEl) fpsEl.textContent = "--";
+
+  if (rpiStreamAbortController) {
+    rpiStreamAbortController.abort();
+    rpiStreamAbortController = null;
+  }
+
+  const liveImg = document.getElementById("rpiLiveImg");
+  if (liveImg) {
+    if (liveImg.dataset.blobUrl) {
+      URL.revokeObjectURL(liveImg.dataset.blobUrl);
+      delete liveImg.dataset.blobUrl;
+    }
+    liveImg.style.display = "none";
+    liveImg.src = "";
+  }
+}
+
+let lastRpiRenderedFrameAge = null;
+
+async function fetchRpiPreviewLoop() {
+  if (!rpiStreamActive) return;
+  if (isFetchingRpiFrame) return;
+  isFetchingRpiFrame = true;
+
+  const liveImg = document.getElementById("rpiLiveImg");
+  const overlay = document.getElementById("rpiStreamOverlay");
+  const overlayMsg = document.getElementById("rpiOverlayMessage");
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/rpi/preview?t=${Date.now()}`, {
+      cache: "no-store",
+      signal: rpiStreamAbortController ? rpiStreamAbortController.signal : undefined
+    });
+
+    if (res.ok && res.status === 200) {
+      const ageSec = parseFloat(res.headers.get("X-Frame-Age-Seconds") || "0");
+      const blob = await res.blob();
+      if (blob.size > 0 && rpiStreamActive && currentVisionInputMode === "rpi") {
+        if (ageSec <= 8.0 && rpiDeviceStatus !== "camera_error") {
+          const newUrl = URL.createObjectURL(blob);
+          const oldUrl = liveImg.dataset.blobUrl;
+          liveImg.src = newUrl;
+          liveImg.dataset.blobUrl = newUrl;
+          if (oldUrl) URL.revokeObjectURL(oldUrl);
+
+          liveImg.style.display = "block";
+          if (overlay) overlay.style.display = "none";
+          if (ageSec !== lastRpiRenderedFrameAge) {
+            rpiFrameCount++;
+            lastRpiRenderedFrameAge = ageSec;
+          }
+        } else if (rpiDeviceStatus !== "camera_error") {
+          if (liveImg) liveImg.style.display = "none";
+          if (overlay) {
+            overlay.style.display = "flex";
+            if (overlayMsg) overlayMsg.textContent = "Preview frame delayed. Reconnecting to Raspberry Pi...";
+          }
+        }
+      }
+    } else if (overlay && rpiDeviceStatus !== "camera_error") {
+      if (liveImg) liveImg.style.display = "none";
+      overlay.style.display = "flex";
+      if (overlayMsg) {
+        overlayMsg.textContent = rpiDeviceOnline
+          ? "Waiting for live frame from Raspberry Pi OV5647..."
+          : "Raspberry Pi Camera Disconnected";
+      }
+    }
+  } catch (err) {
+    // transient abort or poll wait
+  } finally {
+    isFetchingRpiFrame = false;
+    if (rpiStreamActive) {
+      setTimeout(fetchRpiPreviewLoop, 75);
+    }
+  }
+}
+
+async function triggerRpiCapture() {
+  const btn = document.getElementById("btnRpiCapture");
+  const btnText = document.getElementById("btnRpiCaptureText");
+  const flash = document.getElementById("rpiCaptureFlash");
+
+  if (!btn || btn.disabled || isCapturingRpi) return;
+
+  isCapturingRpi = true;
+  btn.disabled = true;
+  if (btnText) btnText.textContent = "Capturing Full-Res OV5647...";
+
+  if (flash) {
+    flash.classList.add("flashing");
+    setTimeout(() => flash.classList.remove("flashing"), 380);
+  }
+
+  const requestId = `rpi_cap_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/rpi/capture`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ request_id: requestId, quality: 92 }),
+    });
+
+    if (!res.ok) {
+      let errorMsg = `Capture failed (HTTP ${res.status})`;
+      try {
+        const errJson = await res.json();
+        errorMsg = errJson.detail?.message || errJson.detail || errJson.message || errorMsg;
+      } catch {
+        // default error message
+      }
+      throw new Error(typeof errorMsg === "string" ? errorMsg : JSON.stringify(errorMsg));
+    }
+
+    const data = await res.json();
+    if (!data.image_base64) {
+      throw new Error("No image data returned from Raspberry Pi camera capture.");
+    }
+
+    let b64 = data.image_base64;
+    if (typeof b64 === "string" && b64.includes(",")) {
+      b64 = b64.split(",")[1];
+    }
+    b64 = (b64 || "").replace(/\s/g, "");
+
+    const byteCharacters = atob(b64);
+    const byteArray = new Uint8Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteArray[i] = byteCharacters.charCodeAt(i);
+    }
+    const blob = new Blob([byteArray], { type: "image/jpeg" });
+
+    const filename = `rpi_${data.device_id || "ov5647"}_${data.capture_id || Date.now()}.jpg`;
+    const capturedFile = new File([blob], filename, { type: "image/jpeg", lastModified: Date.now() });
+
+    currentEsp32CaptureId = null;
+    currentEsp32CaptureMeta = null;
+    currentRpiCaptureId = data.capture_id;
+    currentRpiCaptureMeta = data;
+    currentVisionImageSource = "rpi_cam";
+
+    // Stop browser preview polling while displaying captured specimen (Pi keeps camera ready)
+    stopRpiStream();
+
+    const rpiPanel = document.getElementById("rpiCamPanel");
+    const dropzone = document.getElementById("cvDropzone");
+    const dropzonePrompt = document.getElementById("dropzonePrompt");
+    const dropzonePreviewWrap = document.getElementById("dropzonePreviewWrap");
+
+    if (rpiPanel) rpiPanel.style.display = "none";
+    if (dropzone) dropzone.style.display = "block";
+    if (dropzonePrompt) dropzonePrompt.style.display = "none";
+    if (dropzonePreviewWrap) dropzonePreviewWrap.style.display = "flex";
+
+    const provTag = document.getElementById("cvProvenanceTag");
+    if (provTag) {
+      provTag.style.display = "inline-flex";
+      provTag.className = "provenance-tag rpi-provenance";
+      provTag.innerHTML = `🍓 Raspberry Pi · OV5647 (${escapeHTML(data.resolution || "Full-Res")}) · ${data.capture_latency_ms || "--"}ms`;
+    }
+
+    showToast(
+      `Captured ${data.resolution || "full-resolution"} OV5647 specimen (${(data.file_size / 1024).toFixed(0)} KB). Verifying...`,
+      "success",
+      "Raspberry Pi Capture"
+    );
+
+    await processSelectedImageFile(capturedFile, false, "rpi_cam", null, data.capture_id);
+  } catch (err) {
+    console.error("Raspberry Pi capture error:", err);
+    showToast(err?.message || "Failed to capture image from Raspberry Pi Camera.", "error", "Capture Error");
+  } finally {
+    isCapturingRpi = false;
+    if (btn) btn.disabled = !rpiDeviceOnline;
+    if (btnText) btnText.textContent = "Take Photo / Capture";
   }
 }
 
@@ -2495,6 +3074,8 @@ function handleCvFileSelect(event) {
     currentVisionImageSource = "browser_upload";
     currentEsp32CaptureId = null;
     currentEsp32CaptureMeta = null;
+    currentRpiCaptureId = null;
+    currentRpiCaptureMeta = null;
     const provTag = document.getElementById("cvProvenanceTag");
     if (provTag) provTag.style.display = "none";
     processSelectedImageFile(files[0]);
@@ -2565,7 +3146,12 @@ function handleRecaptureButtonClick(event) {
   if (event && typeof event.stopPropagation === "function") {
     event.stopPropagation();
   }
-  if (currentVisionInputMode === "esp32" || currentVisionImageSource === "esp32_cam") {
+  if (
+    currentVisionInputMode === "esp32" ||
+    currentVisionImageSource === "esp32_cam" ||
+    currentVisionInputMode === "rpi" ||
+    currentVisionImageSource === "rpi_cam"
+  ) {
     resetVisionToNewSpecimen(event);
   } else {
     openCameraModal(event);
@@ -2616,6 +3202,7 @@ function resetVisionToNewSpecimen(event) {
   const filenameEl = document.getElementById("cvPreviewFilename");
   const dropzone = document.getElementById("cvDropzone");
   const esp32Panel = document.getElementById("esp32CamPanel");
+  const rpiPanel = document.getElementById("rpiCamPanel");
 
   if (previewImg) previewImg.src = "";
   if (filenameEl) filenameEl.textContent = "sample.jpg";
@@ -2625,8 +3212,11 @@ function resetVisionToNewSpecimen(event) {
   setVisionUIState(VisionUIState.EMPTY);
 
   const wasEsp32 = (currentVisionInputMode === "esp32" || currentVisionImageSource === "esp32_cam");
+  const wasRpi = (currentVisionInputMode === "rpi" || currentVisionImageSource === "rpi_cam");
   currentEsp32CaptureId = null;
   currentEsp32CaptureMeta = null;
+  currentRpiCaptureId = null;
+  currentRpiCaptureMeta = null;
 
   const provTag = document.getElementById("cvProvenanceTag");
   if (provTag) {
@@ -2634,10 +3224,19 @@ function resetVisionToNewSpecimen(event) {
     provTag.innerHTML = "";
   }
 
-  if (wasEsp32) {
+  if (wasRpi) {
+    currentVisionInputMode = "rpi";
+    currentVisionImageSource = "rpi_cam";
+    if (dropzone) dropzone.style.display = "none";
+    if (esp32Panel) esp32Panel.style.display = "none";
+    if (rpiPanel) rpiPanel.style.display = "block";
+    startRpiStream();
+    showToast("Cleared specimen. Resumed live Raspberry Pi OV5647 preview.", "info", "Live Camera Ready");
+  } else if (wasEsp32) {
     currentVisionInputMode = "esp32";
     currentVisionImageSource = "esp32_cam";
     if (dropzone) dropzone.style.display = "none";
+    if (rpiPanel) rpiPanel.style.display = "none";
     if (esp32Panel) esp32Panel.style.display = "block";
     startEsp32Stream();
     showToast("Cleared specimen. Resumed live ESP32-CAM preview.", "info", "Live Camera Ready");
@@ -2646,6 +3245,7 @@ function resetVisionToNewSpecimen(event) {
     if (dropzone) dropzone.style.display = "block";
     if (dropzonePrompt) dropzonePrompt.style.display = "flex";
     if (esp32Panel) esp32Panel.style.display = "none";
+    if (rpiPanel) rpiPanel.style.display = "none";
     showToast("Foliar workspace reset. Ready for new specimen.", "info", "Workspace Reset");
   }
 }
@@ -2787,10 +3387,11 @@ function renderValidationBanner(validation) {
     banner.style.display = "flex";
   } else if (status === "VALID_PLANT_IMAGE") {
     if (validation.image_quality && validation.image_quality.includes("Degraded")) {
+      const isRpiDegraded = validation.image_quality.includes("OV5647") || validation.image_quality.includes("Raspberry Pi");
       banner.className = "validation-banner validation-banner-uncertain";
-      if (iconEl) iconEl.textContent = "📹";
-      if (titleEl) titleEl.textContent = "Camera Quality Degraded · ESP32-CAM OV2640";
-      if (msgEl) msgEl.textContent = reason || "Sensor compression or mild optical blur tolerated under authenticated ESP32-CAM policy. Specimen confirmed as plant foliage.";
+      if (iconEl) iconEl.textContent = isRpiDegraded ? "🍓" : "📹";
+      if (titleEl) titleEl.textContent = isRpiDegraded ? "Camera Quality Degraded · Raspberry Pi OV5647" : "Camera Quality Degraded · ESP32-CAM OV2640";
+      if (msgEl) msgEl.textContent = reason || "Mild optical variance tolerated under authenticated hardware camera policy. Specimen confirmed as plant foliage.";
       banner.style.display = "flex";
     } else {
       banner.className = "validation-banner validation-banner-valid";
@@ -2857,14 +3458,21 @@ function renderInvalidImagePanel(validation, isScreenshot = false, isNonPlant = 
   document.getElementById("visionSection")?.classList.add("has-results");
 }
 
-async function processSelectedImageFile(file, isSample = false, source = null, esp32CaptureId = null) {
+async function processSelectedImageFile(file, isSample = false, source = null, esp32CaptureId = null, rpiCaptureId = null) {
   if (!file || !file.type.startsWith("image/")) {
     showErrorNotification("Please upload a valid image file (JPEG, PNG, or WebP).");
     return;
   }
 
   if (source) currentVisionImageSource = source;
-  if (esp32CaptureId) currentEsp32CaptureId = esp32CaptureId;
+  if (esp32CaptureId) {
+    currentEsp32CaptureId = esp32CaptureId;
+    currentRpiCaptureId = null;
+  }
+  if (rpiCaptureId) {
+    currentRpiCaptureId = rpiCaptureId;
+    currentEsp32CaptureId = null;
+  }
 
   // Stale response protection: assign unique request ID to this image instance
   const thisImageId = "img_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
@@ -2926,18 +3534,20 @@ async function processSelectedImageFile(file, isSample = false, source = null, e
   if (currentEsp32CaptureId) {
     formData.append("esp32_capture_id", currentEsp32CaptureId);
   }
+  if (currentRpiCaptureId) {
+    formData.append("rpi_capture_id", currentRpiCaptureId);
+  }
 
-  // Safety watchdog timeout (9.0s max): If validation takes long, prompt user to verify specimen
+  // Safety watchdog timeout (9.0s max): Fail closed and prompt user to retry validation
   const validationTimeout = setTimeout(() => {
     if (activeVisionRequestId === thisImageId && currentVisionState === VisionUIState.VALIDATING) {
       console.warn("Validation timeout reached; prompting specimen verification.");
       setVisionUIState(VisionUIState.VALIDATION_UNCERTAIN, "Specimen check timed out. Ensure photograph is a clear plant leaf.");
       renderValidationBanner({
         validation_status: "VALIDATION_UNCERTAIN",
-        validation_reason: "Automated botanical validation timed out. Please ensure this image contains a clear plant leaf.",
-        is_inference_allowed: true
+        validation_reason: "Automated botanical validation timed out. Please retry with a clear photograph of a plant leaf.",
+        is_inference_allowed: false
       });
-      scrollAndHighlightAnalyzeButton();
     }
   }, 9000);
 
@@ -3037,6 +3647,17 @@ async function processSelectedImageFile(file, isSample = false, source = null, e
 async function loadSampleLeaf(sampleKey) {
   const sample = SAMPLE_LEAF_MAP[sampleKey];
   if (!sample) return;
+
+  if (currentVisionInputMode === "esp32" || currentVisionInputMode === "rpi") {
+    setVisionInputMode("upload");
+  }
+  currentVisionImageSource = "browser_upload";
+  currentEsp32CaptureId = null;
+  currentEsp32CaptureMeta = null;
+  currentRpiCaptureId = null;
+  currentRpiCaptureMeta = null;
+  const provTag = document.getElementById("cvProvenanceTag");
+  if (provTag) provTag.style.display = "none";
 
   setVisionUIState(VisionUIState.VALIDATING, `Loading ${sample.label}...`);
 
@@ -3253,6 +3874,9 @@ async function runVisionPrediction(overrideForce = false, includeExplainability 
   formData.append("source", currentVisionImageSource || "browser_upload");
   if (currentEsp32CaptureId) {
     formData.append("esp32_capture_id", currentEsp32CaptureId);
+  }
+  if (currentRpiCaptureId) {
+    formData.append("rpi_capture_id", currentRpiCaptureId);
   }
   if (overrideForce) {
     formData.append("force_inference", "true");
@@ -4044,10 +4668,20 @@ function renderTechnicalDetails(data = {}) {
         <span class="tech-label">Primary Classifier</span>
         <span class="tech-val">EfficientNetV2-S (256×256)</span>
       </div>
-      ${data && data.camera_source === "esp32_cam" ? `
+      ${data && (data.camera_source === "esp32_cam" || (data.camera_source && data.camera_source.includes("ESP32"))) ? `
       <div class="tech-item" style="border-color: rgba(82, 183, 136, 0.4); background: rgba(82, 183, 136, 0.08);">
         <span class="tech-label" style="color: var(--green-bright);">📹 Camera Hardware</span>
-        <span class="tech-val" style="color: var(--green-bright);">ESP32 CAM · OV2640 (${data.camera_device_id || 'esp32-cam-01'})</span>
+        <span class="tech-val" style="color: var(--green-bright);">ESP32 CAM · OV2640 (${escapeHTML(data.camera_device_id || 'esp32-cam-01')})</span>
+      </div>
+      <div class="tech-item" style="border-color: rgba(82, 183, 136, 0.4); background: rgba(82, 183, 136, 0.08);">
+        <span class="tech-label" style="color: var(--green-bright);">Optical Capture Latency</span>
+        <span class="tech-val" style="color: var(--green-bright);">${data.camera_capture_latency_ms || '--'} ms</span>
+      </div>
+      ` : ''}
+      ${data && (data.camera_source === "rpi_cam" || (data.camera_source && data.camera_source.includes("Raspberry Pi"))) ? `
+      <div class="tech-item" style="border-color: rgba(82, 183, 136, 0.4); background: rgba(82, 183, 136, 0.08);">
+        <span class="tech-label" style="color: var(--green-bright);">🍓 Camera Hardware</span>
+        <span class="tech-val" style="color: var(--green-bright);">Raspberry Pi · OV5647 (${escapeHTML(data.camera_device_id || 'rpi-ov5647-01')})</span>
       </div>
       <div class="tech-item" style="border-color: rgba(82, 183, 136, 0.4); background: rgba(82, 183, 136, 0.08);">
         <span class="tech-label" style="color: var(--green-bright);">Optical Capture Latency</span>
@@ -5485,5 +6119,6 @@ if (typeof window !== "undefined") {
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports.getDetectorBenchmarkDisplay = getDetectorBenchmarkDisplay;
+  module.exports.getRpiStatePresentation = getRpiStatePresentation;
 }
 

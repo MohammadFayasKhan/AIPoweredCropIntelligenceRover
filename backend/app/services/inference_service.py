@@ -1007,6 +1007,8 @@ class InferenceEngine:
 
         if source == "esp32_cam" and val_result.image_quality and "Degraded" in val_result.image_quality:
             warnings.append("Notice: Image acquired via field ESP32-CAM (OV2640) has mild sensor degradation; analyzed under adjusted camera quality policy.")
+        elif source == "rpi_cam" and val_result.image_quality and "Degraded" in val_result.image_quality:
+            warnings.append("Notice: Image acquired via field Raspberry Pi Camera (OV5647) has mild optical degradation; analyzed under adjusted camera quality policy.")
 
         if not val_result.is_inference_allowed and not force_inference:
             # HALT: Do not execute disease classification, detection, segmentation, or Grad-CAM.
@@ -1064,7 +1066,11 @@ class InferenceEngine:
                 modalities_used=["image"],
                 multimodal_context=multimodal_context,
                 warnings=[f"Image validation rejected input: {val_result.validation_reason}"],
-                camera_source="ESP32-CAM · OV2640" if source == "esp32_cam" else ("Device Camera" if source == "browser_camera" else "Browser Upload"),
+                camera_source=(
+                    "ESP32-CAM · OV2640" if source == "esp32_cam"
+                    else ("Raspberry Pi · OV5647" if source == "rpi_cam"
+                    else ("Device Camera" if source == "browser_camera" else "Browser Upload"))
+                ),
                 camera_device_id=camera_metadata.get("device_id") if camera_metadata else None,
                 camera_capture_id=camera_metadata.get("capture_id") if camera_metadata else None,
                 camera_capture_latency_ms=camera_metadata.get("capture_latency_ms") if camera_metadata else None,
@@ -1783,7 +1789,11 @@ class InferenceEngine:
             short_explanation=short_explanation,
             what_to_check=what_to_check,
             warnings=warnings,
-            camera_source="ESP32-CAM · OV2640" if source == "esp32_cam" else ("Device Camera" if source == "browser_camera" else "Browser Upload"),
+            camera_source=(
+                "ESP32-CAM · OV2640" if source == "esp32_cam"
+                else ("Raspberry Pi · OV5647" if source == "rpi_cam"
+                else ("Device Camera" if source == "browser_camera" else "Browser Upload"))
+            ),
             camera_device_id=camera_metadata.get("device_id") if camera_metadata else None,
             camera_capture_id=camera_metadata.get("capture_id") if camera_metadata else None,
             camera_capture_latency_ms=camera_metadata.get("capture_latency_ms") if camera_metadata else None,

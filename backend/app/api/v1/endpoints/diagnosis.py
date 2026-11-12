@@ -21,7 +21,7 @@ from fastapi.responses import JSONResponse
 logger = logging.getLogger("crop_rover.diagnosis")
 
 from backend.app.services.inference_service import inference_engine
-from backend.app.services.esp32_gateway import esp32_gateway
+from backend.app.services.camera_provenance import resolve_camera_provenance, verify_uploaded_matches_provenance
 from backend.app.utils.image_processing import ImageValidationError
 from backend.app.schemas.diagnosis import DiagnosisResponse, ErrorResponse
 
@@ -42,8 +42,10 @@ router = APIRouter()
 async def diagnose_leaf_image(
     request: Request,
     file: Optional[UploadFile] = File(None, description="Plant leaf photograph (JPEG, PNG, or WebP up to 15 MB)"),
-    source: Optional[str] = Form("browser_upload", description="Source: 'browser_upload', 'browser_camera', or 'esp32_cam'"),
+    source: Optional[str] = Form("browser_upload", description="Source: 'browser_upload', 'browser_camera', 'esp32_cam', or 'rpi_cam'"),
     esp32_capture_id: Optional[str] = Form(None, description="Authentic capture ID from ESP32-CAM hardware capture"),
+    rpi_capture_id: Optional[str] = Form(None, description="Authentic capture ID from Raspberry Pi OV5647 hardware capture"),
+    capture_id: Optional[str] = Form(None, description="Generic hardware capture ID alias"),
     model_tier: Optional[str] = Form("server", description="Vision model tier: 'server', 'edge', or 'ensemble'"),
     include_explainability: bool = Form(False, description="Whether to compute the full 9-stage explainability suite"),
     crop_context: Optional[str] = Form(None, description="Optional crop hint (e.g., Tomato, Corn, Grape)"),
@@ -58,34 +60,21 @@ async def diagnose_leaf_image(
     2. Runs Tier 1 classification: Server-grade EfficientNetV2-S (default), Edge MobileNetV2, or Ensemble.
     3. Runs Tier 2 YOLO26/YOLO11 lesion localization if infected.
     4. Runs Tier 3 Mobile-UNet sub-pixel segmentation if infected.
-    5. Applies source-aware quality policy for authentic ESP32-CAM captures while maintaining strict semantic plant validation.
+    5. Applies source-aware quality policy for authentic ESP32-CAM and Raspberry Pi captures while maintaining strict semantic plant validation.
     6. Incorporates optional paired multimodal context with explicit modality traceability.
     7. Formulates grounded agronomic action advisory and returns payload.
     """
     # Generate or extract a correlation tracking ID for distributed request tracing
     request_id = getattr(request.state, "request_id", None) or uuid.uuid4().hex[:12]
-    camera_metadata = None
-    validated_source = source or "browser_upload"
 
     # Step 1: Hardware Provenance Authentication
-    # If an ESP32-CAM capture ID is passed, consume and verify its one-time cryptographic token
-    # from the ring-buffer cache. This prevents spoofed camera telemetry and allows relaxed
-    # exposure/blur bounds appropriate for low-cost OV2640 agricultural camera sensors.
-    if esp32_capture_id:
-        provenance = esp32_gateway.verify_and_consume_provenance(esp32_capture_id)
-        if provenance:
-            validated_source = "esp32_cam"
-            camera_metadata = {
-                "device_id": provenance["device_id"],
-                "capture_id": esp32_capture_id,
-                "capture_latency_ms": provenance.get("capture_latency_ms"),
-                "camera_model": provenance.get("camera_model", "OV2640"),
-                "camera_source": "ESP32-CAM · OV2640"
-            }
-        else:
-            # Stale or unverified capture ID - fall back to strict browser validation policy
-            logger.warning(f"Unverified or expired esp32_capture_id: {esp32_capture_id}; falling back to browser policy")
-            validated_source = "browser_upload"
+    validated_source, camera_metadata, stored_frame_bytes = resolve_camera_provenance(
+        source=source,
+        esp32_capture_id=esp32_capture_id,
+        rpi_capture_id=rpi_capture_id,
+        capture_id=capture_id,
+        consume=True,
+    )
 
     if file is not None and file.filename:
         filename = file.filename or "uploaded_leaf.jpg"
@@ -106,9 +95,21 @@ async def diagnose_leaf_image(
             )
         finally:
             await file.close()
-    elif camera_metadata and "frame_bytes" in provenance:
-        file_bytes = provenance["frame_bytes"]
-        filename = f"{esp32_capture_id}.jpg"
+
+        if not verify_uploaded_matches_provenance(file_bytes, camera_metadata):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "error_code": "CAPTURE_PROVENANCE_MISMATCH",
+                    "message": "Uploaded image bytes do not match the verified hardware capture checksum.",
+                    "recovery_hint": "Re-capture the specimen from the selected camera before analyzing.",
+                    "request_id": request_id
+                }
+            )
+    elif camera_metadata and stored_frame_bytes:
+        file_bytes = stored_frame_bytes
+        filename = f"{camera_metadata['capture_id']}.jpg"
         content_type = "image/jpeg"
     else:
         raise HTTPException(
@@ -116,17 +117,16 @@ async def diagnose_leaf_image(
             detail={
                 "status": "error",
                 "error_code": "NO_IMAGE_PROVIDED",
-                "message": "Neither file upload nor authentic ESP32 capture ID was provided.",
-                "recovery_hint": "Please choose an image file or capture a frame from ESP32 CAM.",
+                "message": "Neither file upload nor authentic hardware capture ID was provided.",
+                "recovery_hint": "Please choose an image file or capture a frame from ESP32-CAM or Raspberry Pi Camera.",
                 "request_id": request_id
             }
         )
 
     # Step 2: IoT Environmental Telemetry Injection
     # Enrich multimodal diagnostic context with live field sensors if explicitly requested
-    # or if authentic esp32_cam capture arrives without manual ambient metrics.
-    # This correlates visual foliar symptoms with microclimatic triggers (e.g., high humidity + fungal blight).
-    if attach_iot_context or (validated_source == "esp32_cam" and (temperature_c is None or humidity_pct is None)):
+    # or if authentic field hardware capture arrives without manual ambient metrics.
+    if attach_iot_context or (validated_source in ("esp32_cam", "rpi_cam") and (temperature_c is None or humidity_pct is None)):
         try:
             from backend.app.api.v1.endpoints.iot import _latest_observation
             if _latest_observation is not None:

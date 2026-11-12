@@ -477,3 +477,44 @@ test("Dynamic spatial detector benchmark reflects YOLO26s default and legacy fal
   assert.strictEqual(legacy.metricTag, "(PlantDoc mAP@50: 0.3360)");
   assert.ok(legacy.tooltip.includes("YOLO11n 416x416"));
 });
+
+// Test 21: Raspberry Pi Camera State Presentation & Multi-Camera UI Structure
+test("Raspberry Pi camera state helper maps all 5 lifecycle states truthfully", () => {
+  const { getRpiStatePresentation } = require("./app.js");
+  assert.strictEqual(typeof getRpiStatePresentation, "function");
+
+  // Unauthenticated device must NEVER display Connected/Online
+  const unauthOnline = getRpiStatePresentation("online", { authenticated: false, is_online: false });
+  assert.strictEqual(unauthOnline.key, "offline");
+  assert.strictEqual(unauthOnline.label, "Disconnected");
+
+  const connected = getRpiStatePresentation("online", { authenticated: true, is_online: true, camera_model: "OV5647" });
+  assert.strictEqual(connected.key, "online");
+  assert.strictEqual(connected.label, "Connected");
+
+  assert.strictEqual(getRpiStatePresentation("connecting", null).label, "Connecting");
+  assert.strictEqual(getRpiStatePresentation("reconnecting", null).label, "Reconnecting");
+  assert.strictEqual(getRpiStatePresentation("camera_error", null).label, "Camera Error");
+  assert.strictEqual(getRpiStatePresentation("offline", null).label, "Disconnected");
+});
+
+test("Frontend HTML includes independent ESP32-CAM and Raspberry Pi OV5647 controls", () => {
+  const fs = require("fs");
+  const path = require("path");
+  const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+
+  for (const id of [
+    "tabModeEsp32",
+    "tabModeRpi",
+    "fieldCameraSourceBar",
+    "btnSourceEsp32",
+    "btnSourceRpi",
+    "esp32CamPanel",
+    "rpiCamPanel",
+    "rpiLiveImg",
+    "btnRpiCapture",
+    "rpiHeaderBadge",
+  ]) {
+    assert.ok(html.includes(`id="${id}"`), `Missing expected DOM element #${id}`);
+  }
+});

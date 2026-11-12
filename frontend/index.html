@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css?v=20260913_camera_capture" />
+  <link rel="stylesheet" href="./style.css?v=20261112_rpi_badges_val" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -41,6 +41,11 @@
           <span class="badge-icon" id="esp32HeaderIcon">📹</span>
           <span id="esp32HeaderText">ESP32 CAM Offline</span>
         </div>
+        <div class="server-badge esp32-header-badge" id="rpiHeaderBadge" title="Raspberry Pi 3 B+ OV5647 Camera Status">
+          <span class="badge-dot badge-dot-offline" id="rpiHeaderDot"></span>
+          <span class="badge-icon" id="rpiHeaderIcon">🍓</span>
+          <span id="rpiHeaderText">Pi CAM Disconnected</span>
+        </div>
       </div>
     </div>
   </header>
@@ -68,6 +73,10 @@
         <div class="iot-camera-chip" id="iotCameraChip" style="display:none;" title="ESP32-CAM Field Camera Hardware Status">
           <span class="badge-dot badge-dot-offline" id="iotCameraChipDot" style="width:7px;height:7px;"></span>
           <span>📹 ESP32-CAM: <strong id="iotCameraChipText">Offline</strong></span>
+        </div>
+        <div class="iot-camera-chip" id="iotRpiCameraChip" style="display:none;" title="Raspberry Pi OV5647 Field Camera Status">
+          <span class="badge-dot badge-dot-offline" id="iotRpiCameraChipDot" style="width:7px;height:7px;"></span>
+          <span>🍓 Pi-CAM: <strong id="iotRpiCameraChipText">Disconnected</strong></span>
         </div>
       </div>
     </div>
@@ -300,6 +309,11 @@
             <span>ESP32 CAM</span>
             <span class="esp32-tab-pill-badge badge-offline" id="esp32TabBadge">Offline</span>
           </button>
+          <button type="button" class="input-mode-tab" id="tabModeRpi" onclick="setVisionInputMode('rpi')" role="tab" aria-selected="false">
+            <span class="mode-tab-icon">🍓</span>
+            <span>Raspberry Pi</span>
+            <span class="esp32-tab-pill-badge badge-offline" id="rpiTabBadge">Offline</span>
+          </button>
         </div>
 
         <!-- Dedicated Hidden File Input (isolated outside dropzone to prevent event bubbling recursion) -->
@@ -342,6 +356,20 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Field Camera-Source Quick Selector (shown in ESP32 / RPi camera mode) -->
+        <div class="camera-source-switcher" id="fieldCameraSourceBar" style="display: none;" role="group" aria-label="Field Camera Hardware Selector">
+          <button type="button" class="camera-source-btn" id="btnSourceEsp32" onclick="setVisionInputMode('esp32')">
+            <span class="cam-src-dot badge-dot-offline" id="srcDotEsp32"></span>
+            <span class="cam-src-label">📹 ESP32-CAM · OV2640</span>
+            <span class="cam-src-state" id="srcStateEsp32">Disconnected</span>
+          </button>
+          <button type="button" class="camera-source-btn" id="btnSourceRpi" onclick="setVisionInputMode('rpi')">
+            <span class="cam-src-dot badge-dot-offline" id="srcDotRpi"></span>
+            <span class="cam-src-label">🍓 Raspberry Pi · OV5647</span>
+            <span class="cam-src-state" id="srcStateRpi">Disconnected</span>
+          </button>
         </div>
 
         <!-- ESP32-CAM Field Hardware Live Interface Panel -->
@@ -414,6 +442,77 @@
             </div>
           </details>
 
+        </div>
+
+        <!-- Raspberry Pi 3 B+ (OV5647) Field Hardware Live Interface Panel -->
+        <div class="esp32-cam-panel rpi-cam-panel" id="rpiCamPanel" style="display: none;">
+          <div class="esp32-panel-header">
+            <div class="esp32-title-wrap">
+              <span class="esp32-cam-icon">🍓</span>
+              <div class="esp32-title-text">
+                <strong class="esp32-cam-heading" id="rpiPanelHeading">Raspberry Pi Camera · OV5647</strong>
+                <span class="esp32-cam-sub" id="rpiSubText">Picamera2 / libcamera · Disconnected</span>
+              </div>
+            </div>
+            <div class="esp32-conn-badge badge-offline" id="rpiConnBadge">
+              <span class="esp32-dot"></span>
+              <span id="rpiConnText">Disconnected</span>
+            </div>
+          </div>
+
+          <div class="esp32-viewport-container" id="rpiViewportContainer">
+            <div class="esp32-viewfinder-brackets">
+              <span class="vf-bracket bracket-tl"></span>
+              <span class="vf-bracket bracket-tr"></span>
+              <span class="vf-bracket bracket-bl"></span>
+              <span class="vf-bracket bracket-br"></span>
+              <div class="vf-center-target"></div>
+            </div>
+
+            <img id="rpiLiveImg" class="esp32-live-stream" alt="Raspberry Pi OV5647 Live Feed" style="display:none;" />
+
+            <div class="esp32-stream-overlay" id="rpiStreamOverlay">
+              <div class="esp32-overlay-spinner" id="rpiOverlaySpinner"></div>
+              <div class="esp32-overlay-message" id="rpiOverlayMessage">Waiting for Raspberry Pi Camera...</div>
+              <div class="esp32-overlay-hint" id="rpiOverlayHint">Power on the Raspberry Pi 3 B+ unit; it connects automatically over Wi-Fi.</div>
+            </div>
+
+            <div class="esp32-capture-flash" id="rpiCaptureFlash"></div>
+          </div>
+
+          <div class="esp32-telemetry-row">
+            <span class="esp32-chip" title="Wi-Fi Signal Strength"><span class="chip-icon">📶</span> <strong id="rpiRssi">--</strong> dBm</span>
+            <span class="esp32-chip" title="Raspberry Pi SoC Temperature"><span class="chip-icon">🌡️</span> <strong id="rpiCpuTemp">--</strong>°C</span>
+            <span class="esp32-chip" title="Preview Resolution"><span class="chip-icon">📐</span> <strong id="rpiRes">640x480</strong></span>
+            <span class="esp32-chip" title="Live Preview Rate"><span class="chip-icon">⚡</span> <strong id="rpiFps">--</strong> FPS</span>
+            <span class="esp32-chip" title="Bounded Buffer Dropped Frames"><span class="chip-icon">🪶</span> <strong id="rpiDropped">0</strong> dropped</span>
+          </div>
+
+          <div class="esp32-actions-row">
+            <button type="button" class="btn-esp32-capture" id="btnRpiCapture" onclick="triggerRpiCapture()" disabled title="Capture full-resolution OV5647 still frame">
+              <span class="btn-capture-icon">📸</span>
+              <span id="btnRpiCaptureText">Take Photo / Capture</span>
+            </button>
+            <button type="button" class="btn-esp32-refresh" id="btnRpiRefresh" onclick="refreshRpiState()" title="Refresh Raspberry Pi status">
+              <span>↻</span>
+            </button>
+          </div>
+
+          <details class="esp32-diag-details" id="rpiDiagDetails">
+            <summary class="esp32-diag-summary">⚙️ Raspberry Pi Camera Diagnostics</summary>
+            <div class="esp32-diag-grid">
+              <div class="diag-item"><span>Device Name:</span> <strong id="rpiDiagDeviceName">--</strong></div>
+              <div class="diag-item"><span>Device ID:</span> <strong id="rpiDiagDeviceId">rpi-ov5647-01</strong></div>
+              <div class="diag-item"><span>Camera Ready:</span> <strong id="rpiDiagCamReady">No</strong></div>
+              <div class="diag-item"><span>Preview Status:</span> <strong id="rpiDiagStreamState">Standby</strong></div>
+              <div class="diag-item"><span>Still Resolution:</span> <strong id="rpiDiagStillRes">2592x1944</strong></div>
+              <div class="diag-item"><span>Wi-Fi / IP:</span> <strong id="rpiDiagNetwork">--</strong></div>
+              <div class="diag-item"><span>Memory Used:</span> <strong id="rpiDiagMem">--</strong></div>
+              <div class="diag-item"><span>Total Captures:</span> <strong id="rpiDiagCaptures">0</strong></div>
+              <div class="diag-item"><span>Last Heartbeat:</span> <strong id="rpiDiagHeartbeat">--</strong></div>
+              <div class="diag-item"><span>Uptime:</span> <strong id="rpiDiagUptime">--</strong></div>
+            </div>
+          </details>
         </div>
 
         <!-- Pre-Inference Domain Validation Banner -->
@@ -854,6 +953,6 @@
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-  <script src="./app.js?v=20261112_yolo26_lesion_v1"></script>
+  <script src="./app.js?v=20261112_rpi_badges_val"></script>
 </body>
 </html>

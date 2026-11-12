@@ -65,6 +65,13 @@ class Settings:
     ESP32_HEARTBEAT_TIMEOUT_SECONDS: int = int(os.getenv("ESP32_HEARTBEAT_TIMEOUT_SECONDS", "30"))
     ESP32_CAPTURE_TIMEOUT_SECONDS: int = int(os.getenv("ESP32_CAPTURE_TIMEOUT_SECONDS", "12"))
 
+    # Raspberry Pi 3 B+ (OV5647) Camera Hardware Gateway Settings
+    RPI_CAM_ENABLED: bool = os.getenv("ENABLE_RPI_CAM", "true").lower() in ("true", "1", "yes")
+    RPI_CAM_SECRET_KEY: str = os.getenv("RPI_CAM_SECRET_KEY", "crop-rover-rpi-token-innovex")
+    RPI_HEARTBEAT_TIMEOUT_SECONDS: int = int(os.getenv("RPI_HEARTBEAT_TIMEOUT_SECONDS", "25"))
+    RPI_CAPTURE_TIMEOUT_SECONDS: int = int(os.getenv("RPI_CAPTURE_TIMEOUT_SECONDS", "15"))
+    RPI_PREVIEW_MAX_AGE_SECONDS: float = float(os.getenv("RPI_PREVIEW_MAX_AGE_SECONDS", "8.0"))
+
     # Groq Cloud Multimodal Intelligence & Semantic Validation Gateway
     GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY", None)
     GROQ_VISION_MODEL: str = os.getenv("GROQ_VISION_MODEL", "qwen/qwen3.8-27b")
