@@ -1,0 +1,157 @@
+{
+  "dataset": "PlantSeg (Wei et al., Scientific Data 2026, Zenodo 17719108)",
+  "license": "CC BY-NC 4.0",
+  "human_annotation_method": "Expert-reviewed LabelMe polygons + pixel segmentation masks",
+  "excluded_synthetic_datasets": [
+    {
+      "path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/processed/yolo_lesions",
+      "files": 330,
+      "reason": "Synthetic HSV/LAB thresholding on PlantVillage Tomato___Early_blight \u2014 EXCLUDED"
+    },
+    {
+      "path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/processed/segmentation",
+      "files": 520,
+      "reason": "Synthetic HSV/LAB thresholding on PlantVillage Tomato___Early_blight \u2014 EXCLUDED"
+    }
+  ],
+  "splits": {
+    "train": {
+      "disk_images": 5367,
+      "disk_png_masks": 5367,
+      "coco_json_exists": true,
+      "coco_images": 5367,
+      "coco_annotations": 52898,
+      "polygon_anns": 52898,
+      "rle_anns": 0
+    },
+    "val": {
+      "disk_images": 846,
+      "disk_png_masks": 846,
+      "coco_json_exists": true,
+      "coco_images": 846,
+      "coco_annotations": 8927,
+      "polygon_anns": 8927,
+      "rle_anns": 0
+    },
+    "test": {
+      "disk_images": 1561,
+      "disk_png_masks": 1561,
+      "coco_json_exists": true,
+      "coco_images": 1561,
+      "coco_annotations": 15569,
+      "polygon_anns": 15569,
+      "rle_anns": 0
+    }
+  },
+  "priority_crop_coverage": {
+    "apple_black_rot": 63,
+    "apple_rust": 98,
+    "apple_scab": 168,
+    "bell_pepper": 176,
+    "corn_gray_leaf_spot": 76,
+    "corn_northern_leaf_blight": 92,
+    "corn_rust": 120,
+    "grape_black_rot": 88,
+    "grape_downy_mildew": 211,
+    "potato_early_blight": 68,
+    "potato_late_blight": 78,
+    "rice": 105,
+    "soybean": 500,
+    "tomato_bacterial": 90,
+    "tomato_early_blight": 153,
+    "tomato_late_blight": 117,
+    "tomato_leaf_mold": 102,
+    "tomato_septoria": 99,
+    "wheat": 1166
+  },
+  "totals": {
+    "images": 7774,
+    "masks": 7774,
+    "coco_annotations": 77394,
+    "anns_under_1pct_area": 40806,
+    "anns_under_2pct_area": 45357,
+    "unique_crop_prefixes": 35
+  },
+  "top_20_crops": [
+    [
+      "wheat",
+      1166
+    ],
+    [
+      "tomato",
+      667
+    ],
+    [
+      "soybean",
+      500
+    ],
+    [
+      "corn",
+      419
+    ],
+    [
+      "citrus",
+      416
+    ],
+    [
+      "apple",
+      402
+    ],
+    [
+      "cucumber",
+      383
+    ],
+    [
+      "grape",
+      368
+    ],
+    [
+      "banana",
+      354
+    ],
+    [
+      "peach",
+      287
+    ],
+    [
+      "zucchini",
+      279
+    ],
+    [
+      "coffee",
+      196
+    ],
+    [
+      "cabbage",
+      181
+    ],
+    [
+      "bell",
+      176
+    ],
+    [
+      "garlic",
+      159
+    ],
+    [
+      "potato",
+      146
+    ],
+    [
+      "bean",
+      144
+    ],
+    [
+      "squash",
+      144
+    ],
+    [
+      "blueberry",
+      142
+    ],
+    [
+      "tobacco",
+      134
+    ]
+  ]
+}

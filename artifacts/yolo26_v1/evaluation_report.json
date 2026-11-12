@@ -1,0 +1,79 @@
+{
+  "checkpoints": {
+    "baseline_specimen": {
+      "status": "LOADED",
+      "path": "cv/models/yolo_plantdoc_best.pt",
+      "sha256": "e98545716c774d796a4796f620138022f6388a063bf8a9d36dfc5937372366b6",
+      "size_mb": 5.186,
+      "detected_architecture": "YOLO11 (Detect)",
+      "is_genuine_yolo26": false,
+      "yaml_file": "yolo11n.yaml",
+      "head_class": "Detect",
+      "end2end": false,
+      "head_end2end": false,
+      "one2many": true,
+      "one2one": false,
+      "reg_max": 16,
+      "num_classes": 29,
+      "params": 2595495
+    },
+    "baseline_lesion": {
+      "status": "LOADED",
+      "path": "cv/models/yolov8n_lesions_best.pt",
+      "sha256": "f528dc7cf1ccafa85e63fb4f75ea3097b9197da7c89c4380b93b04fe708aacf7",
+      "size_mb": 5.914,
+      "detected_architecture": "YOLOv8 (Detect)",
+      "is_genuine_yolo26": false,
+      "yaml_file": null,
+      "head_class": "Detect",
+      "end2end": false,
+      "head_end2end": false,
+      "one2many": true,
+      "one2one": false,
+      "reg_max": 16,
+      "num_classes": 1,
+      "params": 3011043
+    },
+    "candidate_yolo26_specimen": {
+      "status": "LOADED",
+      "path": "artifacts/yolo26_v1/checkpoints/yolo26_specimen_best.pt",
+      "sha256": "d1be9b57b02b483aca1675bf33113fcc5622352295f6d0f99770425516875eb9",
+      "size_mb": 19.41,
+      "detected_architecture": "YOLO26 (Detect)",
+      "is_genuine_yolo26": true,
+      "yaml_file": "yolo26s.yaml",
+      "head_class": "Detect",
+      "end2end": true,
+      "head_end2end": false,
+      "one2many": true,
+      "one2one": true,
+      "reg_max": 1,
+      "num_classes": 29,
+      "params": 9970310
+    },
+    "candidate_yolo26_lesion": {
+      "status": "MISSING",
+      "path": "artifacts/yolo26_v1/checkpoints/yolo26_lesion_best.pt"
+    }
+  },
+  "specimen_comparison": {},
+  "negative_control_lesion_fp": {
+    "baseline_yolov8n_lesions": {
+      "status": "EVALUATED",
+      "images_evaluated": 3,
+      "images_with_false_positives": 0,
+      "false_positive_rate": 0.0,
+      "total_false_positive_boxes": 0
+    }
+  },
+  "visual_comparisons": [
+    "artifacts/yolo26_v1/visual_comparisons/compare_images_7.jpg",
+    "artifacts/yolo26_v1/visual_comparisons/compare_tomato-badleaves.jpg",
+    "artifacts/yolo26_v1/visual_comparisons/compare_tomato_virus_06_zoom.jpg",
+    "artifacts/yolo26_v1/visual_comparisons/compare_tomato__fungal__early_blight.jpg"
+  ],
+  "promotion_decision": {
+    "decision": "RETAIN_PRODUCTION_BASELINES",
+    "reason": "Trained YOLO26 checkpoints not yet present or have not passed held-out gate."
+  }
+}

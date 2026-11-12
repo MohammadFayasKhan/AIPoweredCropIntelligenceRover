@@ -133,5 +133,7 @@ def test_taxonomy_separation(loaded_engine):
     meta = loaded_engine.get_model_metadata("server")
     assert isinstance(meta, ModelMetadata)
     assert meta.classification_taxonomy_version == "PlantVillage-38Class-v2.0"
-    assert meta.detection_taxonomy_version == "PlantDoc-29Class-YOLO-v1.0"
+    assert meta.detection_taxonomy_version == "PlantDoc-29Class-YOLO26-v1.0"
     assert meta.segmentation_taxonomy_version == "FoliarLesions-Binary-v1.0"
+    meta_legacy = loaded_engine.get_model_metadata("yolo11")
+    assert meta_legacy.detection_taxonomy_version == "PlantDoc-29Class-YOLO-v1.0"

@@ -1,0 +1,203 @@
+{
+  "model_inventory": {
+    "cv/models/efficientnet_b2_38classes_best.pth": {
+      "size_mb": 30.018,
+      "sha256": "86a9c03bbb8f91323efe4ea4293babcbd4d46aac0db9f09f980e4d40dd57ae87"
+    },
+    "cv/models/efficientnet_b2_traced.pt": {
+      "size_mb": 30.635,
+      "sha256": "b625c293f0576712b859a84ffc8512334d596df3e93a2eea338107660456de48"
+    },
+    "cv/models/mobile_unet_lesions_best.pth": {
+      "size_mb": 1.896,
+      "sha256": "86bba6df9222b92c2d8b019fb2a10eacc2654f1a61b6e2b5996d8c8ee3cc04cc"
+    },
+    "cv/models/mobilenet_v2_38classes_best.pth": {
+      "size_mb": 8.906,
+      "sha256": "e31dc7d2a6168c203082203abce6578ab000f2450afe9da79545bc6dfdcad98e"
+    },
+    "cv/models/mobilenet_v2_38classes_field_best.pth": {
+      "size_mb": 8.906,
+      "sha256": "431e0e4b8730e8c8286fd61d5d9c1fb1bacf1468055935c3703195dacc46be79"
+    },
+    "cv/models/mobilenet_v2_38classes_lab_original.pth": {
+      "size_mb": 8.904,
+      "sha256": "1ae9555cc6dec57e579d806a32ef4dd812d78df9909147cad8ed2a3423abc9f5"
+    },
+    "cv/models/mobilenet_v2_best.pth": {
+      "size_mb": 8.737,
+      "sha256": "3484b8ca33209ec9d5feeff994d34823e0d794c929a6bb368976e4bad3d9adb2"
+    },
+    "cv/models/plantcnn_baseline_best.pth": {
+      "size_mb": 1.641,
+      "sha256": "d4ead11000ef784f6967058a316d31c62edb3cb12becba5a0c2eeddf26d74925"
+    },
+    "cv/models/yolo11n.pt": {
+      "size_mb": 5.354,
+      "sha256": "0ebbc80d4a7680d14987a577cd21342b65ecfd94632bd9a8da63ae6417644ee1",
+      "task": "detect",
+      "yaml_file": "yolo11n.yaml",
+      "head_class": "Detect",
+      "reg_max": 16,
+      "has_one2one": false,
+      "nc": 80,
+      "names_head": [
+        "person",
+        "bicycle",
+        "car",
+        "motorcycle",
+        "airplane"
+      ]
+    },
+    "cv/models/yolo26n.pt": {
+      "size_mb": 5.288,
+      "sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+      "task": "detect",
+      "yaml_file": "yolo26n.yaml",
+      "head_class": "Detect",
+      "reg_max": 1,
+      "has_one2one": true,
+      "nc": 80,
+      "names_head": [
+        "person",
+        "bicycle",
+        "car",
+        "motorcycle",
+        "airplane"
+      ]
+    },
+    "cv/models/yolov8n.pt": {
+      "size_mb": 6.246,
+      "sha256": "f59b3d833e2ff32e194b5bb8e08d211dc7c5bdf144b90d2c8412c47ccfc83b36",
+      "task": "detect",
+      "yaml_file": "",
+      "head_class": "Detect",
+      "reg_max": 16,
+      "has_one2one": false,
+      "nc": 80,
+      "names_head": [
+        "person",
+        "bicycle",
+        "car",
+        "motorcycle",
+        "airplane"
+      ]
+    },
+    "cv/models/yolov8n_lesions_best.pt": {
+      "size_mb": 5.914,
+      "sha256": "f528dc7cf1ccafa85e63fb4f75ea3097b9197da7c89c4380b93b04fe708aacf7",
+      "task": "detect",
+      "yaml_file": "",
+      "head_class": "Detect",
+      "reg_max": 16,
+      "has_one2one": false,
+      "nc": 1,
+      "names_head": [
+        "early_blight_lesion"
+      ]
+    },
+    "cv/models/yolov8n_plantdoc_best.pt": {
+      "size_mb": 23.34,
+      "sha256": "7470e31d7d712f461b7c583a5325a7b88234cc054c151845ea6f5cb79bb3b064",
+      "task": "detect",
+      "yaml_file": "",
+      "head_class": "Detect",
+      "reg_max": 16,
+      "has_one2one": false,
+      "nc": 29,
+      "names_head": [
+        "Apple Scab Leaf",
+        "Apple leaf",
+        "Apple rust leaf",
+        "Bell_pepper leaf",
+        "Bell_pepper leaf spot"
+      ]
+    }
+  },
+  "plantdoc_audit": {
+    "images": 2592,
+    "xmls": 2581,
+    "split_img_counts": {
+      "test": 239,
+      "train": 2353
+    },
+    "split_xml_counts": {
+      "test": 237,
+      "train": 2344
+    },
+    "total_valid_boxes": 8889,
+    "num_classes": 29,
+    "zero_box_xmls": 11,
+    "invalid_boxes": 0,
+    "parse_errors": 0,
+    "small_boxes_under_1pct": 650,
+    "small_boxes_under_05pct": 227,
+    "train_test_stem_overlap": 16,
+    "class_distribution": {
+      "Blueberry leaf": 839,
+      "Tomato leaf yellow virus": 829,
+      "Peach leaf": 614,
+      "Raspberry leaf": 556,
+      "Strawberry leaf": 492,
+      "Tomato Septoria leaf spot": 436,
+      "Tomato leaf": 396,
+      "Corn leaf blight": 369,
+      "Potato leaf early blight": 331,
+      "Bell_pepper leaf": 323,
+      "Tomato mold leaf": 293,
+      "Tomato leaf bacterial spot": 280,
+      "Soyabean leaf": 266,
+      "Bell_pepper leaf spot": 264,
+      "Squash Powdery mildew leaf": 257,
+      "Tomato leaf mosaic virus": 255,
+      "Potato leaf late blight": 249,
+      "Apple leaf": 247,
+      "Cherry leaf": 240,
+      "grape leaf": 220,
+      "Tomato leaf late blight": 220,
+      "Tomato Early blight leaf": 213,
+      "Apple rust leaf": 178,
+      "Apple Scab Leaf": 171,
+      "grape leaf black rot": 133,
+      "Corn rust leaf": 127,
+      "Corn Gray leaf spot": 78,
+      "Potato leaf": 11,
+      "Tomato two spotted spider mites leaf": 2
+    },
+    "csv_stats": {
+      "train_labels.csv": {
+        "rows": 8469,
+        "unique_files": 2345,
+        "unique_classes": 29
+      },
+      "test_labels.csv": {
+        "rows": 452,
+        "unique_files": 236,
+        "unique_classes": 27
+      }
+    }
+  },
+  "plantvillage_stats": {
+    "status": "AVAILABLE",
+    "num_classes": 38,
+    "total_images": 54305,
+    "healthy_candidate_images": 15084,
+    "min_class_count": 152,
+    "max_class_count": 5507
+  },
+  "plantwild_stats": {
+    "status": "AVAILABLE",
+    "num_classes": 89,
+    "total_images": 18542,
+    "healthy_candidate_images": 7840,
+    "min_class_count": 44,
+    "max_class_count": 589
+  },
+  "processed_excluded": {
+    "yolo_lesions_train": 250,
+    "yolo_lesions_val": 80,
+    "segmentation_train": 200,
+    "segmentation_val": 60
+  },
+  "genuine_lesion_dataset_mounted": false
+}

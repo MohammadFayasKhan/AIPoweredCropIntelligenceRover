@@ -1,0 +1,902 @@
+[
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Apple___healthy/0055dd26-23a7-4415-ac61-e0b44ebfaf80___RS_HL 5672.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Apple___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Apple___healthy/00907d8b-6ae6-4306-bfd7-d54471981a86___RS_HL 5709.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Apple___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Apple___healthy/0098dbd9-286a-4d6a-bf4b-5459d66f88c0___RS_HL 5776.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Apple___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Apple___healthy/00a6039c-e425-4f7d-81b1-d6b0e668517e___RS_HL 7669.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Apple___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Apple___healthy/00fca0da-2db3-481b-b98a-9b67bb7b105c___RS_HL 7708.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Apple___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Apple___healthy/010125c0-e6f2-4f3d-b469-dd98ffecbb01___RS_HL 7948.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Apple___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Apple___healthy/011d02f3-5c3c-4484-a384-b1a0a0dbdec1___RS_HL 7544.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Apple___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Blueberry___healthy/008c85d0-a954-4127-bd26-861dc8a1e6ff___RS_HL 2431.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Blueberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Blueberry___healthy/00fee259-67b7-4dd7-8b36-12503bbdba14___RS_HL 2681.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Blueberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Blueberry___healthy/011405e4-a92a-44b6-9f04-10fec28d93f5___RS_HL 2311.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Blueberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Blueberry___healthy/0137389a-9b78-4a94-afdb-c2b50861f89c___RS_HL 2347.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Blueberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Blueberry___healthy/013ffdc5-cbd1-4202-b0f1-8fd7c1ffc0b8___RS_HL 5120.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Blueberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Blueberry___healthy/01ca7a9f-80a6-4693-a067-50684beda81d___RS_HL 2545.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Blueberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Blueberry___healthy/02159532-6430-4006-a245-421593949304___RS_HL 2686.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Blueberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Cherry_(including_sour)___healthy/0008f3d3-2f85-4973-be9a-1b520b8b59fc___JR_HL 4092.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Cherry_(including_sour)___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Cherry_(including_sour)___healthy/002efba9-09b3-43de-93b7-5c2460185cde___JR_HL 9655.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Cherry_(including_sour)___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Cherry_(including_sour)___healthy/0048afb8-b950-4c57-9e72-7e26282327ee___JR_HL 9765.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Cherry_(including_sour)___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Cherry_(including_sour)___healthy/005f183c-0a73-4738-91f7-c0a0e02cd9e3___JR_HL 9679.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Cherry_(including_sour)___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Cherry_(including_sour)___healthy/0086a8c7-1440-423e-939d-d0567b1fc4e4___JR_HL 4277.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Cherry_(including_sour)___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Cherry_(including_sour)___healthy/00a8e886-d172-4261-85e2-780b3c50ad4d___JR_HL 4156.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Cherry_(including_sour)___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Cherry_(including_sour)___healthy/011f07d1-8813-4a63-99c7-e274ab5cc261___JR_HL 4165.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Cherry_(including_sour)___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Corn_(maize)___healthy/00031d74-076e-4aef-b040-e068cd3576eb___R.S_HL 8315 copy 2.jpg",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Corn_(maize)___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Corn_(maize)___healthy/00665f92-adb0-41eb-bba7-9eeadecfe10e___R.S_HL 8325 copy 2.jpg",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Corn_(maize)___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Corn_(maize)___healthy/01c3bf88-d315-42a3-8fa1-fc80a05c97f1___R.S_HL 8189 copy.jpg",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Corn_(maize)___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Corn_(maize)___healthy/026bd735-b9f4-4eab-86f3-23df15dbec95___R.S_HL 7938 copy.jpg",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Corn_(maize)___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Corn_(maize)___healthy/028ed539-32f5-4540-a6af-466179837de9___R.S_HL 8212 copy.jpg",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Corn_(maize)___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Corn_(maize)___healthy/0292a37f-07d0-401f-83d8-cde4c98547d8___R.S_HL 0630 copy 2.jpg",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Corn_(maize)___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Corn_(maize)___healthy/02ab8d66-0385-43db-855a-ea5f8811ebd5___R.S_HL 7954 copy.jpg",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Corn_(maize)___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Grape___healthy/00e00912-bf75-4cf8-8b7d-ad64b73bea5f___Mt.N.V_HL 6067.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Grape___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Grape___healthy/0163a6aa-fbf8-47c5-965f-59b6efe8bfe5___Mt.N.V_HL 6103.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Grape___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Grape___healthy/0294ca65-4c29-44be-af28-501df9f715e8___Mt.N.V_HL 6176.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Grape___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Grape___healthy/02f95acb-5d92-4f2a-b7ec-3af8709ee7c9___Mt.N.V_HL 9078.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Grape___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Grape___healthy/03027791-26bb-4c46-960e-8df76e27042c___Mt.N.V_HL 6070.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Grape___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Grape___healthy/03492a0d-6ad7-42ec-a742-c2f1fa59499a___Mt.N.V_HL 6035.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Grape___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Grape___healthy/04991ee7-b17c-420f-90ff-230d4e59361a___Mt.N.V_HL 9055.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Grape___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Peach___healthy/017d3d86-12bf-4280-8929-10dcd504ac46___Rutg._HL 3671.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Peach___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Peach___healthy/02070622-2fd7-40d5-9470-27e513ea8a90___Rutg._HL 3636.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Peach___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Peach___healthy/026aa11e-3f67-4951-9533-3c6ceb4c3d59___Rutg._HL 2494.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Peach___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Peach___healthy/027b10e5-2d2e-4eb4-9457-7cb45ab2fd17___Rutg._HL 3710.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Peach___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Peach___healthy/02e47796-808b-449e-bbba-f6e0262fa589___Rutg._HL 3714.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Peach___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Peach___healthy/0305b105-d0e7-4c3d-9a10-e9f0d7d3c4e0___Rutg._HL 3564.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Peach___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Peach___healthy/0330bd7f-3401-4dd5-9462-5300a6e19b7c___Rutg._HL 3621.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Peach___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Pepper,_bell___healthy/00100ffa-095e-4881-aebf-61fe5af7226e___JR_HL 7886.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Pepper,_bell___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Pepper,_bell___healthy/00208a93-7687-4e8c-b79e-3138687e0f38___JR_HL 7955.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Pepper,_bell___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Pepper,_bell___healthy/002f87b7-e1a5-49e5-a422-bb423630ded5___JR_HL 8068.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Pepper,_bell___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Pepper,_bell___healthy/00726ad4-2569-46ce-9d4e-dbf82b14bd94___JR_HL 8686.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Pepper,_bell___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Pepper,_bell___healthy/0119205b-cfac-4322-be37-dcc401fcfa11___JR_HL 8527.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Pepper,_bell___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Pepper,_bell___healthy/0137d804-551d-4f78-88b4-d603056dd7e7___JR_HL 7719.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Pepper,_bell___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Pepper,_bell___healthy/01468dda-44f3-4de8-8aed-948bcc29b719___JR_HL 8704.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Pepper,_bell___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Potato___healthy/00fc2ee5-729f-4757-8aeb-65c3355874f2___RS_HL 1864.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Potato___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Potato___healthy/03da9931-e514-4cc7-b04a-8f474a133ce5___RS_HL 1830.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Potato___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Potato___healthy/04481ca2-f94c-457e-b785-1ac05800b7ec___RS_HL 1930.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Potato___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Potato___healthy/046641c1-f837-49eb-b5f2-4109910a027c___RS_HL 1878.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Potato___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Potato___healthy/07dfb451-4378-49d1-b699-33a5fc49ff07___RS_HL 5399.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Potato___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Potato___healthy/0b3e5032-8ae8-49ac-8157-a1cac3df01dd___RS_HL 1817.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Potato___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Potato___healthy/0be9d721-82f5-42c3-b535-7494afe01dbe___RS_HL 1814.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Potato___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Raspberry___healthy/00a3fc0e-64cc-4e35-ac2f-aef04fda9b22___Mary_HL 9177.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Raspberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Raspberry___healthy/020e14fb-6016-4d7f-b489-445e0021b58e___Mary_HL 6324.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Raspberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Raspberry___healthy/03a615df-ed85-4ae6-8b41-d5b4c980b76b___Mary_HL 6366.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Raspberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Raspberry___healthy/04908211-66c9-42f8-a9b1-9d29a686f131___Mary_HL 9175.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Raspberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Raspberry___healthy/05a9ae7e-468f-4cb6-add5-860ace895d3a___Mary_HL 6359.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Raspberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Raspberry___healthy/05dfc382-396a-4301-b940-7d1098feba11___Mary_HL 6358.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Raspberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Raspberry___healthy/05f26de9-3f26-44f8-9ad4-cd83952399b3___Mary_HL 9140.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Raspberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Soybean___healthy/0007ca44-b81d-475c-b8b5-c226a041f020___RS_HL 6331.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Soybean___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Soybean___healthy/0010d6a1-64f1-4997-99d8-6d86fa629014___RS_HL 6967.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Soybean___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Soybean___healthy/00247bff-26dc-445a-8d11-0b2592787ec3___RS_HL 6869.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Soybean___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Soybean___healthy/0027f9ae-818b-41d1-95c8-9e296bd0fdae___RS_HL 6902.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Soybean___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Soybean___healthy/0029bef1-201b-4dcc-9f84-d01dfc24785d___RS_HL 6484.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Soybean___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Soybean___healthy/002ff75b-39d3-45b8-931f-e5f56eeddf03___RS_HL 2848.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Soybean___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Soybean___healthy/00457581-0077-442d-b19a-0dc6027e8cfc___RS_HL 5635.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Soybean___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Strawberry___healthy/00166615-5e7b-4318-8957-5e50df335ee8___RS_HL 1785.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Strawberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Strawberry___healthy/00532378-bfb2-4d3b-8b19-903ecc085624___RS_HL 2021.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Strawberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Strawberry___healthy/00e9a277-ca5e-4350-95ce-8b2918b69fb9___RS_HL 4667.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Strawberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Strawberry___healthy/01e591c9-e3e7-4edc-8211-13081f4d5e7a___RS_HL 1979.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Strawberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantvillage/raw/color/Strawberry___healthy/02808b3e-ae88-4259-9b2c-f9096db336e4___RS_HL 1827.JPG",
+    "source": "PlantVillage",
+    "license": "CC0 1.0 Universal",
+    "class_label": "Strawberry___healthy"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/apple leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "apple leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/apple leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "apple leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/apple leaf/100.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "apple leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/banana leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "banana leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/banana leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "banana leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/banana leaf/101.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "banana leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/basil leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "basil leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/basil leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "basil leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/basil leaf/101.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "basil leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/bean leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "bean leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/bean leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "bean leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/bean leaf/102.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "bean leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/bell pepper leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "bell pepper leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/bell pepper leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "bell pepper leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/bell pepper leaf/101.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "bell pepper leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/blueberry leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "blueberry leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/blueberry leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "blueberry leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/blueberry leaf/100.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "blueberry leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/broccoli leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "broccoli leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/broccoli leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "broccoli leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/broccoli leaf/105.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "broccoli leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/cabbage leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "cabbage leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/cabbage leaf/102.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "cabbage leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/cabbage leaf/103.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "cabbage leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/cauliflower leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "cauliflower leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/cauliflower leaf/101.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "cauliflower leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/cauliflower leaf/102.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "cauliflower leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/celery leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "celery leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/celery leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "celery leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/celery leaf/105.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "celery leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/cherry leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "cherry leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/cherry leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "cherry leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/cherry leaf/100.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "cherry leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/coffee leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "coffee leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/coffee leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "coffee leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/coffee leaf/107.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "coffee leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/corn leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "corn leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/corn leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "corn leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/corn leaf/11.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "corn leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/cucumber leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "cucumber leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/cucumber leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "cucumber leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/cucumber leaf/100.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "cucumber leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/eggplant leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "eggplant leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/eggplant leaf/106.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "eggplant leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/eggplant leaf/107.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "eggplant leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/garlic leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "garlic leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/garlic leaf/11.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "garlic leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/garlic leaf/113.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "garlic leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/ginger leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "ginger leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/ginger leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "ginger leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/ginger leaf/11.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "ginger leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/grape leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "grape leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/grape leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "grape leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/grape leaf/101.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "grape leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/lettuce leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "lettuce leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/lettuce leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "lettuce leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/lettuce leaf/11.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "lettuce leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/maple leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "maple leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/maple leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "maple leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/maple leaf/102.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "maple leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/peach leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "peach leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/peach leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "peach leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/peach leaf/100.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "peach leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/plum leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "plum leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/plum leaf/11.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "plum leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/plum leaf/12.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "plum leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/potato leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "potato leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/potato leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "potato leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/potato leaf/101.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "potato leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/raspberry leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "raspberry leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/raspberry leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "raspberry leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/raspberry leaf/100.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "raspberry leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/rice leaf/1.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "rice leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/rice leaf/10.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "rice leaf"
+  },
+  {
+    "image_path": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/datasets/raw/plantwild/plantwild/images/rice leaf/100.jpg",
+    "source": "PlantWild",
+    "license": "CC BY-NC-ND 4.0",
+    "class_label": "rice leaf"
+  }
+]

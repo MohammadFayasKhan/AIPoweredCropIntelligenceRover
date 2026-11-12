@@ -431,7 +431,7 @@
         <div class="model-selector-box">
           <div class="model-selector-header">
             <span class="model-selector-title">🧠 Vision Backbone</span>
-            <span class="model-selector-tag" id="activeModelTag">Server EfficientNetV2-S (256×256)</span>
+            <span class="model-selector-tag" id="activeModelTag">Server EfficientNetV2-S (256×256) · YOLO26s</span>
           </div>
           <div class="model-tier-buttons" role="radiogroup" aria-label="Vision Model Backbone Selection">
             <button type="button" class="model-tier-btn active" id="btnTierServer" onclick="selectModelTier('server')" title="Server-Grade EfficientNetV2-S: 38-class universal pathology classification with verified Test Top-1 95.13% (256×256)">
@@ -536,7 +536,7 @@
             <div class="analysis-steps-preview">
               <span class="step-chip active" id="chip-step-preflight">1. Quality Preflight</span>
               <span class="step-chip" id="chip-step-classify">2. EfficientNetV2-S</span>
-              <span class="step-chip" id="chip-step-detect">3. YOLO26 Detector</span>
+              <span class="step-chip" id="chip-step-detect">3. YOLO26s + YOLOv8n</span>
               <span class="step-chip" id="chip-step-segment">4. Mobile-UNet</span>
               <span class="step-chip" id="chip-step-explain">5. Grad-CAM</span>
             </div>
@@ -570,14 +570,14 @@
           <div style="display: flex; align-items: center; gap: 10px;">
             <span class="panel-icon">🎯</span>
             <h2 class="panel-title">Visual Analysis & Spatial Telemetry</h2>
-            <span class="panel-sub">YOLO PlantDoc Localization & Mobile-UNet Foliar Mask</span>
+            <span class="panel-sub">YOLO26s Specimen &amp; YOLO26s-Seg Lesion Fusion + Mobile-UNet</span>
           </div>
           <div class="canvas-header-actions">
             <!-- Visualization Mode Switcher Tabs -->
             <div class="vis-mode-tabs" role="tablist" aria-label="Visual Analysis Modes">
               <button type="button" class="vis-tab-btn active" id="btnVisSpecimen" onclick="setVisualizationMode('specimen')" title="Original specimen photograph">🍃 Specimen</button>
-              <button type="button" class="vis-tab-btn" id="btnVisDetection" onclick="setVisualizationMode('detection')" title="YOLO PlantDoc object detection bounding boxes">🎯 Detection</button>
-              <button type="button" class="vis-tab-btn" id="btnVisSegmentation" onclick="setVisualizationMode('segmentation')" title="Mobile-UNet sub-pixel foliar lesion segmentation">🌿 Segmentation</button>
+              <button type="button" class="vis-tab-btn" id="btnVisDetection" onclick="setVisualizationMode('detection')" title="YOLO26s PlantDoc specimen &amp; YOLO26s-Seg lesion bounding boxes">🎯 Detection</button>
+              <button type="button" class="vis-tab-btn" id="btnVisSegmentation" onclick="setVisualizationMode('segmentation')" title="Mobile-UNet + YOLO26s-Seg foliar lesion segmentation">🌿 Segmentation</button>
               <button type="button" class="vis-tab-btn" id="btnVisGradCam" onclick="setVisualizationMode('gradcam')" title="EfficientNetV2-S Grad-CAM saliency activation heatmap">🔬 Grad-CAM</button>
             </div>
             <button type="button" class="fullscreen-inspect-btn" onclick="openCanvasFullscreen()" title="Fullscreen Inspection">
@@ -646,9 +646,9 @@
               <span class="feature-val" id="telemetryDamageVal">--%</span>
             </div>
             <div class="feature-item">
-              <span class="feature-label tooltip-wrap" tabindex="0" aria-label="Targeted Lesion Foci: Number of verified disease lesion bounding boxes detected by YOLO PlantDoc.">
+              <span class="feature-label tooltip-wrap" tabindex="0" aria-label="Targeted Lesion Foci: Number of verified disease lesion bounding boxes localized by YOLO26s-Seg and Mobile-UNet.">
                 🎯 Targeted Lesion Foci ℹ️
-                <span class="tooltip-box" role="tooltip">Count of discrete foliar lesion regions localized by YOLO PlantDoc above detection threshold.</span>
+                <span class="tooltip-box" role="tooltip">Count of discrete foliar lesion foci localized by YOLO26s-Seg multi-crop lesion detector &amp; Mobile-UNet segmentation.</span>
               </span>
               <span class="feature-val" id="telemetryFociVal">--</span>
             </div>
@@ -854,6 +854,6 @@
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-  <script src="./app.js?v=20260913_fast_val"></script>
+  <script src="./app.js?v=20261112_yolo26_lesion_v1"></script>
 </body>
 </html>

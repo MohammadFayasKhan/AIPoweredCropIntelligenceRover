@@ -1,0 +1,41 @@
+{
+  "timestamp_utc": "2026-11-12T09:12:32Z",
+  "torch": "2.11.0+cu130",
+  "cuda": "13.0",
+  "ultralytics": "8.4.211",
+  "gpu_name": "Tesla T4",
+  "compute_capability": "sm_75",
+  "vram_gb": 14.56,
+  "num_gpus": 2,
+  "working_free_gb": 19.5,
+  "tmp_free_gb": 966.86,
+  "arch_checks": {
+    "yolo26n-seg.yaml": {
+      "cfg": "yolo26n-seg.yaml",
+      "head_class": "Segment26",
+      "reg_max": 1,
+      "yaml_end2end": true,
+      "head_end2end_init": false,
+      "one2many": true,
+      "one2one": true,
+      "parameters": 3126280,
+      "predict_nms_false_ok": true,
+      "predict_nms_true_ok": true
+    },
+    "yolo26s-seg.yaml": {
+      "cfg": "yolo26s-seg.yaml",
+      "head_class": "Segment26",
+      "reg_max": 1,
+      "yaml_end2end": true,
+      "head_end2end_init": false,
+      "one2many": true,
+      "one2one": true,
+      "parameters": 11505800,
+      "predict_nms_false_ok": true,
+      "predict_nms_true_ok": true
+    }
+  },
+  "mode_support": {
+    "nms_flag": true
+  }
+}

@@ -62,6 +62,7 @@ class DomainValidationResult:
         telemetry: Dict[str, Any],
         screenshot_or_document_probability: float = 0.0,
         inference_allowed: Optional[bool] = None,
+        precomputed_detector_results: Optional[Any] = None,
     ):
         self.validation_status = validation_status
         self.validation_reason = validation_reason
@@ -72,6 +73,7 @@ class DomainValidationResult:
         self.is_inference_allowed = bool(is_inference_allowed)
         self.inference_allowed = bool(is_inference_allowed if inference_allowed is None else inference_allowed)
         self.screenshot_or_document_probability = round(float(screenshot_or_document_probability), 3)
+        self.precomputed_detector_results = precomputed_detector_results
         self.telemetry = telemetry
         self.telemetry["validation_status"] = self.validation_status
         self.telemetry["validation_reason"] = self.validation_reason
@@ -467,26 +469,46 @@ def validate_plant_image(
     detector_leaf_boxes = 0
     detector_top_conf = 0.0
     detector_leaf_labels = []
+    precomputed_det_res = None
 
     if detector_model is not None:
         try:
-            # Probe detector at modest confidence (0.10) to verify leaf presence
-            det_res = detector_model.predict(
-                img_bgr,
-                conf=0.10,
-                verbose=False
-            )
+            # Single class-agnostic pass at conf=0.01 allows downstream inference to reuse
+            # the same forward pass while validation counts candidates with conf >= 0.10.
+            used_full_pass = True
+            try:
+                det_res = detector_model.predict(
+                    img_bgr,
+                    conf=0.01,
+                    iou=0.45,
+                    agnostic_nms=True,
+                    max_det=150,
+                    verbose=False
+                )
+            except TypeError:
+                used_full_pass = False
+                det_res = detector_model.predict(
+                    img_bgr,
+                    conf=0.10,
+                    verbose=False
+                )
+            if used_full_pass:
+                precomputed_det_res = det_res
             if len(det_res) > 0 and det_res[0].boxes is not None and len(det_res[0].boxes) > 0:
                 boxes = det_res[0].boxes
-                detector_leaf_boxes = len(boxes)
-                detector_top_conf = float(boxes.conf[0].cpu().numpy())
-                for b_idx in range(min(3, len(boxes))):
-                    c_id = int(boxes.cls[b_idx].cpu().numpy())
-                    c_name = det_res[0].names.get(c_id, f"Class_{c_id}")
-                    detector_leaf_labels.append(f"{c_name} ({float(boxes.conf[b_idx].cpu().numpy()):.2f})")
+                confs_arr = boxes.conf.cpu().numpy()
+                valid_indices = [idx for idx, c in enumerate(confs_arr) if float(c) >= 0.10]
+                detector_leaf_boxes = len(valid_indices)
+                if detector_leaf_boxes > 0:
+                    detector_top_conf = float(max(float(confs_arr[idx]) for idx in valid_indices))
+                    for idx in valid_indices[:3]:
+                        c_id = int(boxes.cls[idx].cpu().numpy())
+                        c_name = det_res[0].names.get(c_id, f"Class_{c_id}")
+                        detector_leaf_labels.append(f"{c_name} ({float(confs_arr[idx]):.2f})")
         except Exception:
             detector_leaf_boxes = 0
             detector_top_conf = 0.0
+            precomputed_det_res = None
 
     signals["detector_leaf_boxes"] = detector_leaf_boxes
     signals["detector_top_confidence"] = round(detector_top_conf, 3)
@@ -717,5 +739,6 @@ def validate_plant_image(
         is_inference_allowed=True,
         telemetry=signals,
         screenshot_or_document_probability=screen_prob,
-        inference_allowed=True
+        inference_allowed=True,
+        precomputed_detector_results=precomputed_det_res,
     )

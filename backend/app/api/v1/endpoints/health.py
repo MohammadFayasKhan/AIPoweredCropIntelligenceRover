@@ -135,11 +135,20 @@ async def models_status() -> ModelsStatusResponse:
     t1_server_size = settings.SERVER_TIER1_MODEL_PATH.stat().st_size / (1024 * 1024) if settings.SERVER_TIER1_MODEL_PATH.exists() else 0.0
     t1_edge_size = settings.EDGE_TIER1_MODEL_PATH.stat().st_size / (1024 * 1024) if settings.EDGE_TIER1_MODEL_PATH.exists() else 0.0
     is_yolo26 = getattr(engine, "model_tier2_is_yolo26", False)
-    t2_path = getattr(engine, "model_tier2_path", settings.GEN2_TIER2_YOLO26_MODEL_PATH if settings.GEN2_TIER2_YOLO26_MODEL_PATH.exists() else settings.TIER2_PLANTDOC_MODEL_PATH)
+    det_arch = getattr(engine, "model_tier2_arch", "YOLO11n")
+    t2_path = getattr(engine, "model_tier2_path", settings.TIER2_PLANTDOC_MODEL_PATH)
     t2_size = t2_path.stat().st_size / (1024 * 1024) if t2_path.exists() else 0.0
+    t2_lesions_path = settings.TIER2_LESIONS_MODEL_PATH
+    t2_lesions_size = t2_lesions_path.stat().st_size / (1024 * 1024) if t2_lesions_path.exists() else 0.0
     t3_size = settings.TIER3_MODEL_PATH.stat().st_size / (1024 * 1024) if settings.TIER3_MODEL_PATH.exists() else 0.0
     crop_size = settings.CROP_MODEL_PATH.stat().st_size / (1024 * 1024) if settings.CROP_MODEL_PATH.exists() else 0.0
+    y26_spec_p = settings.YOLO26_SPECIMEN_MODEL_PATH
+    y26_les_p = settings.YOLO26_LESION_MODEL_PATH
+    y26_spec_size = y26_spec_p.stat().st_size / (1024 * 1024) if y26_spec_p.exists() else 0.0
+    y26_les_size = y26_les_p.stat().st_size / (1024 * 1024) if y26_les_p.exists() else 0.0
 
+    y26_primary_active = bool(settings.YOLO26_ENABLED and getattr(engine, "model_yolo26_specimen", None) is not None)
+    y26_lesion_active = bool(settings.YOLO26_ENABLED and getattr(engine, "model_yolo26_lesion", None) is not None)
     models_info = [
         ModelInfo(
             name="EfficientNetV2-S Server-Grade Classifier",
@@ -158,12 +167,28 @@ async def models_status() -> ModelsStatusResponse:
             description="38-class high-speed studio leaf screening (224x224)"
         ),
         ModelInfo(
-            name="YOLO26 Multi-Domain Agricultural Detector (PlantDoc)" if is_yolo26 else "YOLO11 PlantDoc Specimen Detector",
-            tier="Tier 2 Vision (YOLO26)" if is_yolo26 else "Tier 2 Vision (YOLO11 PlantDoc)",
+            name="YOLO26 v1 PlantDoc Specimen Detector (Primary)" if y26_primary_active else "YOLO26 v1 PlantDoc Specimen Detector (Opt-In)",
+            tier="Tier 2 Vision (YOLO26s Primary)" if y26_primary_active else "Tier 2 Opt-In (YOLO26)",
+            checkpoint=y26_spec_p.name,
+            size_mb=round(y26_spec_size, 2),
+            status=engine.model_status_map.get("yolo26_specimen", "untrained_optional"),
+            description="Primary YOLO26s whole-leaf PlantDoc specimen detector (held-out Test mAP@50: 0.6672, Test mAP@50-95: 0.5267, Val mAP@50: 0.6016, 768x768)" if y26_primary_active else "Optional YOLO26s whole-leaf PlantDoc specimen detector (test mAP@50: 0.6672, mAP@50-95: 0.5267, 768x768; feature-flagged until promoted)"
+        ),
+        ModelInfo(
+            name="YOLO26 Multi-Domain Agricultural Detector (PlantDoc)" if is_yolo26 else (f"{det_arch} PlantDoc Specimen Detector (Preserved Baseline)" if y26_primary_active else f"{det_arch} PlantDoc Specimen Detector"),
+            tier="Tier 2 Vision (YOLO26)" if is_yolo26 else (f"Tier 2 Legacy ({det_arch} Baseline)" if y26_primary_active else f"Tier 2 Vision ({det_arch} PlantDoc)"),
             checkpoint=t2_path.name,
             size_mb=round(t2_size, 2),
             status="ready" if engine.model_tier2_plantdoc is not None else "missing",
-            description="YOLO26 multi-domain agricultural detector for real-time foliar canopy boundary localization (val mAP@50: 0.3415, 640x640)" if is_yolo26 else "YOLO11 nano trained on PlantDoc benchmark for real-time foliar canopy boundary localization (val mAP@50: 0.3362, 640x640)"
+            description="YOLO26 multi-domain agricultural detector for real-time foliar canopy boundary localization (val mAP@50: 0.3415, 640x640)" if is_yolo26 else "YOLO11n trained on PlantDoc for whole-leaf canopy boundary localization (val mAP@50: 0.3360, mAP@50-95: 0.2360, 416x416)"
+        ),
+        ModelInfo(
+            name="YOLOv8n Lesion Spot Detector (Preserved Baseline)" if y26_lesion_active else "YOLOv8n Lesion Spot Detector",
+            tier="Tier 2 Legacy (YOLOv8n Baseline)" if y26_lesion_active else "Tier 2 Vision (YOLOv8n Lesions)",
+            checkpoint=t2_lesions_path.name,
+            size_mb=round(t2_lesions_size, 2),
+            status="ready" if engine.model_tier2_lesions is not None else "missing",
+            description="Preserved legacy YOLOv8n focal lesion detector trained on 256x256 Early Blight morphology (train val mAP@50: 0.3374, PlantSeg Test Box mAP@50: 0.0128)" if y26_lesion_active else "YOLOv8n focal lesion spot detector trained on 256x256 Early Blight morphology (train val mAP@50: 0.3374, 256x256)"
         ),
         ModelInfo(
             name="Mobile-UNet Foliar/Lesion Segmenter",
@@ -180,7 +205,15 @@ async def models_status() -> ModelsStatusResponse:
             size_mb=round(crop_size, 2),
             status="ready" if crop_service.is_ready else "missing",
             description="22-crop suitability inference from environmental sensor parameters"
-        )
+        ),
+        ModelInfo(
+            name="YOLO26s-Seg v1 Lesion Localizer (Primary)" if y26_lesion_active else "YOLO26-Seg v1 Lesion Localizer (Opt-In)",
+            tier="Tier 2/3 Primary (YOLO26s-Seg)" if y26_lesion_active else "Tier 2/3 Opt-In (YOLO26-Seg)",
+            checkpoint=y26_les_p.name,
+            size_mb=round(y26_les_size, 2),
+            status=engine.model_status_map.get("yolo26_lesion", "untrained_optional"),
+            description="Primary multi-crop YOLO26s-Seg lesion instance segmenter trained on PlantSeg (held-out Test Box mAP@50: 0.4537, Mask mAP@50: 0.4373, Mask Dice: 0.6687, IoU: 0.5696, 768x768)" if y26_lesion_active else "Optional YOLO26-Seg lesion localizer for genuine PlantSeg masks (feature-flagged; retains YOLOv8n baseline until promoted)"
+        ),
     ]
 
     ready_count = sum(1 for m in models_info if m.status == "ready")
@@ -200,7 +233,7 @@ async def models_status() -> ModelsStatusResponse:
             "tiers": [
                 "Tier 1 (Server): EfficientNetV2-S Server-Grade Classifier (256x256, Test Acc 95.13%)",
                 "Tier 1 (Edge): MobileNetV2 Universal Classifier (224x224)",
-                "Tier 2: YOLO PlantDoc 29-Class Spatial Detector",
+                "Tier 2: YOLO26s PlantDoc 29-Class Specimen Detector (768x768, Test mAP@50 0.6672) + YOLOv8n Lesions" if y26_primary_active else "Tier 2: YOLO PlantDoc 29-Class Spatial Detector",
                 "Tier 3: Mobile-UNet Foliar/Lesion Segmenter"
             ]
         },

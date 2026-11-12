@@ -1,0 +1,6 @@
+{
+  "safe_n_batch": 16,
+  "safe_s_imgsz": 768,
+  "safe_s_batch": 8,
+  "probes": []
+}

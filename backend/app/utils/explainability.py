@@ -347,9 +347,11 @@ def generate_stage9_composite_matrix(
         if pred_mask_256 is not None:
             m_res = cv2.resize(pred_mask_256.astype(np.uint8), (w, h), interpolation=cv2.INTER_NEAREST)
             q4 = cv2.resize(img_bgr, (w, h), interpolation=cv2.INTER_AREA)
-            # Tint necrosis orange-red, healthy green
-            q4[m_res == 1] = cv2.addWeighted(q4[m_res == 1], 0.65, np.full_like(q4[m_res == 1], (46, 204, 113)), 0.35, 0)
-            q4[m_res == 2] = cv2.addWeighted(q4[m_res == 2], 0.50, np.full_like(q4[m_res == 2], (95, 122, 224)), 0.50, 0)
+            # Tint necrosis orange-red, healthy green (guard empty masks so OpenCV addWeighted never returns None)
+            if np.any(m_res == 1):
+                q4[m_res == 1] = cv2.addWeighted(q4[m_res == 1], 0.65, np.full_like(q4[m_res == 1], (46, 204, 113)), 0.35, 0)
+            if np.any(m_res == 2):
+                q4[m_res == 2] = cv2.addWeighted(q4[m_res == 2], 0.50, np.full_like(q4[m_res == 2], (95, 122, 224)), 0.50, 0)
         else:
             q4 = cv2.resize(img_bgr, (w, h), interpolation=cv2.INTER_AREA)
         
@@ -691,10 +693,11 @@ def build_explainability_pipeline(
                 
             cv2.rectangle(det_canvas, (x1, y1), (x2, y2), col_bgr, thick)
             conf_str = f" · {b.confidence*100:.0f}%" if hasattr(b, "confidence") and b.confidence is not None and b.confidence <= 1.0 else ""
-            badge_text = f"{b.label}{conf_str}"
+            raw_lbl = (b.label or "").split(" (")[0]
+            badge_text = f"{raw_lbl}{conf_str}"
             
             # Badge background with collision-free positioning
-            font_scale = 0.38 if b_type == "spot" else 0.44
+            font_scale = 0.38 if b_type in ("spot", "lesion") else 0.44
             (tw, th), _ = cv2.getTextSize(badge_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1)
             bw = tw + 8
             bh = th + 6

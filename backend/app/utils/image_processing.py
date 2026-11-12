@@ -252,3 +252,51 @@ def scale_boxes_to_original(boxes_xyxy: List[List[float]], model_w: int, model_h
         scaled.append([x1, y1, x2, y2])
     return scaled
 
+
+def reverse_letterbox_xyxy(
+    boxes_xyxy: List[List[float]],
+    input_w: int,
+    input_h: int,
+    orig_w: int,
+    orig_h: int,
+) -> List[List[int]]:
+    """
+    Reverses YOLO aspect-preserving letterbox padding and scaling back to original image pixels.
+    """
+    gain = min(float(input_h) / float(max(1, orig_h)), float(input_w) / float(max(1, orig_w)))
+    pad_w = (float(input_w) - float(orig_w) * gain) / 2.0
+    pad_h = (float(input_h) - float(orig_h) * gain) / 2.0
+
+    mapped: List[List[int]] = []
+    for box in boxes_xyxy:
+        x1 = int(round(max(0.0, min((float(box[0]) - pad_w) / gain, float(orig_w - 1)))))
+        y1 = int(round(max(0.0, min((float(box[1]) - pad_h) / gain, float(orig_h - 1)))))
+        x2 = int(round(max(float(x1 + 1), min((float(box[2]) - pad_w) / gain, float(orig_w)))))
+        y2 = int(round(max(float(y1 + 1), min((float(box[3]) - pad_h) / gain, float(orig_h)))))
+        mapped.append([x1, y1, x2, y2])
+    return mapped
+
+
+def scale_segmentation_mask_to_original(
+    mask: np.ndarray,
+    orig_w: int,
+    orig_h: int,
+    letterbox_shape: Optional[Tuple[int, int]] = None,
+) -> np.ndarray:
+    """
+    Maps a binary or class-indexed YOLO26-Seg mask cleanly back into exact original (orig_h, orig_w) dimensions,
+    unpadding letterbox borders when letterbox_shape=(in_w, in_h) is supplied.
+    """
+    m_arr = mask.astype(np.uint8)
+    if letterbox_shape is not None:
+        in_w, in_h = letterbox_shape
+        m_full = cv2.resize(m_arr, (in_w, in_h), interpolation=cv2.INTER_NEAREST)
+        gain = min(float(in_h) / float(max(1, orig_h)), float(in_w) / float(max(1, orig_w)))
+        pad_w = int(round((float(in_w) - float(orig_w) * gain) / 2.0))
+        pad_h = int(round((float(in_h) - float(orig_h) * gain) / 2.0))
+        top, left = max(0, pad_h), max(0, pad_w)
+        bottom = max(top + 1, in_h - top)
+        right = max(left + 1, in_w - left)
+        m_arr = m_full[top:bottom, left:right]
+    return cv2.resize(m_arr, (orig_w, orig_h), interpolation=cv2.INTER_NEAREST)
+

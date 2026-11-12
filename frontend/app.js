@@ -268,8 +268,8 @@ const SAMPLE_LEAF_MAP = {
     label: "Tomato Early Blight",
   },
   corn_rust: {
-    filename: "corn__fungal__common_rust_.jpg",
-    url: "./samples/corn__fungal__common_rust_.jpg",
+    filename: "corn__fungal__common_rust.jpg",
+    url: "./samples/corn__fungal__common_rust.jpg",
     label: "Corn Common Rust",
   },
   grape_rot: {
@@ -3067,9 +3067,9 @@ function selectModelTier(tier) {
   if (btnEnsemble) btnEnsemble.classList.toggle("active", tier === "ensemble");
 
   if (tag) {
-    if (tier === "server") tag.textContent = "Server EfficientNetV2-S (256×256)";
-    else if (tier === "edge") tag.textContent = "Edge MobileNetV2 (224×224)";
-    else if (tier === "ensemble") tag.textContent = "Ensemble Consensus (Server + Edge)";
+    if (tier === "server") tag.textContent = "Server EfficientNetV2-S (256×256) · YOLO26s";
+    else if (tier === "edge") tag.textContent = "Edge MobileNetV2 (224×224) · YOLO26s";
+    else if (tier === "ensemble") tag.textContent = "Ensemble Consensus (Server + Edge) · YOLO26s";
   }
 }
 
@@ -3225,7 +3225,7 @@ async function runVisionPrediction(overrideForce = false, includeExplainability 
       if (chipPreflight) chipPreflight.className = "step-chip done";
       if (chipClassify) chipClassify.className = "step-chip active";
     } else if (progressStep === 3) {
-      if (progressStage) progressStage.textContent = "3. Localizing foliage & lesion foci (YOLO26)...";
+      if (progressStage) progressStage.textContent = "3. Localizing foliage & lesion foci (YOLO26s + YOLO26s-Seg)...";
       if (chipClassify) chipClassify.className = "step-chip done";
       if (chipDetect) chipDetect.className = "step-chip active";
     } else if (progressStep === 4) {
@@ -3702,8 +3702,8 @@ function renderVisionDiagnosis(diag) {
         </div>
 
         <div class="rec-env-pills" style="${isInfected ? 'border-top-color: rgba(224, 122, 95, 0.25);' : ''}">
-          <span class="env-pill" title="Foliar area compromised derived strictly from segmentation mask">📊 Damage: ${damageDisplay}</span>
-          <span class="env-pill" title="Targeted lesion spot foci verified by Mobile-UNet foliar segmentation">🎯 Foci Detected: ${diag.lesion_foci_count != null ? diag.lesion_foci_count : 0}</span>
+          <span class="env-pill" title="Foliar area compromised derived from segmentation mask &amp; lesion fusion">📊 Damage: ${damageDisplay}</span>
+          <span class="env-pill" title="${diag.lesion_foci_source === 'yolo26_lesion_detector' ? 'Targeted lesion foci localized by YOLO26s-Seg Multi-Crop Lesion Detector' : 'Targeted lesion spot foci verified by Mobile-UNet foliar segmentation'}">🎯 Foci Detected: ${diag.lesion_foci_count != null ? diag.lesion_foci_count : 0}</span>
           <span class="env-pill">🧪 Condition: ${escapeHtml(diag.condition_type || (isInfected ? "Fungal / Pathological" : "Healthy Foliage"))}</span>
         </div>
       </div>
@@ -3924,6 +3924,26 @@ function toggleTechDetails() {
 }
 
 
+function getDetectorBenchmarkDisplay(detectionEngine, lesionSource) {
+  const engine = detectionEngine || "YOLO26 v1 PlantDoc Specimen Detector (one-to-many NMS)";
+  const isY26Lesion = lesionSource === "yolo26_lesion_detector";
+  const lesionDesc = isY26Lesion
+    ? "paired with YOLO26s-Seg 768x768 multi-crop lesion localizer (PlantSeg Test Mask Dice: 0.6687, Box mAP@50: 0.4537)."
+    : "paired with preserved YOLOv8n 256x256 lesion spot detector.";
+  if (engine.includes("YOLO26")) {
+    return {
+      engine,
+      metricTag: isY26Lesion ? "(PlantDoc mAP@50: 0.6672 · PlantSeg Dice: 0.6687)" : "(PlantDoc Test mAP@50: 0.6672)",
+      tooltip: `YOLO26s 768x768 PlantDoc specimen detector (held-out Test mAP@50: 0.6672, Test mAP@50-95: 0.5267, Val mAP@50: 0.6016); ${lesionDesc}`,
+    };
+  }
+  return {
+    engine,
+    metricTag: "(PlantDoc mAP@50: 0.3360)",
+    tooltip: `YOLO11n 416x416 PlantDoc specimen detector (Val mAP@50: 0.3360, mAP@50-95: 0.2360); ${lesionDesc}`,
+  };
+}
+
 function renderTechnicalDetails(data = {}) {
   const panel = document.getElementById("visionTechPanel");
   const content = document.getElementById("visionTechContent");
@@ -4055,20 +4075,31 @@ function renderTechnicalDetails(data = {}) {
         </span>
         <span class="tech-val">0.0803 (ECE)</span>
       </div>
+      ${(() => {
+        const lesionSrc = diag.lesion_foci_source || telemetry.lesion_foci_source;
+        const detInfo = getDetectorBenchmarkDisplay(telemetry.detection_engine, lesionSrc);
+        const segTitle = lesionSrc === "yolo26_lesion_detector"
+          ? "Mobile-UNet + YOLO26s-Seg Fusion (3 Classes)"
+          : "Mobile-UNet (3 Classes)";
+        const segTip = lesionSrc === "yolo26_lesion_detector"
+          ? "Mobile-UNet foliar canopy mask fused with verified YOLO26s-Seg PlantSeg lesion instance masks (Dice 0.6687)."
+          : "Mobile-UNet performs pixel-level foliar damage mask generation into Healthy, Diseased, and Background.";
+        return `
       <div class="tech-item">
-        <span class="tech-label tooltip-wrap" tabindex="0" aria-label="Spatial Detector: YOLO26 Multi-Domain Agricultural Detector.">
+        <span class="tech-label tooltip-wrap" tabindex="0" aria-label="Spatial Detector: ${escapeHtml(detInfo.engine)}.">
           Spatial Detector ℹ️
-          <span class="tooltip-box" role="tooltip">Mean Average Precision at IoU 0.50 on the multi-domain foliar lesion benchmark dataset.</span>
+          <span class="tooltip-box" role="tooltip">${escapeHtml(detInfo.tooltip)}</span>
         </span>
-        <span class="tech-val">${telemetry.detection_engine || 'YOLO26 Multi-Domain Agricultural Detector'} (mAP@50: 0.3415)</span>
+        <span class="tech-val">${escapeHtml(detInfo.engine)} ${escapeHtml(detInfo.metricTag)}</span>
       </div>
       <div class="tech-item">
-        <span class="tech-label tooltip-wrap" tabindex="0" aria-label="Semantic Segmenter: Mobile-UNet 3 Classes.">
+        <span class="tech-label tooltip-wrap" tabindex="0" aria-label="Semantic Segmenter: ${escapeHtml(segTitle)}.">
           Semantic Segmenter ℹ️
-          <span class="tooltip-box" role="tooltip">Mobile-UNet performs pixel-level foliar damage mask generation into Healthy, Diseased, and Background.</span>
+          <span class="tooltip-box" role="tooltip">${escapeHtml(segTip)}</span>
         </span>
-        <span class="tech-val">Mobile-UNet (3 Classes)</span>
-      </div>
+        <span class="tech-val">${escapeHtml(segTitle)}</span>
+      </div>`;
+      })()}
       <div class="tech-item">
         <span class="tech-label">Execution Device</span>
         <span class="tech-val">${meta.device || latency.compute_device || 'CPU'}</span>
@@ -4145,8 +4176,13 @@ function renderSpatialTelemetry(data) {
     const fociSource = diag.lesion_foci_source || telemetry.lesion_foci_source || "none";
 
     if (genuineLesionCount > 0) {
-      fociVal.textContent = `${genuineLesionCount} (Verified lesions)`;
-      fociVal.title = `${genuineLesionCount} targeted pathology lesion spots resolved & highlighted on foliage`;
+      const isY26Les = fociSource === "yolo26_lesion_detector";
+      fociVal.textContent = isY26Les
+        ? `${genuineLesionCount} (YOLO26s-Seg lesions)`
+        : `${genuineLesionCount} (Verified lesions)`;
+      fociVal.title = isY26Les
+        ? `${genuineLesionCount} multi-crop pathology lesions localized by YOLO26s-Seg`
+        : `${genuineLesionCount} targeted pathology lesion spots resolved & highlighted on foliage`;
     } else if (fociSource === "mobile_unet_segmentation" && lesionFociCount > 0) {
       fociVal.textContent = `${lesionFociCount} (Segmentation foci)`;
       fociVal.title = `${lesionFociCount} discrete necrotic lesion foci identified via Mobile-UNet semantic segmentation`;
@@ -4191,14 +4227,31 @@ function drawSpatialCanvas() {
   const ctx = canvas.getContext("2d");
   const img = originalVisionImageObj;
 
-  canvas.width = img.naturalWidth || img.width || 640;
-  canvas.height = img.naturalHeight || img.height || 640;
+  if (!img.complete || img.naturalWidth === 0) {
+    if (!img._pendingSpatialRedraw) {
+      img._pendingSpatialRedraw = true;
+      img.addEventListener("load", () => {
+        img._pendingSpatialRedraw = false;
+        drawSpatialCanvas();
+      }, { once: true });
+    }
+    return;
+  }
+
+  const natW = img.naturalWidth || img.width || 640;
+  const natH = img.naturalHeight || img.height || 640;
+  const upscale = natW < 512 ? Math.min(3, Math.ceil(512 / natW)) : 1;
+  canvas.width = natW * upscale;
+  canvas.height = natH * upscale;
 
   if (placeholder) placeholder.style.display = "none";
   canvas.style.display = "block";
 
   const data = lastVisionResult || {};
   const boxes = data.spatial_telemetry?.bounding_boxes || [];
+  const srcDims = data.image_validation?.telemetry?.image_dimensions;
+  const srcOrigW = (Array.isArray(srcDims) && srcDims[0] > 0) ? srcDims[0] : natW;
+  const srcOrigH = (Array.isArray(srcDims) && srcDims[1] > 0) ? srcDims[1] : natH;
   const maskOverlayB64 = data.segmentation_mask_b64;
   const maskRawB64 = data.mask_raw_b64;
   const camOverlayB64 = data.cam_overlay_b64 || (data.explainability && data.explainability.stages && data.explainability.stages[7] && data.explainability.stages[7].image_b64);
@@ -4240,8 +4293,8 @@ function drawSpatialCanvas() {
     if (diagRenderedLesion) diagRenderedLesion.textContent = String(renderedLesion);
 
     if (activeBoxes.length > 0) {
-      drawBoundingBoxesOnContext(ctx, activeBoxes, canvas.width, canvas.height, showBoxLabels);
-      const engineName = data.spatial_telemetry?.detection_engine || "YOLO PlantDoc";
+      drawBoundingBoxesOnContext(ctx, activeBoxes, canvas.width, canvas.height, showBoxLabels, srcOrigW, srcOrigH);
+      const engineName = data.spatial_telemetry?.detection_engine || "YOLO26s PlantDoc";
 
       let summaryText = "";
       if (renderedLesion > 0 && renderedSpecimen > 0) {
@@ -4256,7 +4309,7 @@ function drawSpatialCanvas() {
       }
       updateLegendText(summaryText, renderedLesion > 0 ? "🎯" : "🌿");
     } else if (boxes.length === 0) {
-      updateLegendText(`<strong>🎯 ${data.spatial_telemetry?.detection_engine || 'YOLO PlantDoc'} Detection:</strong> No spatial detections localized above inference threshold.`, "🛡️");
+      updateLegendText(`<strong>🎯 ${data.spatial_telemetry?.detection_engine || 'YOLO26s PlantDoc'} Detection:</strong> No spatial detections localized above inference threshold.`, "🛡️");
     } else {
       updateLegendText("<strong>🎯 Detection Mode:</strong> Spatial detection layers toggled hidden by user.", "🎯");
     }
@@ -4286,7 +4339,10 @@ function drawSpatialCanvas() {
       };
       maskImg.src = maskOverlayB64.startsWith("data:") ? maskOverlayB64 : `data:image/png;base64,${maskOverlayB64}`;
       const damageStr = data.diagnosis?.foliar_damage_pct != null ? `${Number(data.diagnosis.foliar_damage_pct).toFixed(1)}%` : "--%";
-      updateLegendText(`<strong>🌿 Mobile-UNet Foliar Segmentation:</strong> Translucent overlay showing foliar canopy (green) and active necrotic lesion foci (crimson). Botanical damage index: ${damageStr}.`, "🌿");
+      const segName = (data.diagnosis?.lesion_foci_source === "yolo26_lesion_detector")
+        ? "Mobile-UNet + YOLO26s-Seg Foliar Segmentation"
+        : "Mobile-UNet Foliar Segmentation";
+      updateLegendText(`<strong>🌿 ${segName}:</strong> Translucent overlay showing foliar canopy (green) and active necrotic lesion foci (crimson). Botanical damage index: ${damageStr}.`, "🌿");
       return;
     }
 
@@ -4324,7 +4380,7 @@ function drawSpatialCanvas() {
   }
 }
 
-function drawBoundingBoxesOnContext(ctx, boxes, imgW, imgH, renderLabels = true) {
+function drawBoundingBoxesOnContext(ctx, boxes, imgW, imgH, renderLabels = true, srcOrigW = null, srcOrigH = null) {
   if (!boxes || boxes.length === 0) return;
   ctx.save();
 
@@ -4350,16 +4406,19 @@ function drawBoundingBoxesOnContext(ctx, boxes, imgW, imgH, renderLabels = true)
   }
 
   // Unified coordinate transformation:
-  // Maps original inference image pixel coordinates to displayed canvas coordinate space
-  const origW = (originalVisionImageObj && (originalVisionImageObj.naturalWidth || originalVisionImageObj.width)) || imgW;
-  const origH = (originalVisionImageObj && (originalVisionImageObj.naturalHeight || originalVisionImageObj.height)) || imgH;
+  // Maps authoritative backend image pixel coordinates to displayed canvas coordinate space
+  const origW = srcOrigW || (originalVisionImageObj && (originalVisionImageObj.naturalWidth || originalVisionImageObj.width)) || imgW;
+  const origH = srcOrigH || (originalVisionImageObj && (originalVisionImageObj.naturalHeight || originalVisionImageObj.height)) || imgH;
   const scaleX = imgW / (origW || 1);
   const scaleY = imgH / (origH || 1);
 
   // Process and accurately scale every genuine box independently
   const processedBoxes = boxes.map((box, index) => {
     let [rx1, ry1, rx2, ry2] = box.bbox_xyxy || [0, 0, 0, 0];
-    if (rx2 <= 1.0 && ry2 <= 1.0 && (rx2 > 0 || ry2 > 0)) {
+    const isNormalized = box.coordinate_space === "normalized" || (
+      rx1 >= 0 && ry1 >= 0 && rx1 <= 1.0 && ry1 <= 1.0 && rx2 <= 1.0 && ry2 <= 1.0 && (rx2 > 0 || ry2 > 0)
+    );
+    if (isNormalized) {
       rx1 = rx1 * origW;
       ry1 = ry1 * origH;
       rx2 = rx2 * origW;
@@ -4422,6 +4481,7 @@ function drawBoundingBoxesOnContext(ctx, boxes, imgW, imgH, renderLabels = true)
   // ── PASS 2: DRAW MICRO-PILL BADGES WITH COLLISION AVOIDANCE ────────────────
   if (renderLabels) {
     const placedBadges = [];
+    const lesionCount = processedBoxes.filter(b => !b.isCanopy).length;
 
     function checkBadgeOverlap(x, y, w, h) {
       const margin = 3;
@@ -4438,24 +4498,27 @@ function drawBoundingBoxesOnContext(ctx, boxes, imgW, imgH, renderLabels = true)
       const confStr = confNum != null ? ` · ${confNum.toFixed(0)}%` : "";
 
       const icon = box.isCanopy ? "🌿" : "🎯";
-      const rawName = box.class_name || (box.label ? box.label.replace(/\s*\(\d+%\)/, '') : (box.isCanopy ? "Canopy" : "Lesion"));
+      const cleanBackendName = box.label
+        ? box.label.replace(/\s*\(\d+%\)$/, "").replace(/\s*·\s*\d+%$/, "")
+        : (box.class_name ? box.class_name.replace(/_/g, " ") : (box.isCanopy ? "Canopy" : "Lesion"));
+      const rawName = (!box.isCanopy && (lesionCount >= 5 || imgW < 420)) ? "Lesion" : cleanBackendName;
       const badgeText = `${icon} ${rawName.trim()}${confStr}`;
 
       const fontSize = box.isCanopy
         ? Math.max(11, Math.min(13.5, Math.round(imgW / 46)))
-        : Math.max(9.5, Math.min(11.5, Math.round(imgW / 56)));
+        : Math.max(8.5, Math.min(11, Math.round(imgW / 58)));
 
       ctx.font = `600 ${fontSize}px 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
       const textWidth = ctx.measureText(badgeText).width;
 
       const hasDot = !box.isCanopy;
-      const dotRadius = Math.max(2.5, fontSize * 0.24);
-      const dotGap = Math.max(5, fontSize * 0.45);
+      const dotRadius = Math.max(2.0, fontSize * 0.22);
+      const dotGap = Math.max(4, fontSize * 0.40);
       const dotSpace = hasDot ? (dotRadius * 2 + dotGap) : 0;
-      const padX = Math.max(7, Math.round(fontSize * 0.65));
+      const padX = Math.max(5, Math.round(fontSize * 0.58));
 
       const badgeW = Math.round(padX * 2 + dotSpace + textWidth);
-      const badgeH = Math.max(18, Math.round(fontSize * 1.65));
+      const badgeH = Math.max(15, Math.round(fontSize * 1.60));
       const pillRadius = Math.round(badgeH / 2);
 
       // Candidate placements in priority order:
@@ -4467,18 +4530,17 @@ function drawBoundingBoxesOnContext(ctx, boxes, imgW, imgH, renderLabels = true)
       const candidates = [];
       if (candAboveY >= 2) {
         candidates.push({ x: box.x1, y: candAboveY });
+        candidates.push({ x: box.x2 - badgeW, y: candAboveY });
+      }
+      if (candBelowY + badgeH <= imgH - 2) {
+        candidates.push({ x: box.x1, y: candBelowY });
+        candidates.push({ x: box.x2 - badgeW, y: candBelowY });
       }
       if (candInsideTopY + badgeH <= box.y2 - 2) {
         candidates.push({ x: box.x1 + 4, y: candInsideTopY });
       }
-      if (candBelowY + badgeH <= imgH - 2) {
-        candidates.push({ x: box.x1, y: candBelowY });
-      }
       if (candInsideBottomY >= 2) {
         candidates.push({ x: box.x1 + 4, y: candInsideBottomY });
-      }
-      if (candAboveY >= 2) {
-        candidates.push({ x: box.x2 - badgeW, y: candAboveY });
       }
 
       let chosenPos = null;
@@ -4491,18 +4553,21 @@ function drawBoundingBoxesOnContext(ctx, boxes, imgW, imgH, renderLabels = true)
         }
       }
 
-      // If all candidates have overlap, step downward to find free slot
+      // If all candidates collide, step vertically; for crowded secondary lesion pills stay clean
       if (!chosenPos) {
         let bestX = Math.max(2, Math.min(imgW - badgeW - 2, box.x1));
         let bestY = Math.max(2, Math.min(imgH - badgeH - 2, candAboveY >= 2 ? candAboveY : candInsideTopY));
         let step = 0;
-        while (checkBadgeOverlap(bestX, bestY, badgeW, badgeH) && bestY + badgeH + 3 < imgH - 2 && step < 6) {
+        while (checkBadgeOverlap(bestX, bestY, badgeW, badgeH) && bestY + badgeH + 3 < imgH - 2 && step < 4) {
           bestY += badgeH + 3;
           step++;
         }
-        chosenPos = { x: bestX, y: bestY };
+        if (!checkBadgeOverlap(bestX, bestY, badgeW, badgeH) || box.isCanopy) {
+          chosenPos = { x: bestX, y: bestY };
+        }
       }
 
+      if (!chosenPos) return;
       placedBadges.push({ x: chosenPos.x, y: chosenPos.y, w: badgeW, h: badgeH });
 
       // Draw modern dark glass pill background
@@ -5416,5 +5481,9 @@ if (typeof window !== "undefined") {
   // Launch real-time telemetry connection
   initAgriRoverWebSocket();
   setInterval(pollLatestTelemetry, 3500);
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports.getDetectorBenchmarkDisplay = getDetectorBenchmarkDisplay;
 }
 

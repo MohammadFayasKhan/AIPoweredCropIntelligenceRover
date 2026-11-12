@@ -31,6 +31,7 @@ from backend.app.utils.image_processing import (
     preprocess_tier3,
     create_segmentation_overlay_base64,
     create_segmentation_mask_base64,
+    scale_segmentation_mask_to_original,
     generate_safe_sample_id,
 )
 from backend.app.utils.explainability import (
@@ -215,10 +216,69 @@ def reconcile_cross_tier_evidence(
     return final_probs, synthesis_note
 
 
+def _inspect_yolo_architecture(yolo_model: Optional[YOLO]) -> Tuple[str, bool, int]:
+    """Inspects the underlying Ultralytics checkpoint architecture instead of trusting filenames."""
+    if yolo_model is None:
+        return "Unavailable", False, 640
+    yaml_file = ""
+    backbone_ops: set = set()
+    is_e2e = False
+    has_o2o = False
+    yaml_e2e = False
+    imgsz = 640
+    try:
+        overrides = getattr(yolo_model, "overrides", None) or {}
+        if overrides.get("imgsz"):
+            imgsz = int(overrides["imgsz"])
+        nn_mod = getattr(yolo_model, "model", None)
+        yaml_info = getattr(nn_mod, "yaml", None) or {}
+        yaml_file = str(yaml_info.get("yaml_file", "")).lower()
+        yaml_e2e = bool(yaml_info.get("end2end", False))
+        for layer in yaml_info.get("backbone", []) or []:
+            if isinstance(layer, (list, tuple)) and len(layer) >= 3:
+                backbone_ops.add(str(layer[2]))
+        if hasattr(nn_mod, "model") and len(nn_mod.model) > 0:
+            head = nn_mod.model[-1]
+            has_o2o = hasattr(head, "one2one") or hasattr(head, "one2one_cv2")
+            is_e2e = bool(
+                getattr(head, "end2end", False)
+                or getattr(nn_mod, "end2end", False)
+                or yaml_e2e
+                or has_o2o
+            )
+    except Exception:
+        pass
+    is_yolo26 = bool("yolo26" in yaml_file and (has_o2o or yaml_e2e or is_e2e))
+    if is_yolo26:
+        if "yolo26m" in yaml_file:
+            return "YOLO26m", True, imgsz
+        if "yolo26s" in yaml_file:
+            return "YOLO26s", True, imgsz
+        return "YOLO26n", True, imgsz
+    if "yolo11" in yaml_file or "C3k2" in backbone_ops or "C2PSA" in backbone_ops:
+        return "YOLO11n", False, imgsz
+    if "yolov8" in yaml_file or ("C2f" in backbone_ops and not is_e2e):
+        return "YOLOv8n", False, imgsz
+    return "YOLO", False, imgsz
+
+
+def _yolo26_mode_kwargs(e2e_flag: bool) -> Dict[str, Any]:
+    """Selects Ultralytics >=8.4.200 `nms` flag or legacy `end2end` flag cleanly."""
+    try:
+        import ultralytics
+        parts = tuple(int("".join(ch for ch in t if ch.isdigit()) or 0) for t in ultralytics.__version__.split(".")[:3])
+        if parts >= (8, 4, 200):
+            return {"nms": (not e2e_flag)}
+    except Exception:
+        pass
+    return {"end2end": e2e_flag}
+
+
 def clean_foliar_segmentation_mask(
     pred_mask_256: Optional[np.ndarray],
     img_bgr: np.ndarray,
-    primary_leaf_box: Optional[BoundingBox] = None
+    primary_leaf_box: Optional[BoundingBox] = None,
+    specimen_boxes: Optional[List[BoundingBox]] = None,
 ) -> Optional[np.ndarray]:
     """
     Cleans Mobile-UNet 3-class semantic mask (0=bg, 1=healthy leaf, 2=necrotic lesion)
@@ -255,24 +315,35 @@ def clean_foliar_segmentation_mask(
     )
 
     # Zero out healthy leaf (Class 1) on non-plant background (wood, floor, tables, soil)
-    # Note: Necrotic lesions (Class 2) have high red and low ExG, so non-plant filters
-    # must NOT be applied to class 2, which is topologically protected below.
+    # Note: Necrotic lesions (Class 2) have high red and low ExG, so general non-plant filters
+    # are not applied blindly to class 2, EXCEPT unambiguous human skin tones.
     cleaned_mask[(cleaned_mask == 1) & is_non_plant_256] = 0
     cleaned_mask[(cleaned_mask == 1) & is_soil_256] = 0
 
-    # If a primary leaf box was detected by spatial detector, confine strictly to that leaf box
-    if primary_leaf_box is not None:
-        lx1, ly1, lx2, ly2 = primary_leaf_box.bbox_xyxy
-        pad_x = max(2, int(0.02 * (lx2 - lx1) * 256.0 / orig_w))
-        pad_y = max(2, int(0.02 * (ly2 - ly1) * 256.0 / orig_h))
-        bx1 = max(0, int(lx1 * 256.0 / orig_w) - pad_x)
-        by1 = max(0, int(ly1 * 256.0 / orig_h) - pad_y)
-        bx2 = min(256, int(lx2 * 256.0 / orig_w) + pad_x)
-        by2 = min(256, int(ly2 * 256.0 / orig_h) + pad_y)
+    ycrcb_256 = cv2.cvtColor(img_256, cv2.COLOR_BGR2YCrCb)
+    cr_256, cb_256 = ycrcb_256[:, :, 1], ycrcb_256[:, :, 2]
+    is_skin_256 = (
+        (cr_256 >= 133) & (cr_256 <= 173) &
+        (cb_256 >= 77) & (cb_256 <= 127) &
+        (r_256 > g_256 + 10.0) & (exg_256 < 0.0)
+    )
+    cleaned_mask[is_skin_256] = 0
 
-        outside_leaf = np.ones((256, 256), dtype=bool)
-        outside_leaf[by1:by2, bx1:bx2] = False
-        cleaned_mask[outside_leaf] = 0
+    # Confine semantic mask strictly inside detected specimen leaf boxes (union of individual
+    # boxes prevents empty background gaps between separate leaves from polluting lesion area).
+    leaf_boxes_to_mask = specimen_boxes if specimen_boxes else ([primary_leaf_box] if primary_leaf_box is not None else [])
+    if leaf_boxes_to_mask:
+        inside_any_leaf = np.zeros((256, 256), dtype=bool)
+        for s_box in leaf_boxes_to_mask:
+            lx1, ly1, lx2, ly2 = s_box.bbox_xyxy
+            pad_x = max(2, int(0.02 * (lx2 - lx1) * 256.0 / orig_w))
+            pad_y = max(2, int(0.02 * (ly2 - ly1) * 256.0 / orig_h))
+            bx1 = max(0, int(lx1 * 256.0 / orig_w) - pad_x)
+            by1 = max(0, int(ly1 * 256.0 / orig_h) - pad_y)
+            bx2 = min(256, int(lx2 * 256.0 / orig_w) + pad_x)
+            by2 = min(256, int(ly2 * 256.0 / orig_h) + pad_y)
+            inside_any_leaf[by1:by2, bx1:bx2] = True
+        cleaned_mask[~inside_any_leaf] = 0
 
     # Necrotic lesions (Class 2) must be adjacent to or within foliar canopy (Class 1)
     canopy_256 = (cleaned_mask == 1).astype(np.uint8)
@@ -298,6 +369,193 @@ def clean_foliar_segmentation_mask(
                 cleaned_mask[l_comp == c_idx] = 0
 
     return cleaned_mask
+
+
+def _clamp_xyxy(xyxy_raw: List[float], orig_w: int, orig_h: int) -> Tuple[int, int, int, int]:
+    """Clamps raw detector xyxy coordinates cleanly into [0, orig_w] x [0, orig_h]."""
+    x1 = int(round(max(0.0, min(float(xyxy_raw[0]), float(orig_w - 1)))))
+    y1 = int(round(max(0.0, min(float(xyxy_raw[1]), float(orig_h - 1)))))
+    x2 = int(round(max(float(x1 + 1), min(float(xyxy_raw[2]), float(orig_w)))))
+    y2 = int(round(max(float(y1 + 1), min(float(xyxy_raw[3]), float(orig_h)))))
+    return x1, y1, x2, y2
+
+
+def _is_inside_specimen_canopy(
+    x1: int, y1: int, x2: int, y2: int, specimen_detections: List[BoundingBox]
+) -> bool:
+    """Checks whether a candidate lesion spot lies inside any detected leaf specimen boundary."""
+    if not specimen_detections:
+        return True
+    cx = (x1 + x2) / 2.0
+    cy = (y1 + y2) / 2.0
+    box_area = float(max(1, (x2 - x1) * (y2 - y1)))
+    for spec in specimen_detections:
+        sx1, sy1, sx2, sy2 = spec.bbox_xyxy
+        pad_x = 0.02 * (sx2 - sx1)
+        pad_y = 0.02 * (sy2 - sy1)
+        if (sx1 - pad_x) <= cx <= (sx2 + pad_x) and (sy1 - pad_y) <= cy <= (sy2 + pad_y):
+            return True
+        ix1, iy1 = max(x1, sx1), max(y1, sy1)
+        ix2, iy2 = min(x2, sx2), min(y2, sy2)
+        if ix2 > ix1 and iy2 > iy1 and ((ix2 - ix1) * (iy2 - iy1)) / box_area >= 0.45:
+            return True
+    return False
+
+
+def _passes_lesion_spectral_checks(
+    img_bgr: np.ndarray,
+    x1: int,
+    y1: int,
+    x2: int,
+    y2: int,
+    orig_w: int,
+    orig_h: int,
+    strict_spectral: bool = True,
+) -> bool:
+    """Rejects human skin/fingers, bare soil/debris, and uniform healthy green leaf patches."""
+    crop = img_bgr[y1:y2, x1:x2]
+    if crop.size == 0:
+        return False
+
+    mb, mg, mr = crop.mean(axis=(0, 1))
+    exg = 2.0 * mg - mr - mb
+    if exg < -35.0 and mr > (mg + 15.0):
+        return False
+
+    c_b = crop[:, :, 0].astype(np.float32)
+    c_g = crop[:, :, 1].astype(np.float32)
+    c_r = crop[:, :, 2].astype(np.float32)
+    px_exg = 2.0 * c_g - c_r - c_b
+    green_frac = float(np.mean(px_exg > 12.0))
+
+    ycrcb = cv2.cvtColor(crop, cv2.COLOR_BGR2YCrCb)
+    cr, cb = ycrcb[:, :, 1], ycrcb[:, :, 2]
+    skin_thresh = 0.50 if strict_spectral else 0.65
+    if exg < -2.0 and mr > (mg + 10.0) and (
+        float(np.mean((cr >= 133) & (cr <= 173) & (cb >= 77) & (cb <= 127) & (px_exg < 15.0))) >= skin_thresh
+        or (strict_spectral and green_frac < 0.25)
+    ):
+        return False
+
+    if strict_spectral:
+        hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+        dark_frac = float(np.mean(hsv[:, :, 2] < 105))
+        if mr < (mg - 2.0) and exg > 12.0:
+            return False
+        if green_frac > 0.82 and mr < mg and dark_frac < 0.15:
+            return False
+
+    bw, bh = x2 - x1, y2 - y1
+    pad = max(6, int(0.35 * max(bw, bh)))
+    rx1, ry1 = max(0, x1 - pad), max(0, y1 - pad)
+    rx2, ry2 = min(orig_w, x2 + pad), min(orig_h, y2 + pad)
+    ring = img_bgr[ry1:ry2, rx1:rx2]
+    if ring.size > 0:
+        rex = 2.0 * ring[:, :, 1].astype(np.float32) - ring[:, :, 2].astype(np.float32) - ring[:, :, 0].astype(np.float32)
+        ring_green = float(np.mean(rex > 10.0))
+        min_gf = 0.10 if strict_spectral else 0.05
+        min_rg = 0.25 if strict_spectral else 0.18
+        if green_frac < min_gf and ring_green < min_rg:
+            return False
+
+    return True
+
+
+def _filter_lesion_detections(
+    img_bgr: np.ndarray,
+    les_res: Any,
+    specimen_detections: List[BoundingBox],
+    t1_disease_name: str,
+    conf_thresh: float,
+    source_model_name: str = "YOLOv8n Lesion Spot Detector",
+    is_yolo26_seg: bool = False,
+    accepted_raw_indices_out: Optional[List[int]] = None,
+) -> Tuple[List[BoundingBox], int]:
+    """Filters raw lesion candidates using spatial containment, spectral guards, and nested IoM suppression."""
+    if not les_res or len(les_res) == 0 or les_res[0].boxes is None:
+        return [], 0
+
+    orig_h, orig_w = img_bgr.shape[:2]
+    img_area = float(max(1, orig_w * orig_h))
+    l_boxes = les_res[0].boxes
+    raw_count = len(l_boxes)
+    if raw_count == 0:
+        return [], 0
+
+    confs_arr = l_boxes.conf.cpu().numpy()
+    sorted_indices = sorted(range(raw_count), key=lambda idx: float(confs_arr[idx]), reverse=True)
+    is_early_blight_ctx = "early blight" in (t1_disease_name or "").lower()
+    max_area_frac = 0.35 if is_yolo26_seg else 0.15
+
+    kept_boxes: List[BoundingBox] = []
+    accepted_coords: List[Tuple[int, int, int, int]] = []
+
+    for j in sorted_indices:
+        conf = float(confs_arr[j])
+        if conf < conf_thresh:
+            break
+
+        cls_id = int(l_boxes.cls[j].cpu().numpy())
+        cls_name = les_res[0].names.get(cls_id, f"Lesion_{cls_id}")
+        xyxy_raw = l_boxes.xyxy[j].cpu().numpy().astype(float).tolist()
+        x1, y1, x2, y2 = _clamp_xyxy(xyxy_raw, orig_w, orig_h)
+        bw, bh = x2 - x1, y2 - y1
+        b_area = max(1, bw * bh)
+
+        # Reject degenerate slivers, extreme aspect ratios, or oversized whole-canopy hallucinations
+        if bw < 6 or bh < 6 or b_area > max_area_frac * img_area or max(bw / bh, bh / bw) > 6.0:
+            continue
+
+        if not _is_inside_specimen_canopy(x1, y1, x2, y2, specimen_detections):
+            continue
+
+        if not _passes_lesion_spectral_checks(
+            img_bgr, x1, y1, x2, y2, orig_w, orig_h, strict_spectral=not is_yolo26_seg
+        ):
+            continue
+
+        # Suppress nested / redundant lesion boxes via Intersection-over-Minimum (IoM >= 0.70)
+        is_nested_dup = False
+        for ax1, ay1, ax2, ay2 in accepted_coords:
+            ix1, iy1 = max(x1, ax1), max(y1, ay1)
+            ix2, iy2 = min(x2, ax2), min(y2, ay2)
+            if ix2 > ix1 and iy2 > iy1:
+                inter_area = (ix2 - ix1) * (iy2 - iy1)
+                min_area = float(max(1, min(b_area, (ax2 - ax1) * (ay2 - ay1))))
+                if inter_area / min_area >= 0.70:
+                    is_nested_dup = True
+                    break
+        if is_nested_dup:
+            continue
+
+        accepted_coords.append((x1, y1, x2, y2))
+        if accepted_raw_indices_out is not None:
+            accepted_raw_indices_out.append(j)
+        cx = round(float((x1 + x2) / (2.0 * orig_w)), 3)
+        cy = round(float((y1 + y2) / (2.0 * orig_h)), 3)
+        display_cls = "Early Blight Lesion" if (is_early_blight_ctx and cls_name == "early_blight_lesion") else (
+            "Necrotic Lesion Focus" if cls_name == "early_blight_lesion" else (
+                "Disease Lesion" if cls_name == "disease_lesion" else cls_name.replace("_", " ").title()
+            )
+        )
+        kept_boxes.append(
+            BoundingBox(
+                detection_id=f"lesion_{len(kept_boxes)}_{cls_id}",
+                class_id=cls_id,
+                class_name=cls_name,
+                category_type="lesion",
+                label=f"{display_cls} ({conf * 100:.0f}%)",
+                bbox_xyxy=[x1, y1, x2, y2],
+                confidence=round(conf, 2),
+                centroid_norm=[cx, cy],
+                box_type="lesion",
+                color_hex="#f4a261",
+                source_model=source_model_name,
+                coordinate_space="original_image_pixels",
+            )
+        )
+
+    return kept_boxes, raw_count
 
 
 
@@ -369,6 +627,16 @@ class InferenceEngine:
         self.model_tier2: Optional[YOLO] = None
         self.model_tier2_plantdoc: Optional[YOLO] = None
         self.model_tier2_lesions: Optional[YOLO] = None
+        self.model_tier2_arch: str = "YOLO11n"
+        self.model_tier2_is_yolo26: bool = False
+        self.model_tier2_path: Path = settings.TIER2_PLANTDOC_MODEL_PATH
+        self.model_tier2_lesions_arch: str = "YOLOv8n"
+        self.model_yolo26_specimen: Optional[YOLO] = None
+        self.model_yolo26_lesion: Optional[YOLO] = None
+        self.model_yolo26_specimen_arch: str = "Unavailable"
+        self.model_yolo26_specimen_imgsz: int = 768
+        self.model_yolo26_lesion_arch: str = "Unavailable"
+        self.model_yolo26_lesion_imgsz: int = 768
         self.model_tier3: Optional[nn.Module] = None
 
         # Detailed component readiness tracking
@@ -378,6 +646,8 @@ class InferenceEngine:
             "tier1_gen2": "uninitialized",
             "tier2_plantdoc": "uninitialized",
             "tier2_lesions": "uninitialized",
+            "yolo26_specimen": "untrained_optional",
+            "yolo26_lesion": "untrained_optional",
             "tier3_unet": "uninitialized",
         }
         self.is_loaded: bool = False
@@ -495,9 +765,16 @@ class InferenceEngine:
                 try:
                     self.model_tier2_plantdoc = YOLO(str(settings.TIER2_PLANTDOC_MODEL_PATH))
                     self.model_tier2 = self.model_tier2_plantdoc
+                    arch_lbl, is_y26, det_imgsz = _inspect_yolo_architecture(self.model_tier2_plantdoc)
+                    self.model_tier2_arch = arch_lbl
+                    self.model_tier2_is_yolo26 = is_y26
+                    self.model_tier2_path = settings.TIER2_PLANTDOC_MODEL_PATH
                     self.model_status_map["tier2_plantdoc"] = "ready"
-                    logger.info("Tier 2 YOLO PlantDoc Specimen Detector loaded (%.2f MB).",
-                                settings.TIER2_PLANTDOC_MODEL_PATH.stat().st_size / (1024*1024))
+                    logger.info(
+                        "Tier 2 %s PlantDoc Specimen Detector loaded (%s, imgsz=%d, %.2f MB).",
+                        arch_lbl, settings.TIER2_PLANTDOC_MODEL_PATH.name, det_imgsz,
+                        settings.TIER2_PLANTDOC_MODEL_PATH.stat().st_size / (1024 * 1024),
+                    )
                 except Exception as e:
                     self.model_status_map["tier2_plantdoc"] = f"error: {str(e)[:40]}"
                     logger.warning("Notice loading YOLO PlantDoc detector: %s", e)
@@ -505,18 +782,60 @@ class InferenceEngine:
                 self.model_status_map["tier2_plantdoc"] = "missing"
 
             # 2c. Load Tier 2 YOLOv8n Lesion Spot Detector (Dedicated focal pathology detector)
-            lesion_model_path = Path("cv/models/yolov8n_lesions_best.pt")
+            lesion_model_path = settings.TIER2_LESIONS_MODEL_PATH
             if lesion_model_path.exists():
                 try:
                     self.model_tier2_lesions = YOLO(str(lesion_model_path))
+                    l_arch, _, l_imgsz = _inspect_yolo_architecture(self.model_tier2_lesions)
+                    self.model_tier2_lesions_arch = l_arch
                     self.model_status_map["tier2_lesions"] = "ready"
-                    logger.info("Tier 2 YOLOv8n Lesion Spot Detector loaded (%.2f MB).",
-                                lesion_model_path.stat().st_size / (1024*1024))
+                    logger.info(
+                        "Tier 2 %s Lesion Spot Detector loaded (%s, imgsz=%d, %.2f MB).",
+                        l_arch, lesion_model_path.name, l_imgsz,
+                        lesion_model_path.stat().st_size / (1024 * 1024),
+                    )
                 except Exception as e:
                     self.model_status_map["tier2_lesions"] = f"error: {str(e)[:40]}"
                     logger.warning("Notice loading YOLOv8n Lesion Detector: %s", e)
             else:
                 self.model_status_map["tier2_lesions"] = "missing"
+
+            # 2d. Optionally load Opt-In YOLO26 v1 Checkpoints (strictly requires verified YOLO26 architecture)
+            if settings.YOLO26_SPECIMEN_MODEL_PATH.exists():
+                try:
+                    cand_y26_spec = YOLO(str(settings.YOLO26_SPECIMEN_MODEL_PATH))
+                    s_arch, s_is_y26, s_imgsz = _inspect_yolo_architecture(cand_y26_spec)
+                    if s_is_y26:
+                        self.model_yolo26_specimen = cand_y26_spec
+                        self.model_yolo26_specimen_arch = s_arch
+                        self.model_yolo26_specimen_imgsz = s_imgsz
+                        self.model_status_map["yolo26_specimen"] = "ready"
+                        logger.info("Opt-In YOLO26 v1 Specimen Detector loaded (%s, %s, imgsz=%d).", settings.YOLO26_SPECIMEN_MODEL_PATH.name, s_arch, s_imgsz)
+                    else:
+                        self.model_status_map["yolo26_specimen"] = f"rejected_non_yolo26 ({s_arch})"
+                        logger.warning("Refused loading %s as YOLO26 specimen detector: verified architecture is %s.", settings.YOLO26_SPECIMEN_MODEL_PATH.name, s_arch)
+                except Exception as ye:
+                    self.model_status_map["yolo26_specimen"] = f"error: {str(ye)[:40]}"
+            else:
+                self.model_status_map["yolo26_specimen"] = "untrained_optional"
+
+            if settings.YOLO26_LESION_MODEL_PATH.exists():
+                try:
+                    cand_y26_les = YOLO(str(settings.YOLO26_LESION_MODEL_PATH))
+                    l_arch, l_is_y26, l_imgsz = _inspect_yolo_architecture(cand_y26_les)
+                    if l_is_y26:
+                        self.model_yolo26_lesion = cand_y26_les
+                        self.model_yolo26_lesion_arch = l_arch
+                        self.model_yolo26_lesion_imgsz = l_imgsz
+                        self.model_status_map["yolo26_lesion"] = "ready"
+                        logger.info("Opt-In YOLO26 v1 Lesion Model loaded (%s, %s, imgsz=%d).", settings.YOLO26_LESION_MODEL_PATH.name, l_arch, l_imgsz)
+                    else:
+                        self.model_status_map["yolo26_lesion"] = f"rejected_non_yolo26 ({l_arch})"
+                        logger.warning("Refused loading %s as YOLO26 lesion model: verified architecture is %s.", settings.YOLO26_LESION_MODEL_PATH.name, l_arch)
+                except Exception as yle:
+                    self.model_status_map["yolo26_lesion"] = f"error: {str(yle)[:40]}"
+            else:
+                self.model_status_map["yolo26_lesion"] = "untrained_optional"
 
             # 3. Load Tier 3 Mobile-UNet Foliar Lesion Segmenter
             if settings.TIER3_MODEL_PATH.exists():
@@ -560,23 +879,31 @@ class InferenceEngine:
     def get_model_metadata(self, tier: str = "server") -> ModelMetadata:
         """Returns authoritative ModelMetadata for the specified tier."""
         tier_lower = (tier or "server").lower()
+        is_y26 = getattr(self, "model_tier2_is_yolo26", False)
+        legacy_det_requested = tier_lower in ("gen2", "yolo11", "legacy", "legacy_yolo11")
+        has_opt_y26 = (
+            not legacy_det_requested
+            and (tier_lower in ("yolo26", "server_yolo26") or settings.YOLO26_ENABLED)
+            and getattr(self, "model_yolo26_specimen", None) is not None
+        )
+        honest_det_tax = "PlantDoc-29Class-YOLO26-v1.0" if (is_y26 or has_opt_y26) else "PlantDoc-29Class-YOLO-v1.0"
         if tier_lower == "gen2":
             arch_name = "Gen-2 Multi-Domain EfficientNetV2-S Classifier"
             architecture = "EfficientNetV2-S (Gen-2 Multi-Domain)"
             is_server = False
-            det_tax = "YOLO26-29Class-MultiDomain-v2.5"
+            det_tax = honest_det_tax
             input_res = f"{settings.CLASSIFIER_INPUT_RESOLUTION}x{settings.CLASSIFIER_INPUT_RESOLUTION}"
         elif tier_lower in ("edge", "mobilenet_v2"):
             arch_name = "MobileNetV2 Edge Classifier"
             architecture = "MobileNetV2"
             is_server = False
-            det_tax = "PlantDoc-29Class-YOLO-v1.0"
+            det_tax = honest_det_tax
             input_res = "224x224"
         else:
             arch_name = "EfficientNetV2-S Server-Grade Classifier"
             architecture = "EfficientNetV2-S"
             is_server = True
-            det_tax = "PlantDoc-29Class-YOLO-v1.0"
+            det_tax = honest_det_tax
             input_res = f"{settings.CLASSIFIER_INPUT_RESOLUTION}x{settings.CLASSIFIER_INPUT_RESOLUTION}"
 
         return ModelMetadata(
@@ -750,30 +1077,64 @@ class InferenceEngine:
             # ══════════════════════════════════════════════════════════════════
             t1_start = time.time()
             tier_req = (model_tier or "server").lower()
+            is_y26 = getattr(self, "model_tier2_is_yolo26", False)
+            det_arch = getattr(self, "model_tier2_arch", "YOLO11n")
+            honest_detector_name = (
+                "YOLO26 Multi-Domain Agricultural Detector"
+                if is_y26
+                else f"{det_arch} PlantDoc Specimen Detector"
+            )
+            legacy_det_requested = tier_req in ("gen2", "yolo11", "legacy", "legacy_yolo11")
+            use_yolo26_det = (
+                tier_req in ("yolo26", "server_yolo26")
+                or (settings.YOLO26_ENABLED and not legacy_det_requested)
+            )
             if tier_req == "gen2":
                 active_model = self.model_tier1_gen2 if self.model_tier1_gen2 is not None else self.model_tier1_server
                 model_arch_name = "Gen-2 Multi-Domain EfficientNetV2-S Classifier"
                 active_tier = "gen2"
                 is_server = False
-                active_detector = self.model_tier2_plantdoc
-                detection_engine_name = "YOLO26 Multi-Domain Agricultural Detector"
-                active_segmenter = self.model_tier3
             elif tier_req in ("edge", "mobilenet_v2"):
                 active_model = self.model_tier1_edge if self.model_tier1_edge is not None else self.model_tier1_server
                 model_arch_name = "MobileNetV2 Edge Classifier"
                 active_tier = "edge"
                 is_server = False
-                active_detector = self.model_tier2_plantdoc
-                detection_engine_name = "YOLO11 PlantDoc Specimen Detector"
-                active_segmenter = self.model_tier3
             else:
                 active_model = self.model_tier1_server
                 model_arch_name = "EfficientNetV2-S Server-Grade Classifier"
-                active_tier = "server"
+                active_tier = "yolo26" if tier_req in ("yolo26", "server_yolo26") else "server"
                 is_server = True
+
+            active_lesion_detector = self.model_tier2_lesions
+            active_lesion_source = f"{getattr(self, 'model_tier2_lesions_arch', 'YOLOv8n')} Lesion Spot Detector"
+            yolo26_active_specimen = False
+            yolo26_active_lesion = False
+            yolo26_e2e_flag = settings.YOLO26_INFERENCE_MODE.lower() != "one2many"
+            active_segmenter = self.model_tier3
+
+            if use_yolo26_det:
+                if self.model_yolo26_specimen is not None:
+                    active_detector = self.model_yolo26_specimen
+                    yolo26_active_specimen = True
+                    mode_tag = "e2e NMS-free" if yolo26_e2e_flag else "one-to-many NMS"
+                    detection_engine_name = f"YOLO26 v1 PlantDoc Specimen Detector ({mode_tag})"
+                else:
+                    active_detector = self.model_tier2_plantdoc
+                    detection_engine_name = honest_detector_name
+                    warnings.append(
+                        "YOLO26 v1 specimen checkpoint is not yet present; fell back to verified YOLO11n PlantDoc baseline."
+                    )
+                if self.model_yolo26_lesion is not None:
+                    active_lesion_detector = self.model_yolo26_lesion
+                    yolo26_active_lesion = True
+                    active_lesion_source = "YOLO26-Seg v1 Lesion Localizer"
+                elif tier_req in ("yolo26", "server_yolo26"):
+                    warnings.append(
+                        "Optional YOLO26 v1 lesion checkpoint is not yet present; retained verified YOLOv8n baseline."
+                    )
+            else:
                 active_detector = self.model_tier2_plantdoc
-                detection_engine_name = "YOLO11 PlantDoc Specimen Detector"
-                active_segmenter = self.model_tier3
+                detection_engine_name = honest_detector_name
 
             if active_model is None:
                 raise RuntimeError(f"Authoritative classifier for tier '{model_tier}' is not loaded.")
@@ -802,74 +1163,71 @@ class InferenceEngine:
             post_nms_lesion_count = 0
             detection_status = "unavailable"
 
-            # 1. Specimen / Foliage Canopy Boundary Localization (YOLO PlantDoc)
+            # 1. Specimen / Foliage Canopy Boundary Localization (YOLO11n baseline or Opt-In YOLO26)
             if active_detector is not None:
                 try:
-                    conf_thresh = settings.YOLO_PLANTDOC_CONF_THRESH
-
-                    # Audit probe at conf=0.01 to record true candidate density before post-processing filtering
-                    try:
-                        pdoc_raw = active_detector.predict(
-                            img_bgr,
-                            conf=0.01,
-                            iou=settings.YOLO_IOU_THRESH,
-                            verbose=False
-                        )
-                        if len(pdoc_raw) > 0 and pdoc_raw[0].boxes is not None:
-                            raw_specimen_count = len(pdoc_raw[0].boxes)
-                    except Exception:
-                        raw_specimen_count = 0
-
-                    pdoc_res = active_detector.predict(
-                        img_bgr,
-                        conf=conf_thresh,
-                        iou=settings.YOLO_IOU_THRESH,
-                        verbose=False
-                    )
-                    # Adaptive threshold: if no boxes found, probe slightly lower (0.08) for subtle foliar units
-                    if (len(pdoc_res) == 0 or pdoc_res[0].boxes is None or len(pdoc_res[0].boxes) == 0) and conf_thresh > 0.08:
-                        pdoc_res_fallback = active_detector.predict(
-                            img_bgr,
-                            conf=0.08,
-                            iou=settings.YOLO_IOU_THRESH,
-                            verbose=False
-                        )
-                        if len(pdoc_res_fallback) > 0 and pdoc_res_fallback[0].boxes is not None and len(pdoc_res_fallback[0].boxes) > 0:
-                            pdoc_res = pdoc_res_fallback
+                    conf_thresh = settings.YOLO26_CONF_THRESH if yolo26_active_specimen else settings.YOLO_PLANTDOC_CONF_THRESH
+                    iou_thresh = settings.YOLO26_IOU_THRESH if yolo26_active_specimen else settings.YOLO_IOU_THRESH
+                    precomputed_det = getattr(val_result, "precomputed_detector_results", None)
+                    if (
+                        not yolo26_active_specimen
+                        and precomputed_det is not None
+                        and active_detector is detector_candidate
+                        and abs(iou_thresh - 0.45) < 1e-6
+                    ):
+                        pdoc_all = precomputed_det
+                        if hasattr(val_result, "precomputed_detector_results"):
+                            val_result.precomputed_detector_results = None
+                    else:
+                        det_kw: Dict[str, Any] = {
+                            "conf": 0.01,
+                            "iou": iou_thresh,
+                            "agnostic_nms": True,
+                            "max_det": 150,
+                            "verbose": False,
+                        }
+                        if yolo26_active_specimen:
+                            det_kw["imgsz"] = getattr(self, "model_yolo26_specimen_imgsz", 768)
+                            det_kw.update(_yolo26_mode_kwargs(yolo26_e2e_flag))
+                        pdoc_all = active_detector.predict(img_bgr, **det_kw)
 
                     detection_status = "available"
-                    if len(pdoc_res) > 0 and pdoc_res[0].boxes is not None:
-                        boxes = pdoc_res[0].boxes
-                        for i in range(len(boxes)):
+                    if len(pdoc_all) > 0 and pdoc_all[0].boxes is not None:
+                        boxes = pdoc_all[0].boxes
+                        raw_specimen_count = len(boxes)
+                        confs_arr = boxes.conf.cpu().numpy()
+
+                        selected_indices = [i for i in range(raw_specimen_count) if float(confs_arr[i]) >= conf_thresh]
+                        if not selected_indices and conf_thresh > 0.08:
+                            selected_indices = [i for i in range(raw_specimen_count) if float(confs_arr[i]) >= 0.08]
+
+                        for i in selected_indices:
                             cls_id = int(boxes.cls[i].cpu().numpy())
-                            cls_name = pdoc_res[0].names.get(cls_id, f"Class_{cls_id}")
-                            conf = float(boxes.conf[i].cpu().numpy())
+                            cls_name = pdoc_all[0].names.get(cls_id, f"Class_{cls_id}")
+                            conf = float(confs_arr[i])
                             xyxy_raw = boxes.xyxy[i].cpu().numpy().astype(float).tolist()
 
-                            # Clamp to exact image boundary in original inference pixel space
-                            x1 = int(round(max(0, min(xyxy_raw[0], orig_w - 1))))
-                            y1 = int(round(max(0, min(xyxy_raw[1], orig_h - 1))))
-                            x2 = int(round(max(x1 + 1, min(xyxy_raw[2], orig_w))))
-                            y2 = int(round(max(y1 + 1, min(xyxy_raw[3], orig_h))))
+                            x1, y1, x2, y2 = _clamp_xyxy(xyxy_raw, orig_w, orig_h)
+                            if (x2 - x1) < 8 or (y2 - y1) < 8:
+                                continue
 
                             cx = round(float((x1 + x2) / (2.0 * orig_w)), 3)
                             cy = round(float((y1 + y2) / (2.0 * orig_h)), 3)
 
-                            # PlantDoc dataset annotations enclose whole leaves/canopy units
                             specimen_detections.append(
                                 BoundingBox(
-                                    detection_id=f"specimen_{i}_{cls_id}",
+                                    detection_id=f"specimen_{len(specimen_detections)}_{cls_id}",
                                     class_id=cls_id,
                                     class_name=cls_name,
                                     category_type="canopy",
-                                    label=f"{cls_name} ({conf*100:.0f}%)",
+                                    label=f"{cls_name} ({conf * 100:.0f}%)",
                                     bbox_xyxy=[x1, y1, x2, y2],
                                     confidence=round(conf, 2),
                                     centroid_norm=[cx, cy],
                                     box_type="leaf",
                                     color_hex="#52b788",
                                     source_model=detection_engine_name,
-                                    coordinate_space="original_image_pixels"
+                                    coordinate_space="original_image_pixels",
                                 )
                             )
 
@@ -882,80 +1240,64 @@ class InferenceEngine:
             else:
                 warnings.append("Tier 2 specimen detector is not loaded.")
 
-            # 2. Granular Lesion Spot Localization (YOLOv8n Lesion Spot Detector)
+            # 2. Granular Lesion Spot Localization (YOLOv8n baseline or Opt-In YOLO26-Seg/Detect)
             # Only executed on confirmed infected foliage to prevent false positive lesion hallucinations
-            if self.model_tier2_lesions is not None and t1_is_infected:
+            yolo26_lesion_mask_256: Optional[np.ndarray] = None
+            if active_lesion_detector is not None and t1_is_infected:
                 try:
-                    les_conf_thresh = settings.YOLO_LESIONS_CONF_THRESH
-                    try:
-                        les_raw = self.model_tier2_lesions.predict(
-                            img_bgr,
-                            conf=0.01,
-                            iou=settings.YOLO_IOU_THRESH,
-                            verbose=False
-                        )
-                        if len(les_raw) > 0 and les_raw[0].boxes is not None:
-                            raw_lesion_count = len(les_raw[0].boxes)
-                    except Exception:
-                        raw_lesion_count = 0
-
-                    les_res = self.model_tier2_lesions.predict(
-                        img_bgr,
-                        conf=les_conf_thresh,
-                        iou=settings.YOLO_IOU_THRESH,
-                        verbose=False
-                    )
+                    les_conf_thresh = settings.YOLO26_SEG_CONF_THRESH if yolo26_active_lesion else settings.YOLO_LESIONS_CONF_THRESH
+                    les_iou_thresh = settings.YOLO26_IOU_THRESH if yolo26_active_lesion else settings.YOLO_IOU_THRESH
+                    les_kw: Dict[str, Any] = {
+                        "conf": 0.01,
+                        "iou": les_iou_thresh,
+                        "agnostic_nms": True,
+                        "max_det": 150,
+                        "verbose": False,
+                    }
+                    if yolo26_active_lesion:
+                        les_kw["imgsz"] = getattr(self, "model_yolo26_lesion_imgsz", 768)
+                        les_kw.update(_yolo26_mode_kwargs(yolo26_e2e_flag))
+                    les_res = active_lesion_detector.predict(img_bgr, **les_kw)
                     detection_status = "available"
-                    if len(les_res) > 0 and les_res[0].boxes is not None:
-                        l_boxes = les_res[0].boxes
-                        for j in range(len(l_boxes)):
-                            cls_id = int(l_boxes.cls[j].cpu().numpy())
-                            cls_name = les_res[0].names.get(cls_id, f"Lesion_{cls_id}")
-                            conf = float(l_boxes.conf[j].cpu().numpy())
-                            xyxy_raw = l_boxes.xyxy[j].cpu().numpy().astype(float).tolist()
-
-                            x1 = int(round(max(0, min(xyxy_raw[0], orig_w - 1))))
-                            y1 = int(round(max(0, min(xyxy_raw[1], orig_h - 1))))
-                            x2 = int(round(max(x1 + 1, min(xyxy_raw[2], orig_w))))
-                            y2 = int(round(max(y1 + 1, min(xyxy_raw[3], orig_h))))
-
-                            bw = x2 - x1
-                            bh = y2 - y1
-                            b_area = max(1, bw * bh)
-
-                            # Reject degenerate boxes or oversized whole-canopy false positives
-                            if bw < 4 or bh < 4 or b_area > 0.40 * (orig_w * orig_h):
-                                continue
-
-                            # Background Soil & Mulch Spectral Discriminator
-                            crop_box = img_bgr[y1:y2, x1:x2]
-                            if crop_box.size > 0:
-                                mb, mg, mr = crop_box.mean(axis=(0, 1))
-                                exg = 2.0 * mg - mr - mb
-                                if exg < -35.0 and mr > (mg + 15.0):
-                                    continue
-
-                            cx = round(float((x1 + x2) / (2.0 * orig_w)), 3)
-                            cy = round(float((y1 + y2) / (2.0 * orig_h)), 3)
-
-                            clean_lbl = cls_name.replace("_", " ").title()
-                            lesion_detections.append(
-                                BoundingBox(
-                                    detection_id=f"lesion_{j}_{cls_id}",
-                                    class_id=cls_id,
-                                    class_name=cls_name,
-                                    category_type="lesion",
-                                    label=f"{clean_lbl} ({conf*100:.0f}%)",
-                                    bbox_xyxy=[x1, y1, x2, y2],
-                                    confidence=round(conf, 2),
-                                    centroid_norm=[cx, cy],
-                                    box_type="lesion",
-                                    color_hex="#f4a261",
-                                    source_model="YOLOv8n Lesion Spot Detector",
-                                    coordinate_space="original_image_pixels"
+                    accepted_lesion_indices: List[int] = []
+                    lesion_detections, raw_lesion_count = _filter_lesion_detections(
+                        img_bgr=img_bgr,
+                        les_res=les_res,
+                        specimen_detections=specimen_detections,
+                        t1_disease_name=t1_top1_meta["disease_name"],
+                        conf_thresh=les_conf_thresh,
+                        source_model_name=active_lesion_source,
+                        is_yolo26_seg=yolo26_active_lesion,
+                        accepted_raw_indices_out=accepted_lesion_indices,
+                    )
+                    if (
+                        yolo26_active_lesion
+                        and accepted_lesion_indices
+                        and len(les_res) > 0
+                        and getattr(les_res[0], "masks", None) is not None
+                    ):
+                        masks_obj = les_res[0].masks
+                        union_orig = np.zeros((orig_h, orig_w), dtype=np.uint8)
+                        polys_xy = getattr(masks_obj, "xy", None)
+                        if polys_xy:
+                            for idx in accepted_lesion_indices:
+                                if idx < len(polys_xy):
+                                    poly = polys_xy[idx]
+                                    if len(poly) >= 3:
+                                        cv2.fillPoly(union_orig, [np.round(poly).astype(np.int32)], 1)
+                        elif getattr(masks_obj, "data", None) is not None:
+                            m_data = masks_obj.data.detach().cpu().numpy()
+                            valid_slices = [m_data[idx] for idx in accepted_lesion_indices if idx < len(m_data)]
+                            if valid_slices:
+                                union_m = (np.max(np.stack(valid_slices, axis=0), axis=0) > 0.5).astype(np.uint8)
+                                mh, mw = union_m.shape[:2]
+                                union_orig = scale_segmentation_mask_to_original(
+                                    union_m, orig_w, orig_h, letterbox_shape=(mw, mh)
                                 )
+                        if np.any(union_orig):
+                            yolo26_lesion_mask_256 = cv2.resize(
+                                union_orig, (256, 256), interpolation=cv2.INTER_NEAREST
                             )
-
                     post_nms_lesion_count = len(lesion_detections)
                     if raw_lesion_count < post_nms_lesion_count:
                         raw_lesion_count = post_nms_lesion_count
@@ -981,7 +1323,7 @@ class InferenceEngine:
                 localization_notice = (
                     f"Dual spatial localization active: {len(specimen_detections)} specimen canopy boundary region(s) "
                     f"from {detection_engine_name} and {len(lesion_detections)} verified lesion spot foci "
-                    f"from YOLOv8n Lesion Spot Detector."
+                    f"from {active_lesion_source}."
                 )
             elif len(lesion_detections) > 0:
                 localization_capability = "lesion_foci_only"
@@ -1139,11 +1481,16 @@ class InferenceEngine:
                             coordinate_space=best_conf_box.coordinate_space
                         )
 
+                    # When optional YOLO26-Seg lesion mask is present, fuse verified lesion pixels cleanly
+                    if yolo26_lesion_mask_256 is not None and is_infected:
+                        pred_mask_256[yolo26_lesion_mask_256 > 0] = 2
+
                     # Filter out non-plant background (wood, floor, hands, soil) from segmentation mask
                     pred_mask_256 = clean_foliar_segmentation_mask(
                         pred_mask_256=pred_mask_256,
                         img_bgr=img_bgr,
-                        primary_leaf_box=primary_leaf_box
+                        primary_leaf_box=primary_leaf_box,
+                        specimen_boxes=target_leaf_boxes,
                     )
 
                     leaf_pixels = int(np.sum(pred_mask_256 >= 1))
@@ -1198,13 +1545,13 @@ class InferenceEngine:
                     localization_notice = "Specimen verified as healthy foliage with zero pathological lesion foci."
             elif len(lesion_detections) > 0:
                 final_lesion_foci_count = len(lesion_detections)
-                final_lesion_foci_source = "yolov8n_lesions_detector"
+                final_lesion_foci_source = "yolo26_lesion_detector" if yolo26_active_lesion else "yolov8n_lesions_detector"
                 if len(specimen_detections) > 0:
                     localization_capability = "specimen_boundary_and_lesion_foci"
                     localization_notice = (
                         f"Dual spatial localization active: {len(specimen_detections)} specimen canopy boundary region(s) "
                         f"from {detection_engine_name} and {len(lesion_detections)} verified lesion spot foci "
-                        f"from YOLOv8n Lesion Spot Detector."
+                        f"from {active_lesion_source}."
                     )
                 else:
                     localization_capability = "lesion_foci_only"
@@ -1372,7 +1719,7 @@ class InferenceEngine:
             ),
             spatial_telemetry=SpatialTelemetry(
                 detection_engine=detection_engine_name,
-                taxonomy_version="YOLO26-29Class-MultiDomain-v2.5" if active_tier == "gen2" else "PlantDoc-29Class-YOLO-v1.0",
+                taxonomy_version="PlantDoc-29Class-YOLO26-v1.0" if (is_y26 or yolo26_active_specimen) else "PlantDoc-29Class-YOLO-v1.0",
                 bounding_boxes=detected_boxes,
                 specimen_detections=specimen_detections,
                 lesion_detections=lesion_detections,

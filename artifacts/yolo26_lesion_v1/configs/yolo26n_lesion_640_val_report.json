@@ -1,0 +1,39 @@
+{
+  "experiment": "yolo26n_lesion_640",
+  "checkpoint": "/kaggle/working/artifacts/yolo26_lesion_v1/checkpoints/yolo26n_lesion_640_best.pt",
+  "sha256": "ebdacf36eeb9c5ce74f166e143dff6d2290066217f7dfe3ccf7ac0e84ff9a2f5",
+  "size_mb": 6.28,
+  "imgsz": 640,
+  "val_e2e_nms_false": {
+    "box_p": 0.5221,
+    "box_r": 0.426,
+    "box_map50": 0.4316,
+    "box_map50_95": 0.2277,
+    "mask_p": 0.5243,
+    "mask_r": 0.4083,
+    "mask_map50": 0.4159,
+    "mask_map50_95": 0.1945,
+    "speed_ms": {
+      "preprocess": 0.92,
+      "inference": 16.02,
+      "loss": 0.0,
+      "postprocess": 1.13
+    }
+  },
+  "val_nms_true": {
+    "box_p": 0.5089,
+    "box_r": 0.4445,
+    "box_map50": 0.4407,
+    "box_map50_95": 0.2329,
+    "mask_p": 0.5011,
+    "mask_r": 0.4277,
+    "mask_map50": 0.4248,
+    "mask_map50_95": 0.1997,
+    "speed_ms": {
+      "preprocess": 0.96,
+      "inference": 9.19,
+      "loss": 0.0,
+      "postprocess": 2.28
+    }
+  }
+}

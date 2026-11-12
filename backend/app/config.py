@@ -102,6 +102,7 @@ class Settings:
     TIER1_MODEL_PATH: Path = SERVER_TIER1_MODEL_PATH
     TIER2_MODEL_PATH: Path = Path(os.getenv("TIER2_MODEL_PATH", str(MODEL_DIR / "yolo_plantdoc_best.pt")))
     TIER2_PLANTDOC_MODEL_PATH: Path = Path(os.getenv("TIER2_PLANTDOC_MODEL_PATH", str(MODEL_DIR / "yolo_plantdoc_best.pt")))
+    TIER2_LESIONS_MODEL_PATH: Path = Path(os.getenv("TIER2_LESIONS_MODEL_PATH", str(MODEL_DIR / "yolov8n_lesions_best.pt")))
     TIER3_MODEL_PATH: Path = Path(os.getenv("TIER3_MODEL_PATH", str(MODEL_DIR / "mobile_unet_best.pt")))
     DEFAULT_TIER1_MODEL: str = os.getenv("DEFAULT_TIER1_MODEL", "server")
 
@@ -136,8 +137,21 @@ class Settings:
     CONF_THRESHOLD_SCREENING: float = float(os.getenv("CONF_THRESHOLD_SCREENING", "0.50"))
     YOLO_CONF_THRESH: float = float(os.getenv("YOLO_CONF_THRESH", "0.15"))
     YOLO_PLANTDOC_CONF_THRESH: float = float(os.getenv("YOLO_PLANTDOC_CONF_THRESH", "0.12"))
-    YOLO_LESIONS_CONF_THRESH: float = float(os.getenv("YOLO_LESIONS_CONF_THRESH", "0.10"))
+    YOLO_LESIONS_CONF_THRESH: float = float(os.getenv("YOLO_LESIONS_CONF_THRESH", "0.14"))
     YOLO_IOU_THRESH: float = float(os.getenv("YOLO_IOU_THRESH", "0.45"))
+
+    # Promoted Ultralytics YOLO26 v1 Specimen Detector Defaults (Legacy YOLO11n/YOLOv8n Checkpoints Preserved on Disk)
+    YOLO26_ENABLED: bool = os.getenv("YOLO26_ENABLED", "true").lower() in ("true", "1", "yes")
+    YOLO26_SPECIMEN_MODEL_PATH: Path = Path(
+        os.getenv("YOLO26_SPECIMEN_MODEL_PATH", str(PROJECT_ROOT / "artifacts" / "yolo26_v1" / "checkpoints" / "yolo26_specimen_best.pt"))
+    )
+    YOLO26_LESION_MODEL_PATH: Path = Path(
+        os.getenv("YOLO26_LESION_MODEL_PATH", str(PROJECT_ROOT / "artifacts" / "yolo26_lesion_v1" / "checkpoints" / "yolo26_lesion_best.pt"))
+    )
+    YOLO26_INFERENCE_MODE: str = os.getenv("YOLO26_INFERENCE_MODE", "one2many")
+    YOLO26_CONF_THRESH: float = float(os.getenv("YOLO26_CONF_THRESH", "0.25"))
+    YOLO26_SEG_CONF_THRESH: float = float(os.getenv("YOLO26_SEG_CONF_THRESH", "0.30"))
+    YOLO26_IOU_THRESH: float = float(os.getenv("YOLO26_IOU_THRESH", "0.45"))
 
     # AgriRover IoT & Automation Integration (SIH 2026)
     N8N_WEBHOOK_URL: Optional[str] = os.getenv("N8N_WEBHOOK_URL", None)

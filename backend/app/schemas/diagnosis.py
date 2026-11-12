@@ -28,7 +28,7 @@ class DiagnosisSummary(BaseModel):
     segmentation_status: str = Field("available", description="Status of segmentation: 'available', 'unavailable', or 'healthy_not_applicable'")
     foliar_damage_pct: Optional[float] = Field(None, description="Sub-pixel necrotic leaf damage percentage (None if unavailable)")
     lesion_foci_count: int = Field(..., description="Total verified lesion objects identified by detector")
-    lesion_foci_source: Optional[str] = Field(default="none", description="Source of lesion foci: 'yolov8n_lesions_detector', 'mobile_unet_segmentation', or 'none'")
+    lesion_foci_source: Optional[str] = Field(default="none", description="Source of lesion foci: 'yolo26_lesion_detector', 'yolov8n_lesions_detector', 'mobile_unet_segmentation', or 'none'")
     short_explanation: Optional[str] = Field(None, description="Clear plain-language explanation of what this diagnosis means")
     what_to_check: Optional[str] = Field(None, description="Practical observational steps to inspect nearby foliage")
     detection_status: str = Field("available", description="Status: 'available', 'unavailable', 'not_requested', or 'failed'")
@@ -78,7 +78,7 @@ class BoundingBox(BaseModel):
 
 class SpatialTelemetry(BaseModel):
     detection_engine: str = Field(..., description="Model and version utilized for spatial localization")
-    taxonomy_version: Optional[str] = Field(default="YOLO26-29Class-MultiDomain-v2.5", description="Detection taxonomy version identifier")
+    taxonomy_version: Optional[str] = Field(default="PlantDoc-29Class-YOLO-v1.0", description="Detection taxonomy version identifier")
     bounding_boxes: List[BoundingBox] = Field(default_factory=list, description="List of all localized spatial bounding boxes")
     specimen_detections: List[BoundingBox] = Field(default_factory=list, description="Specimen / leaf / canopy boundary detections")
     lesion_detections: List[BoundingBox] = Field(default_factory=list, description="Genuine pathology / lesion focus detections")
@@ -95,7 +95,7 @@ class SpatialTelemetry(BaseModel):
     raw_lesion_count: Optional[int] = Field(default=0, description="Raw candidate lesion detections")
     post_nms_specimen_count: Optional[int] = Field(default=0, description="Specimen detections preserved after threshold/NMS")
     post_nms_lesion_count: Optional[int] = Field(default=0, description="Lesion detections preserved after threshold/NMS")
-    lesion_foci_source: Optional[str] = Field(default="none", description="Source of lesion foci: 'yolov8n_lesions_detector', 'mobile_unet_segmentation', or 'none'")
+    lesion_foci_source: Optional[str] = Field(default="none", description="Source of lesion foci: 'yolo26_lesion_detector', 'yolov8n_lesions_detector', 'mobile_unet_segmentation', or 'none'")
 
 class AgronomicAdvisory(BaseModel):
     immediate_action: str = Field(..., description="Actionable step for the farmer")

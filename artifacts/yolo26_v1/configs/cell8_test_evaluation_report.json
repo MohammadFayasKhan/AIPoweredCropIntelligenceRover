@@ -1,0 +1,870 @@
+{
+  "test_images_count": 218,
+  "healthy_negative_controls_count": 150,
+  "specimen_comparison": {
+    "baseline_yolov8n_plantdoc_640": {
+      "status": "EVALUATED",
+      "checkpoint": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/models/yolov8n_plantdoc_best.pt",
+      "sha256": "7470e31d7d712f46",
+      "names_match_yaml": true,
+      "imgsz": 640,
+      "nms_arg": null,
+      "test_precision": 0.0558,
+      "test_recall": 0.0702,
+      "test_f1": 0.0622,
+      "test_map50": 0.0264,
+      "test_map50_95": 0.0138,
+      "small_under_2pct_gt": 26,
+      "small_under_2pct_recall_conf25": 0.0,
+      "small_under_1pct_gt": 3,
+      "small_under_1pct_recall_conf25": 0.0,
+      "healthy_neg_total_boxes": 285,
+      "healthy_neg_disease_fp_images": 5,
+      "healthy_neg_disease_fp_rate": 0.0333,
+      "healthy_neg_disease_fp_boxes": 5,
+      "latency_mean_ms": 25.56,
+      "latency_p95_ms": 68.8,
+      "fps": 39.1
+    },
+    "yolo26n_640_e2e": {
+      "status": "EVALUATED",
+      "checkpoint": "/kaggle/working/artifacts/yolo26_v1/checkpoints/yolo26n_plantdoc_640_best.pt",
+      "sha256": "6e240a14b3eaa133",
+      "names_match_yaml": true,
+      "imgsz": 640,
+      "nms_arg": false,
+      "test_precision": 0.6567,
+      "test_recall": 0.5683,
+      "test_f1": 0.6093,
+      "test_map50": 0.6425,
+      "test_map50_95": 0.4991,
+      "small_under_2pct_gt": 26,
+      "small_under_2pct_recall_conf25": 0.1154,
+      "small_under_1pct_gt": 3,
+      "small_under_1pct_recall_conf25": 0.0,
+      "healthy_neg_total_boxes": 192,
+      "healthy_neg_disease_fp_images": 38,
+      "healthy_neg_disease_fp_rate": 0.2533,
+      "healthy_neg_disease_fp_boxes": 48,
+      "latency_mean_ms": 28.69,
+      "latency_p95_ms": 71.44,
+      "fps": 34.9
+    },
+    "yolo26n_640_nms": {
+      "status": "EVALUATED",
+      "checkpoint": "/kaggle/working/artifacts/yolo26_v1/checkpoints/yolo26n_plantdoc_640_best.pt",
+      "sha256": "6e240a14b3eaa133",
+      "names_match_yaml": true,
+      "imgsz": 640,
+      "nms_arg": true,
+      "test_precision": 0.6026,
+      "test_recall": 0.636,
+      "test_f1": 0.6189,
+      "test_map50": 0.6629,
+      "test_map50_95": 0.5179,
+      "small_under_2pct_gt": 26,
+      "small_under_2pct_recall_conf25": 0.2308,
+      "small_under_1pct_gt": 3,
+      "small_under_1pct_recall_conf25": 0.3333,
+      "healthy_neg_total_boxes": 228,
+      "healthy_neg_disease_fp_images": 41,
+      "healthy_neg_disease_fp_rate": 0.2733,
+      "healthy_neg_disease_fp_boxes": 51,
+      "latency_mean_ms": 25.61,
+      "latency_p95_ms": 73.63,
+      "fps": 39.0
+    },
+    "yolo26s_768_e2e": {
+      "status": "EVALUATED",
+      "checkpoint": "/kaggle/working/artifacts/yolo26_v1/checkpoints/yolo26s_plantdoc_768_best.pt",
+      "sha256": "d1be9b57b02b483a",
+      "names_match_yaml": true,
+      "imgsz": 768,
+      "nms_arg": false,
+      "test_precision": 0.7002,
+      "test_recall": 0.5401,
+      "test_f1": 0.6098,
+      "test_map50": 0.6434,
+      "test_map50_95": 0.5081,
+      "small_under_2pct_gt": 26,
+      "small_under_2pct_recall_conf25": 0.1154,
+      "small_under_1pct_gt": 3,
+      "small_under_1pct_recall_conf25": 0.0,
+      "healthy_neg_total_boxes": 177,
+      "healthy_neg_disease_fp_images": 22,
+      "healthy_neg_disease_fp_rate": 0.1467,
+      "healthy_neg_disease_fp_boxes": 32,
+      "latency_mean_ms": 32.95,
+      "latency_p95_ms": 82.84,
+      "fps": 30.4
+    },
+    "yolo26s_768_nms": {
+      "status": "EVALUATED",
+      "checkpoint": "/kaggle/working/artifacts/yolo26_v1/checkpoints/yolo26s_plantdoc_768_best.pt",
+      "sha256": "d1be9b57b02b483a",
+      "names_match_yaml": true,
+      "imgsz": 768,
+      "nms_arg": true,
+      "test_precision": 0.6696,
+      "test_recall": 0.6022,
+      "test_f1": 0.6341,
+      "test_map50": 0.6672,
+      "test_map50_95": 0.5267,
+      "small_under_2pct_gt": 26,
+      "small_under_2pct_recall_conf25": 0.1154,
+      "small_under_1pct_gt": 3,
+      "small_under_1pct_recall_conf25": 0.0,
+      "healthy_neg_total_boxes": 234,
+      "healthy_neg_disease_fp_images": 29,
+      "healthy_neg_disease_fp_rate": 0.1933,
+      "healthy_neg_disease_fp_boxes": 40,
+      "latency_mean_ms": 26.14,
+      "latency_p95_ms": 70.79,
+      "fps": 38.2
+    }
+  },
+  "legacy_lesion_negative_control_fp": {
+    "status": "EVALUATED",
+    "checkpoint": "/kaggle/input/datasets/mohammadfayaskhan/smart-plant-codebase/cv/models/yolov8n_lesions_best.pt",
+    "healthy_images": 150,
+    "false_positive_images": 64,
+    "false_positive_rate": 0.4267,
+    "total_spurious_lesion_boxes": 184
+  },
+  "task_b_lesion_yolo26_status": "SKIPPED_HONESTLY_NO_GENUINE_LESION_ANNOTATIONS_MOUNTED",
+  "selected_specimen_checkpoint": {
+    "winner_variant": "yolo26s_768_nms",
+    "recommended_imgsz": 768,
+    "recommended_nms_flag": true,
+    "recommended_conf_thresh": 0.25,
+    "path": "/kaggle/working/artifacts/yolo26_v1/checkpoints/yolo26_specimen_best.pt",
+    "sha256": "d1be9b57b02b483aca1675bf33113fcc5622352295f6d0f99770425516875eb9"
+  },
+  "per_class_all_models": {
+    "baseline_yolov8n_plantdoc_640": {
+      "Apple Scab Leaf": {
+        "ap50": 0.0116,
+        "ap50_95": 0.0067
+      },
+      "Apple leaf": {
+        "ap50": 0.0038,
+        "ap50_95": 0.0017
+      },
+      "Apple rust leaf": {
+        "ap50": 0.0013,
+        "ap50_95": 0.0005
+      },
+      "Bell_pepper leaf": {
+        "ap50": 0.0061,
+        "ap50_95": 0.001
+      },
+      "Bell_pepper leaf spot": {
+        "ap50": 0.0001,
+        "ap50_95": 0.0001
+      },
+      "Blueberry leaf": {
+        "ap50": 0.0258,
+        "ap50_95": 0.016
+      },
+      "Cherry leaf": {
+        "ap50": 0.0093,
+        "ap50_95": 0.0031
+      },
+      "Corn Gray leaf spot": {
+        "ap50": 0.0,
+        "ap50_95": 0.0
+      },
+      "Corn leaf blight": {
+        "ap50": 0.0082,
+        "ap50_95": 0.0014
+      },
+      "Corn rust leaf": {
+        "ap50": 0.0126,
+        "ap50_95": 0.0032
+      },
+      "Peach leaf": {
+        "ap50": 0.0004,
+        "ap50_95": 0.0001
+      },
+      "Potato leaf early blight": {
+        "ap50": 0.0014,
+        "ap50_95": 0.0001
+      },
+      "Potato leaf late blight": {
+        "ap50": 0.0104,
+        "ap50_95": 0.0065
+      },
+      "Raspberry leaf": {
+        "ap50": 0.0264,
+        "ap50_95": 0.0162
+      },
+      "Soyabean leaf": {
+        "ap50": 0.0387,
+        "ap50_95": 0.0238
+      },
+      "Squash Powdery mildew leaf": {
+        "ap50": 0.0007,
+        "ap50_95": 0.0003
+      },
+      "Strawberry leaf": {
+        "ap50": 0.1334,
+        "ap50_95": 0.0618
+      },
+      "Tomato Early blight leaf": {
+        "ap50": 0.0405,
+        "ap50_95": 0.0225
+      },
+      "Tomato Septoria leaf spot": {
+        "ap50": 0.0768,
+        "ap50_95": 0.0404
+      },
+      "Tomato leaf": {
+        "ap50": 0.004,
+        "ap50_95": 0.0016
+      },
+      "Tomato leaf bacterial spot": {
+        "ap50": 0.0666,
+        "ap50_95": 0.048
+      },
+      "Tomato leaf late blight": {
+        "ap50": 0.0269,
+        "ap50_95": 0.0089
+      },
+      "Tomato leaf mosaic virus": {
+        "ap50": 0.0977,
+        "ap50_95": 0.0589
+      },
+      "Tomato leaf yellow virus": {
+        "ap50": 0.0614,
+        "ap50_95": 0.0303
+      },
+      "Tomato mold leaf": {
+        "ap50": 0.045,
+        "ap50_95": 0.0182
+      },
+      "grape leaf": {
+        "ap50": 0.0013,
+        "ap50_95": 0.0003
+      },
+      "grape leaf black rot": {
+        "ap50": 0.0013,
+        "ap50_95": 0.0004
+      }
+    },
+    "yolo26n_640_e2e": {
+      "Apple Scab Leaf": {
+        "ap50": 0.6186,
+        "ap50_95": 0.5015
+      },
+      "Apple leaf": {
+        "ap50": 0.6553,
+        "ap50_95": 0.5102
+      },
+      "Apple rust leaf": {
+        "ap50": 0.5795,
+        "ap50_95": 0.4925
+      },
+      "Bell_pepper leaf": {
+        "ap50": 0.5275,
+        "ap50_95": 0.3738
+      },
+      "Bell_pepper leaf spot": {
+        "ap50": 0.4885,
+        "ap50_95": 0.3672
+      },
+      "Blueberry leaf": {
+        "ap50": 0.664,
+        "ap50_95": 0.4913
+      },
+      "Cherry leaf": {
+        "ap50": 0.8547,
+        "ap50_95": 0.654
+      },
+      "Corn Gray leaf spot": {
+        "ap50": 0.5118,
+        "ap50_95": 0.4241
+      },
+      "Corn leaf blight": {
+        "ap50": 0.8777,
+        "ap50_95": 0.7805
+      },
+      "Corn rust leaf": {
+        "ap50": 0.9385,
+        "ap50_95": 0.7988
+      },
+      "Peach leaf": {
+        "ap50": 0.8445,
+        "ap50_95": 0.6225
+      },
+      "Potato leaf early blight": {
+        "ap50": 0.3507,
+        "ap50_95": 0.2803
+      },
+      "Potato leaf late blight": {
+        "ap50": 0.565,
+        "ap50_95": 0.4356
+      },
+      "Raspberry leaf": {
+        "ap50": 0.7213,
+        "ap50_95": 0.6129
+      },
+      "Soyabean leaf": {
+        "ap50": 0.6351,
+        "ap50_95": 0.5506
+      },
+      "Squash Powdery mildew leaf": {
+        "ap50": 0.8681,
+        "ap50_95": 0.7477
+      },
+      "Strawberry leaf": {
+        "ap50": 0.995,
+        "ap50_95": 0.8442
+      },
+      "Tomato Early blight leaf": {
+        "ap50": 0.4409,
+        "ap50_95": 0.2823
+      },
+      "Tomato Septoria leaf spot": {
+        "ap50": 0.6076,
+        "ap50_95": 0.3712
+      },
+      "Tomato leaf": {
+        "ap50": 0.3969,
+        "ap50_95": 0.2607
+      },
+      "Tomato leaf bacterial spot": {
+        "ap50": 0.2108,
+        "ap50_95": 0.1801
+      },
+      "Tomato leaf late blight": {
+        "ap50": 0.6989,
+        "ap50_95": 0.5271
+      },
+      "Tomato leaf mosaic virus": {
+        "ap50": 0.5021,
+        "ap50_95": 0.3277
+      },
+      "Tomato leaf yellow virus": {
+        "ap50": 0.6644,
+        "ap50_95": 0.3467
+      },
+      "Tomato mold leaf": {
+        "ap50": 0.2541,
+        "ap50_95": 0.1625
+      },
+      "grape leaf": {
+        "ap50": 0.9766,
+        "ap50_95": 0.7968
+      },
+      "grape leaf black rot": {
+        "ap50": 0.8994,
+        "ap50_95": 0.7317
+      }
+    },
+    "yolo26n_640_nms": {
+      "Apple Scab Leaf": {
+        "ap50": 0.6506,
+        "ap50_95": 0.526
+      },
+      "Apple leaf": {
+        "ap50": 0.6969,
+        "ap50_95": 0.5303
+      },
+      "Apple rust leaf": {
+        "ap50": 0.755,
+        "ap50_95": 0.6518
+      },
+      "Bell_pepper leaf": {
+        "ap50": 0.623,
+        "ap50_95": 0.465
+      },
+      "Bell_pepper leaf spot": {
+        "ap50": 0.6404,
+        "ap50_95": 0.4674
+      },
+      "Blueberry leaf": {
+        "ap50": 0.7802,
+        "ap50_95": 0.5866
+      },
+      "Cherry leaf": {
+        "ap50": 0.8692,
+        "ap50_95": 0.6847
+      },
+      "Corn Gray leaf spot": {
+        "ap50": 0.535,
+        "ap50_95": 0.4395
+      },
+      "Corn leaf blight": {
+        "ap50": 0.8768,
+        "ap50_95": 0.7761
+      },
+      "Corn rust leaf": {
+        "ap50": 0.995,
+        "ap50_95": 0.845
+      },
+      "Peach leaf": {
+        "ap50": 0.8094,
+        "ap50_95": 0.5674
+      },
+      "Potato leaf early blight": {
+        "ap50": 0.3623,
+        "ap50_95": 0.2809
+      },
+      "Potato leaf late blight": {
+        "ap50": 0.3509,
+        "ap50_95": 0.2719
+      },
+      "Raspberry leaf": {
+        "ap50": 0.6925,
+        "ap50_95": 0.6028
+      },
+      "Soyabean leaf": {
+        "ap50": 0.6969,
+        "ap50_95": 0.598
+      },
+      "Squash Powdery mildew leaf": {
+        "ap50": 0.8681,
+        "ap50_95": 0.7112
+      },
+      "Strawberry leaf": {
+        "ap50": 0.995,
+        "ap50_95": 0.8508
+      },
+      "Tomato Early blight leaf": {
+        "ap50": 0.5306,
+        "ap50_95": 0.3664
+      },
+      "Tomato Septoria leaf spot": {
+        "ap50": 0.4663,
+        "ap50_95": 0.2952
+      },
+      "Tomato leaf": {
+        "ap50": 0.4407,
+        "ap50_95": 0.3056
+      },
+      "Tomato leaf bacterial spot": {
+        "ap50": 0.265,
+        "ap50_95": 0.2279
+      },
+      "Tomato leaf late blight": {
+        "ap50": 0.6755,
+        "ap50_95": 0.5142
+      },
+      "Tomato leaf mosaic virus": {
+        "ap50": 0.5367,
+        "ap50_95": 0.3457
+      },
+      "Tomato leaf yellow virus": {
+        "ap50": 0.7064,
+        "ap50_95": 0.3773
+      },
+      "Tomato mold leaf": {
+        "ap50": 0.2267,
+        "ap50_95": 0.1503
+      },
+      "grape leaf": {
+        "ap50": 0.9627,
+        "ap50_95": 0.7956
+      },
+      "grape leaf black rot": {
+        "ap50": 0.8904,
+        "ap50_95": 0.75
+      }
+    },
+    "yolo26s_768_e2e": {
+      "Apple Scab Leaf": {
+        "ap50": 0.8431,
+        "ap50_95": 0.6617
+      },
+      "Apple leaf": {
+        "ap50": 0.6192,
+        "ap50_95": 0.4962
+      },
+      "Apple rust leaf": {
+        "ap50": 0.658,
+        "ap50_95": 0.5984
+      },
+      "Bell_pepper leaf": {
+        "ap50": 0.3867,
+        "ap50_95": 0.2844
+      },
+      "Bell_pepper leaf spot": {
+        "ap50": 0.6196,
+        "ap50_95": 0.5143
+      },
+      "Blueberry leaf": {
+        "ap50": 0.6946,
+        "ap50_95": 0.4658
+      },
+      "Cherry leaf": {
+        "ap50": 0.8057,
+        "ap50_95": 0.5866
+      },
+      "Corn Gray leaf spot": {
+        "ap50": 0.28,
+        "ap50_95": 0.2028
+      },
+      "Corn leaf blight": {
+        "ap50": 0.8452,
+        "ap50_95": 0.7374
+      },
+      "Corn rust leaf": {
+        "ap50": 0.9036,
+        "ap50_95": 0.7599
+      },
+      "Peach leaf": {
+        "ap50": 0.8267,
+        "ap50_95": 0.6045
+      },
+      "Potato leaf early blight": {
+        "ap50": 0.4638,
+        "ap50_95": 0.3879
+      },
+      "Potato leaf late blight": {
+        "ap50": 0.3361,
+        "ap50_95": 0.2541
+      },
+      "Raspberry leaf": {
+        "ap50": 0.9337,
+        "ap50_95": 0.8336
+      },
+      "Soyabean leaf": {
+        "ap50": 0.7419,
+        "ap50_95": 0.6324
+      },
+      "Squash Powdery mildew leaf": {
+        "ap50": 0.75,
+        "ap50_95": 0.6501
+      },
+      "Strawberry leaf": {
+        "ap50": 0.9607,
+        "ap50_95": 0.8276
+      },
+      "Tomato Early blight leaf": {
+        "ap50": 0.4841,
+        "ap50_95": 0.3494
+      },
+      "Tomato Septoria leaf spot": {
+        "ap50": 0.5245,
+        "ap50_95": 0.3581
+      },
+      "Tomato leaf": {
+        "ap50": 0.4112,
+        "ap50_95": 0.298
+      },
+      "Tomato leaf bacterial spot": {
+        "ap50": 0.2919,
+        "ap50_95": 0.2635
+      },
+      "Tomato leaf late blight": {
+        "ap50": 0.7326,
+        "ap50_95": 0.5371
+      },
+      "Tomato leaf mosaic virus": {
+        "ap50": 0.3915,
+        "ap50_95": 0.2694
+      },
+      "Tomato leaf yellow virus": {
+        "ap50": 0.6052,
+        "ap50_95": 0.3431
+      },
+      "Tomato mold leaf": {
+        "ap50": 0.4144,
+        "ap50_95": 0.2563
+      },
+      "grape leaf": {
+        "ap50": 0.8847,
+        "ap50_95": 0.7532
+      },
+      "grape leaf black rot": {
+        "ap50": 0.9623,
+        "ap50_95": 0.7927
+      }
+    },
+    "yolo26s_768_nms": {
+      "Apple Scab Leaf": {
+        "ap50": 0.8077,
+        "ap50_95": 0.6294
+      },
+      "Apple leaf": {
+        "ap50": 0.54,
+        "ap50_95": 0.4405
+      },
+      "Apple rust leaf": {
+        "ap50": 0.7584,
+        "ap50_95": 0.6858
+      },
+      "Bell_pepper leaf": {
+        "ap50": 0.4042,
+        "ap50_95": 0.2933
+      },
+      "Bell_pepper leaf spot": {
+        "ap50": 0.6682,
+        "ap50_95": 0.528
+      },
+      "Blueberry leaf": {
+        "ap50": 0.7492,
+        "ap50_95": 0.5221
+      },
+      "Cherry leaf": {
+        "ap50": 0.816,
+        "ap50_95": 0.6157
+      },
+      "Corn Gray leaf spot": {
+        "ap50": 0.2985,
+        "ap50_95": 0.2274
+      },
+      "Corn leaf blight": {
+        "ap50": 0.8309,
+        "ap50_95": 0.7152
+      },
+      "Corn rust leaf": {
+        "ap50": 0.9683,
+        "ap50_95": 0.8042
+      },
+      "Peach leaf": {
+        "ap50": 0.9011,
+        "ap50_95": 0.6436
+      },
+      "Potato leaf early blight": {
+        "ap50": 0.546,
+        "ap50_95": 0.4493
+      },
+      "Potato leaf late blight": {
+        "ap50": 0.4446,
+        "ap50_95": 0.3699
+      },
+      "Raspberry leaf": {
+        "ap50": 0.9184,
+        "ap50_95": 0.7979
+      },
+      "Soyabean leaf": {
+        "ap50": 0.7325,
+        "ap50_95": 0.6304
+      },
+      "Squash Powdery mildew leaf": {
+        "ap50": 0.7266,
+        "ap50_95": 0.6534
+      },
+      "Strawberry leaf": {
+        "ap50": 0.9918,
+        "ap50_95": 0.8532
+      },
+      "Tomato Early blight leaf": {
+        "ap50": 0.5315,
+        "ap50_95": 0.3828
+      },
+      "Tomato Septoria leaf spot": {
+        "ap50": 0.4825,
+        "ap50_95": 0.3279
+      },
+      "Tomato leaf": {
+        "ap50": 0.4642,
+        "ap50_95": 0.3256
+      },
+      "Tomato leaf bacterial spot": {
+        "ap50": 0.301,
+        "ap50_95": 0.2628
+      },
+      "Tomato leaf late blight": {
+        "ap50": 0.7357,
+        "ap50_95": 0.5522
+      },
+      "Tomato leaf mosaic virus": {
+        "ap50": 0.4697,
+        "ap50_95": 0.3253
+      },
+      "Tomato leaf yellow virus": {
+        "ap50": 0.6982,
+        "ap50_95": 0.3861
+      },
+      "Tomato mold leaf": {
+        "ap50": 0.4151,
+        "ap50_95": 0.29
+      },
+      "grape leaf": {
+        "ap50": 0.8519,
+        "ap50_95": 0.7339
+      },
+      "grape leaf black rot": {
+        "ap50": 0.9623,
+        "ap50_95": 0.7742
+      }
+    }
+  },
+  "val_conf_sweep": [
+    {
+      "conf": 0.15,
+      "val_precision": 0.5332,
+      "val_recall": 0.5907,
+      "val_f1": 0.5605,
+      "healthy_disease_fp_rate": 0.26
+    },
+    {
+      "conf": 0.2,
+      "val_precision": 0.5626,
+      "val_recall": 0.5659,
+      "val_f1": 0.5643,
+      "healthy_disease_fp_rate": 0.2267
+    },
+    {
+      "conf": 0.25,
+      "val_precision": 0.5873,
+      "val_recall": 0.5441,
+      "val_f1": 0.5648,
+      "healthy_disease_fp_rate": 0.1933
+    },
+    {
+      "conf": 0.3,
+      "val_precision": 0.6081,
+      "val_recall": 0.5244,
+      "val_f1": 0.5632,
+      "healthy_disease_fp_rate": 0.1733
+    },
+    {
+      "conf": 0.35,
+      "val_precision": 0.6301,
+      "val_recall": 0.4975,
+      "val_f1": 0.556,
+      "healthy_disease_fp_rate": 0.14
+    },
+    {
+      "conf": 0.4,
+      "val_precision": 0.6532,
+      "val_recall": 0.4814,
+      "val_f1": 0.5543,
+      "healthy_disease_fp_rate": 0.1333
+    },
+    {
+      "conf": 0.45,
+      "val_precision": 0.6688,
+      "val_recall": 0.4618,
+      "val_f1": 0.5463,
+      "healthy_disease_fp_rate": 0.1067
+    }
+  ],
+  "sample_predictions": [
+    {
+      "sample": "Test[0] pd_test_0000_00",
+      "Legacy YOLOv8n": [],
+      "YOLO26 (yolo26s_768_nms)": [
+        [
+          "Bell_pepper leaf spot",
+          0.575
+        ],
+        [
+          "Bell_pepper leaf spot",
+          0.511
+        ],
+        [
+          "Bell_pepper leaf spot",
+          0.445
+        ],
+        [
+          "Bell_pepper leaf spot",
+          0.362
+        ]
+      ]
+    },
+    {
+      "sample": "Test[1] pd_test_0001_000",
+      "Legacy YOLOv8n": [],
+      "YOLO26 (yolo26s_768_nms)": [
+        [
+          "Bell_pepper leaf",
+          0.286
+        ]
+      ]
+    },
+    {
+      "sample": "Test[40] pd_test_0040_2256-body",
+      "Legacy YOLOv8n": [],
+      "YOLO26 (yolo26s_768_nms)": [
+        [
+          "Corn rust leaf",
+          0.915
+        ]
+      ]
+    },
+    {
+      "sample": "Test[120] pd_test_0120_black_lea",
+      "Legacy YOLOv8n": [
+        [
+          "Raspberry leaf",
+          0.286
+        ]
+      ],
+      "YOLO26 (yolo26s_768_nms)": [
+        [
+          "Tomato mold leaf",
+          0.784
+        ],
+        [
+          "Tomato mold leaf",
+          0.716
+        ],
+        [
+          "Tomato mold leaf",
+          0.701
+        ]
+      ]
+    },
+    {
+      "sample": "Healthy(Pl:Apple___healthy)",
+      "Legacy YOLOv8n": [],
+      "YOLO26 (yolo26s_768_nms)": [
+        [
+          "Apple leaf",
+          0.709
+        ]
+      ]
+    },
+    {
+      "sample": "Healthy(Pl:apple leaf)",
+      "Legacy YOLOv8n": [
+        [
+          "Strawberry leaf",
+          0.97
+        ],
+        [
+          "Raspberry leaf",
+          0.945
+        ],
+        [
+          "Strawberry leaf",
+          0.866
+        ],
+        [
+          "Raspberry leaf",
+          0.851
+        ],
+        [
+          "Raspberry leaf",
+          0.744
+        ],
+        [
+          "Strawberry leaf",
+          0.708
+        ]
+      ],
+      "YOLO26 (yolo26s_768_nms)": [
+        [
+          "Apple leaf",
+          0.923
+        ],
+        [
+          "Apple leaf",
+          0.908
+        ],
+        [
+          "Apple leaf",
+          0.817
+        ],
+        [
+          "Apple leaf",
+          0.654
+        ]
+      ]
+    }
+  ]
+}

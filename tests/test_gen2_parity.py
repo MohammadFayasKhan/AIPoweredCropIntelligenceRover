@@ -219,7 +219,9 @@ class TestGen2InferenceParity:
 
         assert data["diagnosis"]["model_tier"] == "gen2"
         assert "Gen-2" in data["diagnosis"]["model_architecture"]
-        assert "YOLO26" in data["spatial_telemetry"]["detection_engine"]
+        # Active PlantDoc checkpoint is YOLO11n (yolo26_tri_domain_best.pt is identical SHA-256)
+        assert "PlantDoc" in data["spatial_telemetry"]["detection_engine"]
+        assert "YOLO26" not in data["spatial_telemetry"]["detection_engine"]
         assert data["diagnosis"]["confidence_pct"] > 0
         assert len(data["diagnosis"]["top3_predictions"]) == 3
         assert "explainability" in data

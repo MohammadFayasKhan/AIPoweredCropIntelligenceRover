@@ -1,0 +1,19 @@
+{
+  "splits": {
+    "test": 1705,
+    "val": 841,
+    "train": 5050
+  },
+  "instances": {
+    "test": 10820,
+    "val": 6049,
+    "train": 34231
+  },
+  "negative_controls": {
+    "test": 185,
+    "val": 48,
+    "train": 328
+  },
+  "corrupt_reencoded": 0,
+  "yaml_path": "/kaggle/working/datasets/yolo26_lesion_v1/yolo26_lesion_v1.yaml"
+}

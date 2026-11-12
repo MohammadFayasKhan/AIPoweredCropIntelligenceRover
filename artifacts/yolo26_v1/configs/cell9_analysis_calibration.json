@@ -1,0 +1,178 @@
+{
+  "optimal_val_conf_threshold": 0.25,
+  "val_conf_sweep": [
+    {
+      "conf": 0.15,
+      "val_precision": 0.5332,
+      "val_recall": 0.5907,
+      "val_f1": 0.5605,
+      "healthy_disease_fp_rate": 0.26
+    },
+    {
+      "conf": 0.2,
+      "val_precision": 0.5626,
+      "val_recall": 0.5659,
+      "val_f1": 0.5643,
+      "healthy_disease_fp_rate": 0.2267
+    },
+    {
+      "conf": 0.25,
+      "val_precision": 0.5873,
+      "val_recall": 0.5441,
+      "val_f1": 0.5648,
+      "healthy_disease_fp_rate": 0.1933
+    },
+    {
+      "conf": 0.3,
+      "val_precision": 0.6081,
+      "val_recall": 0.5244,
+      "val_f1": 0.5632,
+      "healthy_disease_fp_rate": 0.1733
+    },
+    {
+      "conf": 0.35,
+      "val_precision": 0.6301,
+      "val_recall": 0.4975,
+      "val_f1": 0.556,
+      "healthy_disease_fp_rate": 0.14
+    },
+    {
+      "conf": 0.4,
+      "val_precision": 0.6532,
+      "val_recall": 0.4814,
+      "val_f1": 0.5543,
+      "healthy_disease_fp_rate": 0.1333
+    },
+    {
+      "conf": 0.45,
+      "val_precision": 0.6688,
+      "val_recall": 0.4618,
+      "val_f1": 0.5463,
+      "healthy_disease_fp_rate": 0.1067
+    }
+  ],
+  "sample_predictions": [
+    {
+      "sample": "Test[0] pd_test_0000_00",
+      "Legacy YOLOv8n": [],
+      "YOLO26 (yolo26s_768_nms)": [
+        [
+          "Bell_pepper leaf spot",
+          0.575
+        ],
+        [
+          "Bell_pepper leaf spot",
+          0.511
+        ],
+        [
+          "Bell_pepper leaf spot",
+          0.445
+        ],
+        [
+          "Bell_pepper leaf spot",
+          0.362
+        ]
+      ]
+    },
+    {
+      "sample": "Test[1] pd_test_0001_000",
+      "Legacy YOLOv8n": [],
+      "YOLO26 (yolo26s_768_nms)": [
+        [
+          "Bell_pepper leaf",
+          0.286
+        ]
+      ]
+    },
+    {
+      "sample": "Test[40] pd_test_0040_2256-body",
+      "Legacy YOLOv8n": [],
+      "YOLO26 (yolo26s_768_nms)": [
+        [
+          "Corn rust leaf",
+          0.915
+        ]
+      ]
+    },
+    {
+      "sample": "Test[120] pd_test_0120_black_lea",
+      "Legacy YOLOv8n": [
+        [
+          "Raspberry leaf",
+          0.286
+        ]
+      ],
+      "YOLO26 (yolo26s_768_nms)": [
+        [
+          "Tomato mold leaf",
+          0.784
+        ],
+        [
+          "Tomato mold leaf",
+          0.716
+        ],
+        [
+          "Tomato mold leaf",
+          0.701
+        ]
+      ]
+    },
+    {
+      "sample": "Healthy(Pl:Apple___healthy)",
+      "Legacy YOLOv8n": [],
+      "YOLO26 (yolo26s_768_nms)": [
+        [
+          "Apple leaf",
+          0.709
+        ]
+      ]
+    },
+    {
+      "sample": "Healthy(Pl:apple leaf)",
+      "Legacy YOLOv8n": [
+        [
+          "Strawberry leaf",
+          0.97
+        ],
+        [
+          "Raspberry leaf",
+          0.945
+        ],
+        [
+          "Strawberry leaf",
+          0.866
+        ],
+        [
+          "Raspberry leaf",
+          0.851
+        ],
+        [
+          "Raspberry leaf",
+          0.744
+        ],
+        [
+          "Strawberry leaf",
+          0.708
+        ]
+      ],
+      "YOLO26 (yolo26s_768_nms)": [
+        [
+          "Apple leaf",
+          0.923
+        ],
+        [
+          "Apple leaf",
+          0.908
+        ],
+        [
+          "Apple leaf",
+          0.817
+        ],
+        [
+          "Apple leaf",
+          0.654
+        ]
+      ]
+    }
+  ]
+}

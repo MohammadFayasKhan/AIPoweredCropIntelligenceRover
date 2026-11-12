@@ -19,6 +19,10 @@ scratch/
 .env.local
 .env.*.local
 *.PublishSettings
+kaggle.json
+.kaggle/
+access_token
+*.vsix
 iot/ESP32_CAM_SmartCropVision/config.h
 
 # Operating system files
@@ -42,9 +46,13 @@ cv/datasets/processed/yolo_plantdoc/
 *.zip
 results/
 results2/
-checkpoints/
+/checkpoints/
 SmartCropVision_release/
 SmartCropVision_release_gen2/
+yolo26_v1_release_bundle/
+yolo26_lesion_v1_release_bundle/
+artifacts/*/pretrained/
+.vscode/
 
 # Python virtual environments
 .venv/

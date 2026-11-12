@@ -1,0 +1,91 @@
+{
+  "pretrained": {
+    "yolo26n.pt": {
+      "status": "READY",
+      "path": "/kaggle/working/artifacts/yolo26_v1/pretrained/yolo26n.pt",
+      "size_mb": 5.29,
+      "sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+      "yaml_file": "yolo26n.yaml",
+      "head_class": "Detect",
+      "reg_max": 1,
+      "nc_pretrained": 80
+    },
+    "yolo26s.pt": {
+      "status": "READY",
+      "path": "/kaggle/working/artifacts/yolo26_v1/pretrained/yolo26s.pt",
+      "size_mb": 19.48,
+      "sha256": "646f8bc3fe0a656803d95c294f7852321748cb29d13466a1af8862e2db384a1b",
+      "yaml_file": "yolo26s.yaml",
+      "head_class": "Detect",
+      "reg_max": 1,
+      "nc_pretrained": 80
+    },
+    "yolo26m.pt": {
+      "status": "READY",
+      "path": "/kaggle/working/artifacts/yolo26_v1/pretrained/yolo26m.pt",
+      "size_mb": 42.21,
+      "sha256": "401cea9ab23ad19246ff7744859816bc599f350e93c9dd30367b6f0a0745d0b7",
+      "yaml_file": "yolo26m.yaml",
+      "head_class": "Detect",
+      "reg_max": 1,
+      "nc_pretrained": 80
+    }
+  },
+  "benchmark": [
+    {
+      "name": "bench_yolo26n_640",
+      "ckpt": "yolo26n.pt",
+      "imgsz": 640,
+      "batch": 16,
+      "status": "OK",
+      "elapsed_2ep_s": 161.87,
+      "sec_per_epoch": 80.94,
+      "est_80ep_mins": 107.9,
+      "peak_vram_gb": 2.47
+    },
+    {
+      "name": "bench_yolo26s_640",
+      "ckpt": "yolo26s.pt",
+      "imgsz": 640,
+      "batch": 8,
+      "status": "OK",
+      "elapsed_2ep_s": 164.48,
+      "sec_per_epoch": 82.24,
+      "est_80ep_mins": 109.7,
+      "peak_vram_gb": 2.37
+    },
+    {
+      "name": "bench_yolo26s_768",
+      "ckpt": "yolo26s.pt",
+      "imgsz": 768,
+      "batch": 6,
+      "status": "OK",
+      "elapsed_2ep_s": 206.9,
+      "sec_per_epoch": 103.45,
+      "est_80ep_mins": 137.9,
+      "peak_vram_gb": 2.56
+    },
+    {
+      "name": "bench_yolo26s_960",
+      "ckpt": "yolo26s.pt",
+      "imgsz": 960,
+      "batch": 4,
+      "status": "OK",
+      "elapsed_2ep_s": 289.16,
+      "sec_per_epoch": 144.58,
+      "est_80ep_mins": 192.8,
+      "peak_vram_gb": 2.7
+    },
+    {
+      "name": "bench_yolo26m_640",
+      "ckpt": "yolo26m.pt",
+      "imgsz": 640,
+      "batch": 6,
+      "status": "OK",
+      "elapsed_2ep_s": 213.95,
+      "sec_per_epoch": 106.98,
+      "est_80ep_mins": 142.6,
+      "peak_vram_gb": 3.53
+    }
+  ]
+}

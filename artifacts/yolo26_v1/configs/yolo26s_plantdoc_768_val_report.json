@@ -1,0 +1,95 @@
+{
+  "experiment": "yolo26s_plantdoc_768",
+  "checkpoint_path": "/kaggle/working/artifacts/yolo26_v1/checkpoints/yolo26s_plantdoc_768_best.pt",
+  "sha256": "d1be9b57b02b483aca1675bf33113fcc5622352295f6d0f99770425516875eb9",
+  "size_mb": 19.41,
+  "architecture": {
+    "yaml_file": "yolo26s.yaml",
+    "head_class": "Detect",
+    "reg_max": 1,
+    "has_one2one": true,
+    "nc": 29
+  },
+  "train_elapsed_min": 58.66,
+  "val_nms_free_e2e": {
+    "precision": 0.579,
+    "recall": 0.5522,
+    "map50": 0.5689,
+    "map50_95": 0.3981,
+    "speed_ms": {
+      "preprocess": 0.95,
+      "inference": 11.1,
+      "loss": 0.0,
+      "postprocess": 0.18
+    }
+  },
+  "val_with_nms": {
+    "precision": 0.5869,
+    "recall": 0.5773,
+    "map50": 0.6016,
+    "map50_95": 0.4191,
+    "speed_ms": {
+      "preprocess": 0.96,
+      "inference": 10.83,
+      "loss": 0.0,
+      "postprocess": 1.07
+    }
+  },
+  "hard_classes_ap50": {
+    "Tomato leaf bacterial spot": 0.1761,
+    "Tomato mold leaf": 0.2878,
+    "Potato leaf early blight": 0.2891,
+    "Tomato Early blight leaf": 0.1868,
+    "Bell_pepper leaf": 0.5343
+  },
+  "val_highest_5_ap50": [
+    [
+      "Corn rust leaf",
+      0.9706
+    ],
+    [
+      "Soyabean leaf",
+      0.9546
+    ],
+    [
+      "Strawberry leaf",
+      0.8651
+    ],
+    [
+      "Apple leaf",
+      0.8565
+    ],
+    [
+      "Peach leaf",
+      0.8111
+    ]
+  ],
+  "val_lowest_5_ap50": [
+    [
+      "Tomato leaf bacterial spot",
+      0.1761
+    ],
+    [
+      "Tomato Early blight leaf",
+      0.1868
+    ],
+    [
+      "Tomato mold leaf",
+      0.2878
+    ],
+    [
+      "Potato leaf early blight",
+      0.2891
+    ],
+    [
+      "Tomato leaf yellow virus",
+      0.4609
+    ]
+  ],
+  "delta_vs_yolo26n_640": {
+    "e2e_map50_delta": 0.0187,
+    "e2e_map50_95_delta": 0.021,
+    "nms_map50_delta": 0.0146,
+    "nms_map50_95_delta": 0.0134
+  }
+}

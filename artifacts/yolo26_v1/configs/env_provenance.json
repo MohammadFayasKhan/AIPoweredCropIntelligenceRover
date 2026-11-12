@@ -1,0 +1,112 @@
+{
+  "timestamp_utc": "2026-11-11T17:28:50Z",
+  "environment": "Kaggle",
+  "platform": "Linux-6.18.55+-x86_64-with-glibc2.35",
+  "torch": "2.10.0+cu128",
+  "cuda": "12.8",
+  "ultralytics": "8.4.210",
+  "opencv": "4.13.0",
+  "numpy": "2.0.2",
+  "gpu_name": "Tesla T4",
+  "compute_capability": "sm_75",
+  "num_gpus_visible": 2,
+  "training_device": "0",
+  "vram_gb": 14.56,
+  "free_disk_gb": 19.5,
+  "amp_enabled": true,
+  "yolo26_arch_checks": {
+    "yolo26n.yaml": {
+      "cfg": "yolo26n.yaml",
+      "yaml_file": "yolo26n.yaml",
+      "head_class": "Detect",
+      "head_end2end_init": false,
+      "model_end2end_attr": false,
+      "yaml_end2end": true,
+      "one2many": true,
+      "one2one": true,
+      "reg_max": 1,
+      "parameters": 2572280,
+      "is_genuine_yolo26": true,
+      "predict_e2e_true_ok": true,
+      "predict_e2e_false_ok": true,
+      "errors": []
+    },
+    "yolo26s.yaml": {
+      "cfg": "yolo26s.yaml",
+      "yaml_file": "yolo26s.yaml",
+      "head_class": "Detect",
+      "head_end2end_init": false,
+      "model_end2end_attr": false,
+      "yaml_end2end": true,
+      "one2many": true,
+      "one2one": true,
+      "reg_max": 1,
+      "parameters": 10009784,
+      "is_genuine_yolo26": true,
+      "predict_e2e_true_ok": true,
+      "predict_e2e_false_ok": true,
+      "errors": []
+    },
+    "yolo26m.yaml": {
+      "cfg": "yolo26m.yaml",
+      "yaml_file": "yolo26m.yaml",
+      "head_class": "Detect",
+      "head_end2end_init": false,
+      "model_end2end_attr": false,
+      "yaml_end2end": true,
+      "one2many": true,
+      "one2one": true,
+      "reg_max": 1,
+      "parameters": 21896248,
+      "is_genuine_yolo26": true,
+      "predict_e2e_true_ok": true,
+      "predict_e2e_false_ok": true,
+      "errors": []
+    },
+    "yolo26n-seg.yaml": {
+      "cfg": "yolo26n-seg.yaml",
+      "yaml_file": "yolo26n-seg.yaml",
+      "head_class": "Segment26",
+      "head_end2end_init": false,
+      "model_end2end_attr": false,
+      "yaml_end2end": true,
+      "one2many": true,
+      "one2one": true,
+      "reg_max": 1,
+      "parameters": 3126280,
+      "is_genuine_yolo26": true,
+      "predict_e2e_true_ok": true,
+      "predict_e2e_false_ok": true,
+      "errors": []
+    },
+    "yolo26s-seg.yaml": {
+      "cfg": "yolo26s-seg.yaml",
+      "yaml_file": "yolo26s-seg.yaml",
+      "head_class": "Segment26",
+      "head_end2end_init": false,
+      "model_end2end_attr": false,
+      "yaml_end2end": true,
+      "one2many": true,
+      "one2one": true,
+      "reg_max": 1,
+      "parameters": 11505800,
+      "is_genuine_yolo26": true,
+      "predict_e2e_true_ok": true,
+      "predict_e2e_false_ok": true,
+      "errors": []
+    }
+  },
+  "input_mounts": [
+    {
+      "mount": "/kaggle/input/datasets",
+      "children": [
+        "mohammadfayaskhan"
+      ],
+      "subchildren": {
+        "mohammadfayaskhan": [
+          "smart-plant-codebase"
+        ]
+      }
+    }
+  ]
+}

@@ -460,3 +460,20 @@ test("Secondary Viable Options confidence parser correctly extracts confidence a
   const res4 = parseAlternative(alt4, 0);
   assert.strictEqual(res4.altPct, "0.0");
 });
+
+// Test 20: Dynamic YOLO26 vs YOLO11n Spatial Detector Benchmark Display
+test("Dynamic spatial detector benchmark reflects YOLO26s default and legacy fallback accurately", () => {
+  const { getDetectorBenchmarkDisplay } = require("./app.js");
+
+  const y26 = getDetectorBenchmarkDisplay("YOLO26 v1 PlantDoc Specimen Detector (one-to-many NMS)");
+  assert.strictEqual(y26.metricTag, "(PlantDoc Test mAP@50: 0.6672)");
+  assert.ok(y26.tooltip.includes("YOLO26s 768x768"));
+
+  const def = getDetectorBenchmarkDisplay(null);
+  assert.ok(def.engine.includes("YOLO26"));
+  assert.strictEqual(def.metricTag, "(PlantDoc Test mAP@50: 0.6672)");
+
+  const legacy = getDetectorBenchmarkDisplay("YOLO11n PlantDoc Specimen Detector");
+  assert.strictEqual(legacy.metricTag, "(PlantDoc mAP@50: 0.3360)");
+  assert.ok(legacy.tooltip.includes("YOLO11n 416x416"));
+});
